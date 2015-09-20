@@ -233,6 +233,7 @@ $RECYCLE.BIN/
 
 # DMSwart added ignores
 funwithflags/funwithflags/sevenminus.png
+test/
 testdir/
 workingdir/
 scratch_console_app/
