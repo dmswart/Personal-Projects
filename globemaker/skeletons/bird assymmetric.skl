@@ -1,0 +1,52 @@
+#positioning
+m 1.0
+
+# left midfeather
+l 0.1 0.6
+
+m 0.25
+
+#left topfeather, than bottom feather
+r 0.5 
+p 1
+l 0.2
+r 0.2
+l 0.35 0.9
+p -1
+p 1
+l -0.2
+r -0.3
+l -0.15
+p -1
+r -0.5
+
+m 0.25
+
+#bird body from tail to head
+r 0.4 
+m -0.7
+l 0.7 1.0
+l 0.5 1.2
+m -0.5
+r -0.4
+
+m 0.25
+
+#right bottom than top feather
+r -0.5 
+p 1
+l 0.2
+r 0.3
+l 0.2
+p -1
+p 1
+l -0.2
+r -0.3
+l -0.45
+p -1
+r 0.5
+
+m 0.25
+
+#right middle feather
+l -0.1
