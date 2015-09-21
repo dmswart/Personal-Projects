@@ -232,17 +232,19 @@ $RECYCLE.BIN/
 
 
 # DMSwart added ignores
-funwithflags/funwithflags/sevenminus.png
 *.stl
 *.eps
 
 test/
 testdir/
 workingdir/
+STLWork/output/
+
 scratch_console_app/
 ScratchConsoleApp/
 funwithflags/
-STLWork/
+
+funwithflags/funwithflags/sevenminus.png
 SphereTSP/blank sphere.png
 SphereTSP/moon_rerender.jpg
 SphereTSP/moon_rerender.png
