@@ -106,22 +106,28 @@ namespace globemaker
                 return m_Source.GetSpherePixel( Q );
             }
 
-
-
-
-
             //draw skeleton line
             if (S.Distance < 0.4 * DMS.TAU / 360.0)
                 return Color.Black;
 
             //draw bluish greenish color;
             int nIdx = m_Skeleton.IndexOf(S.Segment);
-            return Color.FromArgb(32, 32 + nIdx % 255, 32 + nIdx % 255);
-//            return Color.FromArgb(32 + (nIdx * 43) % 8 * 8,
-//                                   32 + (nIdx * 71) % 11 * 17,
-//                                   255 - (32 + (nIdx * 71) % 11 * 17));      
+            return colorFromRandomIndex(nIdx);
         }
+
         #endregion
 
+        #region static functions
+
+        static public Color colorFromRandomIndex(int idx)
+        {
+            //draw bluish greenish color;
+            return Color.FromArgb( 32 + (idx * 43) % 8 * 8,
+                                   32 + (idx * 71) % 11 * 17,
+                                   255 - (32 + (idx * 71) % 11 * 17));
+            // return Color.FromArgb(32, 32 + nIdx % 255, 32 + nIdx % 255);
+        }
+
+        #endregion
     }
 }

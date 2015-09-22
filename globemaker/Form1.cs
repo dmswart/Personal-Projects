@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 
 using DMSLib;
+using globemaker;
 using System.Diagnostics;
 
 namespace globemaker
@@ -23,7 +24,6 @@ namespace globemaker
         private void SetTarget( RectangleF value )
         {
             m_Target = value;
-
         }
 
         public Form1()
@@ -33,6 +33,15 @@ namespace globemaker
             m_saveimg = null;
             m_savegm = null;
             m_outputfilename = String.Empty;
+        }
+
+        private DMSImage loadSource()
+        {
+            if (textBoxSource.Text == "")
+            {
+                return null; 
+            }
+            return new DMSImage(textBoxSource.Text, checkBoxMirroBall.Checked);
         }
 
         private void buttonBrowseSource_Click(object sender, EventArgs e)
@@ -56,18 +65,13 @@ namespace globemaker
 
         private void buttonPreview_Click(object sender, EventArgs e)
         {
-            Globemaker gm;
-            if( textBoxSource.Text == "" )
-                gm = new Globemaker( panelPreview.Size,
-                                     Color.Gray,
-                                     new Skeleton(textBoxSkeleton.Text),
-                                     0.0);
-            else
-                gm = new Globemaker( panelPreview.Size,
-                                     new DMSImage(textBoxSource.Text, checkBoxMirroBall.Checked),
-                                     Color.Gray,
-                                     new Skeleton(textBoxSkeleton.Text),
-                                     0.0);
+            Globemaker gm = new Globemaker( 
+                panelPreview.Size,
+                loadSource(),
+                Color.Gray,
+                new Skeleton(textBoxSkeleton.Text),
+                0.0);
+
             if (m_Target == RectangleF.Empty)
             {
                 gm.ExpandTargetToSize();
@@ -204,7 +208,32 @@ namespace globemaker
             UpdateUI();
         }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
 
+        }
+
+        private void buttonYZ_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void buttonXZ_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void buttonAngledView_Click(object sender, EventArgs e)
+        {
+            Globedrawer gd = new Globedrawer(
+                panelPreview.Size.Width,
+                loadSource(),
+                Color.Gray,
+                new Skeleton(textBoxSkeleton.Text),
+                true);
+            panelPreview.BackgroundImage = new DMSImage(gd).Bitmap;
+        }
     }
 
 }
+
