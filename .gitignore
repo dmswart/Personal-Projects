@@ -240,8 +240,6 @@ testdir/
 workingdir/
 STLWork/output/
 
-scratch_console_app/
-ScratchConsoleApp/
 funwithflags/
 
 funwithflags/funwithflags/sevenminus.png
