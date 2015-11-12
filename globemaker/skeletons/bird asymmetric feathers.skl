@@ -41,7 +41,7 @@ r 0.4
 
 #head
 {
-    l 0.5 1.2
+    l 0.5 1
 }
 
 #tail
@@ -73,21 +73,34 @@ r 0.4
 r -0.4
 m 0.25
 
-#right bottom than top feather
-r -0.5 
+#right feathers, top to bottom 
 {
-    l 0.3
-    r 0.3
-    l 0.2
-}
-{
-    l -0.2
+    r 0.5
+    l 0.2 1.2
     r -0.3
-    l -0.45
+    l 0.4 0.9
 }
-r 0.5
-
-m 0.25
-
-#right middle feather
-l -0.1
+{
+    r 0.25
+    l 0.2
+    r -0.15
+    l 0.3 0.7
+}
+{
+    r 0.0
+    l 0.2
+    r 0.0
+    l 0.2 0.7
+}
+{
+    r -0.25
+    l 0.25
+    r 0.15
+    l 0.15 0.7
+}
+{
+    r -0.5
+    l 0.3 0.8
+    r 0.3
+    l 0.2 0.8
+}
