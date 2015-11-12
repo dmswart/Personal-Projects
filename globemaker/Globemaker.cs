@@ -11,16 +11,14 @@ namespace globemaker
     {
         #region member variables
         private Skeleton m_Skeleton;
-        private double m_Bleedout;
         private RectangleF m_Target;
         #endregion
 
         #region Constructors
         //standard constructor
-        public Globemaker( Size size, DMSImage source, Color Background, Skeleton skeleton, double Bleedout )
+        public Globemaker( Size size, DMSImage source, Color Background, Skeleton skeleton )
             : base( size, source, Background )
         {
-			m_Bleedout = Bleedout;
             m_Skeleton = skeleton;
             m_Target = new RectangleF( (float)(m_Skeleton.GetMinPt().X - Math.PI),
                                        (float)(m_Skeleton.GetMinPt().Y - Math.PI),
@@ -29,10 +27,9 @@ namespace globemaker
         }
 
         //optionally opt out of a source image (will print blue greens)
-        public Globemaker( Size size, Color Background, Skeleton skeleton, double Bleedout )
+        public Globemaker( Size size, Color Background, Skeleton skeleton )
             : base( size, null, Background )
         {
-			m_Bleedout = Bleedout;
             m_Skeleton = skeleton;
             m_Target = new RectangleF((float)(m_Skeleton.GetMinPt().X - Math.PI),
                                        (float)(m_Skeleton.GetMinPt().Y - Math.PI),
@@ -96,7 +93,7 @@ namespace globemaker
             Point3D Q = S.PointOnSphere;
 
 			//find if nearest segment on sphere to Q exists.
-            if( m_Skeleton.bNearerSegmentOnSphereExists( Q, S.Distance * S.Segment.Strength - m_Bleedout ) )
+            if( m_Skeleton.bNearerSegmentOnSphereExists( Q, S.Distance * S.Segment.Strength - m_Skeleton.bleedout ) )
             {
                 return m_Blank;
 			} /* if */

@@ -69,8 +69,7 @@ namespace globemaker
                 panelPreview.Size,
                 loadSource(),
                 Color.Gray,
-                new Skeleton(textBoxSkeleton.Text),
-                0.0);
+                new Skeleton(textBoxSkeleton.Text));
 
             if (m_Target == RectangleF.Empty)
             {
@@ -183,14 +182,12 @@ namespace globemaker
             if( textBoxSource.Text == "" )
                 m_savegm = new Globemaker( new Size((int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
                                            Color.Gray,
-                                           new Skeleton(textBoxSkeleton.Text),
-                                           0.0);
+                                           new Skeleton(textBoxSkeleton.Text));
             else
                 m_savegm = new Globemaker( new Size( (int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
                                            new DMSImage(textBoxSource.Text, checkBoxMirroBall.Checked),
                                            Color.Gray,
-                                           new Skeleton(textBoxSkeleton.Text),
-                                           0.0);
+                                           new Skeleton(textBoxSkeleton.Text));
             m_savegm.Target = m_Target;
             backgroundWorker1.RunWorkerAsync();
             timer1.Start();
