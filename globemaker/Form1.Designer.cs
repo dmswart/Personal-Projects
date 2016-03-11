@@ -45,7 +45,7 @@
             this.trackBarScale = new System.Windows.Forms.TrackBar();
             this.labelScale = new System.Windows.Forms.Label();
             this.buttonGo = new System.Windows.Forms.Button();
-            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.bg_worker = new System.ComponentModel.BackgroundWorker();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.buttonReset = new System.Windows.Forms.Button();
             this.buttonAutoCrop = new System.Windows.Forms.Button();
@@ -111,7 +111,7 @@
             // 
             // buttonBrowseSkeleton
             // 
-            this.buttonBrowseSkeleton.Location = new System.Drawing.Point(478, 49);
+            this.buttonBrowseSkeleton.Location = new System.Drawing.Point(478, 50);
             this.buttonBrowseSkeleton.Margin = new System.Windows.Forms.Padding(2);
             this.buttonBrowseSkeleton.Name = "buttonBrowseSkeleton";
             this.buttonBrowseSkeleton.Size = new System.Drawing.Size(25, 19);
@@ -242,10 +242,10 @@
             this.buttonGo.UseVisualStyleBackColor = true;
             this.buttonGo.Click += new System.EventHandler(this.buttonGo_Click);
             // 
-            // backgroundWorker1
+            // bg_worker
             // 
-            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker1_DoWork);
-            this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker1_RunWorkerCompleted);
+            this.bg_worker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bg_worker_DoWork);
+            this.bg_worker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bg_worker_RunWorkerCompleted);
             // 
             // progressBar1
             // 
@@ -378,7 +378,7 @@
         private System.Windows.Forms.Button buttonGo;
         private System.Windows.Forms.TrackBar trackBarScale;
         private System.Windows.Forms.Label labelScale;
-        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private System.ComponentModel.BackgroundWorker bg_worker;
         private System.Windows.Forms.TextBox textBoxOutputSize;
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.Button buttonReset;

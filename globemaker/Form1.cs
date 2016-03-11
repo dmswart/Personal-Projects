@@ -18,6 +18,7 @@ namespace globemaker
         private RectangleF m_Target;
         private DMSImage m_saveimg;
         private Globemaker m_savegm;
+        private RainbowRenderer m_saverr;
         private String m_outputfilename;
 
         //accessor
@@ -56,7 +57,7 @@ namespace globemaker
         private void buttonBrowseSkeleton_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Skeleton Files (*.skl)|*.skl|All Files (*.*)|*.*";
+            ofd.Filter = "Skeleton Files (*.skl)|*.skl|Rainbow Files (*.png)|*.png|All Files (*.*)|*.*";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 textBoxSkeleton.Text = ofd.FileName;
@@ -65,35 +66,43 @@ namespace globemaker
 
         private void buttonPreview_Click(object sender, EventArgs e)
         {
-            Globemaker gm = new Globemaker( 
-                panelPreview.Size,
-                loadSource(),
-                Color.Gray,
-                new Skeleton(textBoxSkeleton.Text));
+            if (textBoxSkeleton.Text.ToLower().EndsWith("skl") ){
+                Globemaker gm = new Globemaker( 
+                    panelPreview.Size,
+                    loadSource(),
+                    Color.Gray,
+                    new Skeleton(textBoxSkeleton.Text));
 
-            if (m_Target == RectangleF.Empty)
-            {
-                gm.ExpandTargetToSize();
-                SetTarget( gm.Target );
+                if (m_Target == RectangleF.Empty) {
+                    gm.ExpandTargetToSize();
+                    SetTarget( gm.Target );
+                } else {
+                    gm.Target = m_Target;
+                    gm.ExpandTargetToSize();
+                    SetTarget( gm.Target );
+                }
+                panelPreview.BackgroundImage = new DMSImage(gm).Bitmap;
             }
             else
             {
-                gm.Target = m_Target;
-                gm.ExpandTargetToSize();
-                SetTarget( gm.Target );
+                RainbowRenderer rr = new RainbowRenderer(
+                    panelPreview.Size,
+                    loadSource(), 
+                    Color.Gray,
+                    new DMSImage(textBoxSkeleton.Text));
+                panelPreview.BackgroundImage = new DMSImage(rr).Bitmap;
+            }            
+        } 
+
+        private void buttonEditSkeleton_Click(object sender, EventArgs e) {
+            if (textBoxSkeleton.Text.ToLower().EndsWith("skl")) {
+                Process pr = new Process();
+                pr.StartInfo.FileName = textBoxSkeleton.Text;
+                pr.Start();
             }
-            panelPreview.BackgroundImage = new DMSImage(gm).Bitmap;
         }
 
-        private void buttonEditSkeleton_Click(object sender, EventArgs e)
-        {
-            Process pr = new Process();
-            pr.StartInfo.FileName = textBoxSkeleton.Text;
-            pr.Start();
-        }
-
-        private void buttonAutoCrop_Click(object sender, EventArgs e)
-        {
+        private void buttonAutoCrop_Click(object sender, EventArgs e) {
             if( m_Target == null || panelPreview.BackgroundImage == null )
                 return;
 
@@ -162,38 +171,58 @@ namespace globemaker
             UpdateUI();
         }
 
-        private void backgroundWorker1_DoWork(object sender, DoWorkEventArgs e)
+        private void bg_worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            m_saveimg = null;
-            if (m_outputfilename == String.Empty)
-                return;
-            m_saveimg = new DMSImage(m_savegm);
-            m_saveimg.Save(m_outputfilename);
+            if (m_outputfilename == String.Empty)  return;
+
+            if (m_savegm != null)
+            {
+                m_saveimg = null;
+                if (m_outputfilename == String.Empty)
+                    return;
+                m_saveimg = new DMSImage(m_savegm);
+                m_saveimg.Save(m_outputfilename);
+            }
+            else if( m_saverr != null)
+            {
+            m_saverr.fastSave(m_outputfilename);
+            }
         }
 
         private void buttonGo_Click(object sender, EventArgs e)
         {
+            m_savegm = null;
+            m_saverr = null;
+            progressBar1.Value = 0;
+
             SaveFileDialog sfd = new SaveFileDialog();
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
             else
                 m_outputfilename = sfd.FileName;
 
-            if( textBoxSource.Text == "" )
-                m_savegm = new Globemaker( new Size((int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
-                                           Color.Gray,
-                                           new Skeleton(textBoxSkeleton.Text));
-            else
-                m_savegm = new Globemaker( new Size( (int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
-                                           new DMSImage(textBoxSource.Text, checkBoxMirroBall.Checked),
-                                           Color.Gray,
-                                           new Skeleton(textBoxSkeleton.Text));
-            m_savegm.Target = m_Target;
-            backgroundWorker1.RunWorkerAsync();
+            if( textBoxSkeleton.Text.ToLower().EndsWith("skl") ) {
+                if( textBoxSource.Text == "" )
+                    m_savegm = new Globemaker( new Size((int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
+                                               Color.Gray,
+                                               new Skeleton(textBoxSkeleton.Text));
+                else
+                    m_savegm = new Globemaker( new Size( (int)(m_Target.Width / DMS.TAU * trackBarScale.Value), (int)(m_Target.Height / DMS.TAU * trackBarScale.Value)),
+                                               new DMSImage(textBoxSource.Text, checkBoxMirroBall.Checked),
+                                               Color.Gray,
+                                               new Skeleton(textBoxSkeleton.Text));
+                m_savegm.Target = m_Target;
+            } else {
+                m_saverr = new RainbowRenderer( new DMSImage(textBoxSource.Text), 
+                                                Color.Gray, 
+                                                new DMSImage(textBoxSkeleton.Text) );
+            }
+
+            bg_worker.RunWorkerAsync();
             timer1.Start();
         }
 
-        private void backgroundWorker1_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        private void bg_worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             timer1.Enabled = false;
             timer1.Stop();
