@@ -11,16 +11,14 @@ namespace globemaker
     {
         #region member variables
         private Skeleton m_Skeleton;
-        private double m_Bleedout;
         private RectangleF m_Target;
         #endregion
 
         #region Constructors
         //standard constructor
-        public Globemaker( Size size, DMSImage source, Color Background, Skeleton skeleton, double Bleedout )
+        public Globemaker( Size size, DMSImage source, Color Background, Skeleton skeleton )
             : base( size, source, Background )
         {
-			m_Bleedout = Bleedout;
             m_Skeleton = skeleton;
             m_Target = new RectangleF( (float)(m_Skeleton.GetMinPt().X - Math.PI),
                                        (float)(m_Skeleton.GetMinPt().Y - Math.PI),
@@ -29,10 +27,9 @@ namespace globemaker
         }
 
         //optionally opt out of a source image (will print blue greens)
-        public Globemaker( Size size, Color Background, Skeleton skeleton, double Bleedout )
+        public Globemaker( Size size, Color Background, Skeleton skeleton )
             : base( size, null, Background )
         {
-			m_Bleedout = Bleedout;
             m_Skeleton = skeleton;
             m_Target = new RectangleF((float)(m_Skeleton.GetMinPt().X - Math.PI),
                                        (float)(m_Skeleton.GetMinPt().Y - Math.PI),
@@ -96,7 +93,7 @@ namespace globemaker
             Point3D Q = S.PointOnSphere;
 
 			//find if nearest segment on sphere to Q exists.
-            if( m_Skeleton.bNearerSegmentOnSphereExists( Q, S.Distance * S.Segment.Strength - m_Bleedout ) )
+            if( m_Skeleton.bNearerSegmentOnSphereExists( Q, S.Distance * S.Segment.Strength - m_Skeleton.bleedout ) )
             {
                 return m_Blank;
 			} /* if */
@@ -106,22 +103,28 @@ namespace globemaker
                 return m_Source.GetSpherePixel( Q );
             }
 
-
-
-
-
             //draw skeleton line
             if (S.Distance < 0.4 * DMS.TAU / 360.0)
                 return Color.Black;
 
             //draw bluish greenish color;
             int nIdx = m_Skeleton.IndexOf(S.Segment);
-            return Color.FromArgb(32, 32 + nIdx % 255, 32 + nIdx % 255);
-//            return Color.FromArgb(32 + (nIdx * 43) % 8 * 8,
-//                                   32 + (nIdx * 71) % 11 * 17,
-//                                   255 - (32 + (nIdx * 71) % 11 * 17));      
+            return colorFromRandomIndex(nIdx);
         }
+
         #endregion
 
+        #region static functions
+
+        static public Color colorFromRandomIndex(int idx)
+        {
+            //draw bluish greenish color;
+            return Color.FromArgb( 32 + (idx * 43) % 8 * 8,
+                                   32 + (idx * 71) % 11 * 17,
+                                   255 - (32 + (idx * 71) % 11 * 17));
+            // return Color.FromArgb(32, 32 + nIdx % 255, 32 + nIdx % 255);
+        }
+
+        #endregion
     }
 }

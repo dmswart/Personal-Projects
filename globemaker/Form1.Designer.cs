@@ -45,14 +45,20 @@
             this.trackBarScale = new System.Windows.Forms.TrackBar();
             this.labelScale = new System.Windows.Forms.Label();
             this.buttonGo = new System.Windows.Forms.Button();
-            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
+            this.bg_worker = new System.ComponentModel.BackgroundWorker();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.buttonReset = new System.Windows.Forms.Button();
             this.buttonAutoCrop = new System.Windows.Forms.Button();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.buttonSideView = new System.Windows.Forms.Button();
+            this.buttonAngledView = new System.Windows.Forms.Button();
+            this.buttonTopView = new System.Windows.Forms.Button();
+            this.buttonFrontView = new System.Windows.Forms.Button();
             this.groupboxInput.SuspendLayout();
             this.groupboxOutput.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarScale)).BeginInit();
+            this.tableLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupboxInput
@@ -105,7 +111,7 @@
             // 
             // buttonBrowseSkeleton
             // 
-            this.buttonBrowseSkeleton.Location = new System.Drawing.Point(478, 49);
+            this.buttonBrowseSkeleton.Location = new System.Drawing.Point(478, 50);
             this.buttonBrowseSkeleton.Margin = new System.Windows.Forms.Padding(2);
             this.buttonBrowseSkeleton.Name = "buttonBrowseSkeleton";
             this.buttonBrowseSkeleton.Size = new System.Drawing.Size(25, 19);
@@ -236,10 +242,10 @@
             this.buttonGo.UseVisualStyleBackColor = true;
             this.buttonGo.Click += new System.EventHandler(this.buttonGo_Click);
             // 
-            // backgroundWorker1
+            // bg_worker
             // 
-            this.backgroundWorker1.DoWork += new System.ComponentModel.DoWorkEventHandler(this.backgroundWorker1_DoWork);
-            this.backgroundWorker1.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.backgroundWorker1_RunWorkerCompleted);
+            this.bg_worker.DoWork += new System.ComponentModel.DoWorkEventHandler(this.bg_worker_DoWork);
+            this.bg_worker.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(this.bg_worker_RunWorkerCompleted);
             // 
             // progressBar1
             // 
@@ -276,11 +282,66 @@
             this.timer1.Interval = 200;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // tableLayoutPanel1
+            // 
+            this.tableLayoutPanel1.ColumnCount = 2;
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel1.Controls.Add(this.buttonSideView, 1, 1);
+            this.tableLayoutPanel1.Controls.Add(this.buttonAngledView, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.buttonTopView, 1, 0);
+            this.tableLayoutPanel1.Controls.Add(this.buttonFrontView, 0, 0);
+            this.tableLayoutPanel1.Location = new System.Drawing.Point(513, 172);
+            this.tableLayoutPanel1.Name = "tableLayoutPanel1";
+            this.tableLayoutPanel1.RowCount = 2;
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(92, 88);
+            this.tableLayoutPanel1.TabIndex = 7;
+            // 
+            // buttonSideView
+            // 
+            this.buttonSideView.Location = new System.Drawing.Point(49, 47);
+            this.buttonSideView.Name = "buttonSideView";
+            this.buttonSideView.Size = new System.Drawing.Size(37, 37);
+            this.buttonSideView.TabIndex = 3;
+            this.buttonSideView.Text = "Side";
+            this.buttonSideView.UseVisualStyleBackColor = true;
+            // 
+            // buttonAngledView
+            // 
+            this.buttonAngledView.Location = new System.Drawing.Point(3, 47);
+            this.buttonAngledView.Name = "buttonAngledView";
+            this.buttonAngledView.Size = new System.Drawing.Size(40, 37);
+            this.buttonAngledView.TabIndex = 2;
+            this.buttonAngledView.Text = "3D";
+            this.buttonAngledView.UseVisualStyleBackColor = true;
+            this.buttonAngledView.Click += new System.EventHandler(this.buttonAngledView_Click);
+            // 
+            // buttonTopView
+            // 
+            this.buttonTopView.Location = new System.Drawing.Point(49, 3);
+            this.buttonTopView.Name = "buttonTopView";
+            this.buttonTopView.Size = new System.Drawing.Size(37, 37);
+            this.buttonTopView.TabIndex = 1;
+            this.buttonTopView.Text = "Top";
+            this.buttonTopView.UseVisualStyleBackColor = true;
+            // 
+            // buttonFrontView
+            // 
+            this.buttonFrontView.Location = new System.Drawing.Point(3, 3);
+            this.buttonFrontView.Name = "buttonFrontView";
+            this.buttonFrontView.Size = new System.Drawing.Size(40, 37);
+            this.buttonFrontView.TabIndex = 0;
+            this.buttonFrontView.Text = "Front";
+            this.buttonFrontView.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(617, 737);
+            this.Controls.Add(this.tableLayoutPanel1);
             this.Controls.Add(this.buttonAutoCrop);
             this.Controls.Add(this.buttonReset);
             this.Controls.Add(this.progressBar1);
@@ -296,6 +357,7 @@
             this.groupboxOutput.ResumeLayout(false);
             this.groupboxOutput.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarScale)).EndInit();
+            this.tableLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -316,13 +378,18 @@
         private System.Windows.Forms.Button buttonGo;
         private System.Windows.Forms.TrackBar trackBarScale;
         private System.Windows.Forms.Label labelScale;
-        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private System.ComponentModel.BackgroundWorker bg_worker;
         private System.Windows.Forms.TextBox textBoxOutputSize;
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.Button buttonReset;
         private System.Windows.Forms.Button buttonEditSkeleton;
         private System.Windows.Forms.Button buttonAutoCrop;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
+        private System.Windows.Forms.Button buttonSideView;
+        private System.Windows.Forms.Button buttonAngledView;
+        private System.Windows.Forms.Button buttonTopView;
+        private System.Windows.Forms.Button buttonFrontView;
     }
 }
 

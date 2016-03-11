@@ -26,7 +26,7 @@ namespace DMSLib
         #region constructors
         public DMSImage(Size size)
         {
-            m_Bitmap = new Bitmap(size.Width, size.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            m_Bitmap = new Bitmap(size.Width, size.Height, pixel_format);
             m_Progress = 1.0;
         }
 
@@ -35,15 +35,27 @@ namespace DMSLib
         {
             m_Progress = 0.0;
 
-            for( int y=0; y<Height; y++ )
-            for( int x=0; x<Width; x++ )
+            BitmapData bitmap_data = m_Bitmap.LockBits(new Rectangle(0, 0, m_Bitmap.Width, m_Bitmap.Height), ImageLockMode.ReadWrite, pixel_format);
+            unsafe
             {
-                m_Progress = ((double)y * Width + x) / (Width * Height);
-                m_Bitmap.SetPixel(x, y, renderer.GetPixel( x, y ));
+                byte* dest = (byte*)bitmap_data.Scan0;
+
+                for (int y = 0; y < Height; y++)
+                {
+                    m_Progress = (double)y / Height;
+                    for (int x = 0; x < Width; x++)
+                    {
+                        Color color = renderer.GetPixel(x, y);
+                        *dest++ = color.B;
+                        *dest++ = color.G;
+                        *dest++ = color.R;
+                        *dest++ = color.A;
+                    }
+                }
             }
+            m_Bitmap.UnlockBits(bitmap_data);
 
             m_Progress = 1.0;
-
         }
 
         public DMSImage(String Filename)
@@ -66,6 +78,9 @@ namespace DMSLib
         public int Height { get {return m_Bitmap.Height; } }
         public Bitmap Bitmap { get {return m_Bitmap;} }
         public static double Progress { get { return m_Progress; } }
+
+        public static System.Drawing.Imaging.PixelFormat pixel_format { get {return System.Drawing.Imaging.PixelFormat.Format32bppRgb;} }
+
         #endregion Accessors
 
 
