@@ -78,7 +78,7 @@ namespace ScratchRenderer
 
             //ImageOut = new DMSImage(new ComplexMap(new Size(300, 300), ImageIn, Color.Gray));
 
-            //ImageOut = new DMSImage(new Bookball(new Size(9000, 6000), ImageIn, Color.Gray, null/*new DMSImage(args[1]) - overlay image*/ ) );
+            // ImageOut = new DMSImage(new Bookball(new Size(9000, 6000), ImageIn, Color.Gray, null/*new DMSImage(args[1]) - overlay image*/ ) );
 
             //ImageOut = new DMSImage(new Filler(ImageIn)); 
 
@@ -92,18 +92,17 @@ namespace ScratchRenderer
 
             //ImageOut = new DMSImage(new SpiralText(ImageIn, int.Parse(args[1])));
 
-            //ImageOut = new DMSImage( new ConformalDoubler(ImageIn) );
+            // ImageOut = new DMSImage( new ConformalDoubler(ImageIn) );
 
-            //ImageOut = new DMSImage(new Tetrahedral()); // black and white
+            //ImageOut = new DMSImage(new Tetrahedral(ImageIn)); // black and white
             //ImageOut = new DMSImage(new Icosahedral()); // black and white
             //ImageOut = new DMSImage(new Octohedral(ImageIn)); // black and white
 
-#if true
             //ImageOut = new DMSImage( new Equirect2Ortho( new Icosahedral(ImageIn), 3300) );
-            ImageOut = new DMSImage(new Icosahedral(ImageIn));
-#else
-            ImageOut = new DMSImage( new Equirect2Ortho(ImageIn,3300) ); 
-#endif
+            // ImageOut = new DMSImage(new Icosahedral(ImageIn));
+
+            // ImageOut = new DMSImage( new Equirect2Ortho(ImageIn,3300) ); 
+
             //List<Point2D> vertices = new List<Point2D>();
             //vertices.Add(new Point2D(384, 526));
             //vertices.Add(new Point2D(736, 176));
@@ -128,6 +127,8 @@ namespace ScratchRenderer
             //ImageOut = new Palette(new DMSImage(args[1]), ImageIn);
             //new Stars(5000, args[0], 0.004).Save("Stars.bmp");
 
+            // ImageOut = new DMSImage(new CubeFace(ImageIn));
+
 #if false //octahedron
             Mosaicker finalmosaic = new Mosaicker(1500, 1500, 3, 2, 60);
             finalmosaic.AddRenderer(new OctahedronUnit(new Size(1500, 1500), ImageIn, Point3D.ZAxis, Point3D.XAxis), 0, 0);
@@ -136,7 +137,7 @@ namespace ScratchRenderer
             finalmosaic.AddRenderer(new OctahedronUnit(new Size(1500, 1500), ImageIn, -Point3D.YAxis, Point3D.XAxis), 1, 1);
             finalmosaic.AddRenderer(new OctahedronUnit(new Size(1500, 1500), ImageIn, Point3D.XAxis, Point3D.YAxis), 2, 0);
             finalmosaic.AddRenderer(new OctahedronUnit(new Size(1500, 1500), ImageIn, -Point3D.XAxis, Point3D.YAxis), 2, 1);
-            DMSImage ImageOut = new DMSImage(finalmosaic);
+            ImageOut = new DMSImage(finalmosaic);
 #endif
 
 

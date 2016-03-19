@@ -85,12 +85,16 @@ namespace globemaker
             }
             else
             {
+                DMSImage rainbow = new DMSImage(textBoxSkeleton.Text);
+                double scale = Math.Min((double)panelPreview.Width / rainbow.Width, (double)panelPreview.Height / rainbow.Height);
+
                 RainbowRenderer rr = new RainbowRenderer(
-                    panelPreview.Size,
-                    loadSource(), 
+                    new Size((int)(scale * rainbow.Width), (int)(scale * rainbow.Height)),
+                    loadSource(),
                     Color.Gray,
-                    new DMSImage(textBoxSkeleton.Text));
+                    rainbow);
                 panelPreview.BackgroundImage = new DMSImage(rr).Bitmap;
+                panelPreview.BackgroundImageLayout = ImageLayout.Center;
             }            
         } 
 
