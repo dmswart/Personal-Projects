@@ -50,6 +50,7 @@
     <Compile Include="Bookball.cs" />
     <Compile Include="ComplexMap.cs" />
     <Compile Include="ConformalDoubler.cs" />
+    <Compile Include="CubeFace.cs" />
     <Compile Include="FundDomain.cs" />
     <Compile Include="Equirect2Ortho.cs" />
     <Compile Include="Icosahedral.cs" />

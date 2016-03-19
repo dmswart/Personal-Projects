@@ -43,8 +43,10 @@ namespace globemaker
         override public Color GetPixel(int x, int y)
         {
             // get color from rainbow image.
-            x *= m_rainbow.Width / m_Size.Width;
-            y *= m_rainbow.Height / m_Size.Height;
+            x *= m_rainbow.Width;
+            y *= m_rainbow.Height;
+            x /= m_Size.Width;
+            y /= m_Size.Height;
             Color rainbow_color = m_rainbow.GetPixel(x, y);
             if ((rainbow_color.ToArgb() & 0xFFFFFF) == 0x808080) { return m_Blank; }
 
