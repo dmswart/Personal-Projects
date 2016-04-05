@@ -1,0 +1,142 @@
+<html>
+<head>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+</head>
+<body>
+<div id="output"></div>
+</body>
+</html>
+
+<script>
+    var radius = 550;
+    var center = {x:600, y:600};
+    var use_sphere_image = true;
+
+    var below_line = null;
+    var above_line = null;
+
+    var anchor = null;
+    var list_of_anchors = [];
+
+    var calcZ = function(pt, z_is_positive, center) {
+        var dX = pt.x - center.x;
+        var dY = pt.y - center.y;
+        var r = Math.sqrt(dX*dX + dY*dY);
+        var rightAscension = Math.acos(r/radius);
+        var Z = Math.sin(rightAscension) * radius;
+        return z_is_positive ? Z : -Z;
+    };
+    var normalize = function(pt) {
+        var deltaX = pt.x - center.x;
+        var deltaY = pt.y - center.y;
+        var scale = radius / Math.sqrt(deltaX*deltaX + deltaY*deltaY + pt.z*pt.z);
+        pt.x = deltaX * scale + center.x;
+        pt.y = deltaY * scale + center.y;
+        pt.z *= scale;
+    };
+    var lineFunction = d3.svg.line()
+            .x(function(d) { return d.x;})
+            .y(function(d) { return d.y;})
+            .interpolate("basis");
+
+    var ZIntercept = function(pt1, pt2) {
+        var t = (0 - pt1.z) / (pt2.z - pt1.z);
+        var result = {x: pt1.x + t * (pt2.x - pt1.x),
+                      y: pt1.y + t * (pt2.y - pt1.y),
+                      z: pt1.z + t * (pt2.z - pt1.z)};
+        normalize(result);
+        return result;
+    };
+
+    var getLineData = function(x1, y1, z_pos1, x2, y2, z_pos2) {
+        var path = [];
+        var point1 = {x:x1, y:y1, z:calcZ({x:x1, y:y1}, z_pos1, center)};
+        var point2 = {x:x2, y:y2, z:calcZ({x:x2, y:y2}, z_pos2, center)};
+        var oldPt = null;
+        for(var i=0; i<=20; i++) {
+            var newPt = {x: (i*point1.x + (20-i)*point2.x) / 20,
+                         y: (i*point1.y + (20-i)*point2.y) / 20,
+                         z: (i*point1.z + (20-i)*point2.z) / 20};
+            normalize(newPt);
+            if(oldPt !== null && (oldPt.z>0) != (newPt.z>0)) {
+                path.push(ZIntercept(newPt, oldPt));
+            }
+            path.push(newPt);
+            oldPt = newPt;
+        }
+
+        return path;
+    };
+
+    var svg = d3.select("#output").append("svg")
+            .attr("width", 2*center.x)
+            .attr("height",2*center.y);
+
+    var back_lines = svg.append("g");
+
+    if (use_sphere_image) {
+        svg.append("image")
+                .attr("x", center.x - radius)
+                .attr("y", center.y - radius)
+                .attr("width", radius * 2)
+                .attr("height", radius * 2)
+                .attr("xlink:href", "sphere.png");
+    } else {
+        svg.append("circle")
+                .attr("stroke-width", 5)
+                .attr("stroke", "black")
+                .attr("fill", "white")
+                .attr("opacity", 0.9)
+                .attr("cx", center.x)
+                .attr("cy", center.y)
+                .attr("r", radius);
+    }
+
+    var front_lines = svg.append("g");
+
+    doNewLines = function() {
+        below_line = back_lines.append("path")
+                .attr("stroke", "black")
+                .attr("stroke-width", 2)
+                .attr("fill", "none");
+        above_line = front_lines.append("path")
+                .attr("stroke", "black")
+                .attr("stroke-width", 2)
+                .attr("fill", "none");
+    };
+
+    doNewLines();
+
+    updateLine = function(x2, y2, z2_positive) {
+        var data = getLineData(anchor.x, anchor.y, anchor.zpos, x2, y2, z2_positive);
+        above_line.attr("d", lineFunction(data.filter(function(d) { return d.z >= 0.001;})));
+        below_line.attr("d", lineFunction(data.filter(function(d) { return d.z <= -0.001;})));
+    };
+
+    var snapToAnchors = function(pt) {
+        var result = pt;
+        list_of_anchors.forEach( function(a) {
+            if((a.x-pt.x)*(a.x-pt.x) + (a.y-pt.y)*(a.y-pt.y) < 400) {
+                result = a;
+            }
+        });
+        return result;
+    };
+
+    d3.selectAll("#output").on("mousemove", function() {
+        var pt = snapToAnchors({x:d3.mouse(this)[0], y:d3.mouse(this)[1]});
+
+        updateLine(pt.x, pt.y, !d3.event.shiftKey);
+    });
+
+    d3.selectAll("#output").on("mousedown", function() {
+        var pt = snapToAnchors({x:d3.mouse(this)[0], y:d3.mouse(this)[1]});
+
+        doNewLines();
+        if(anchor != null) {
+            list_of_anchors.push(anchor);
+        }
+        anchor = {x:pt.x, y:pt.y, zpos:!d3.event.shiftKey};
+    });
+</script>
+
