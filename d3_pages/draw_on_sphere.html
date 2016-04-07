@@ -1,6 +1,9 @@
 <html>
 <head>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+Image:<input type="text" value="sphere.png" onchange="onImageChange(this.value);"><br>
+Thickness:<input type="number" min="1" value="3" onchange="onThicknessChange(this.value);"><br>
+Colour: <input type="text" value="goldenrod" onchange="onColorChange(this.value);"><br>
 </head>
 <body>
 <div id="output"></div>
@@ -8,9 +11,11 @@
 </html>
 
 <script>
-    var radius = 550;
-    var center = {x:600, y:600};
-    var use_sphere_image = true;
+    var center = {x:350, y:350};
+    var radius = 325;
+    var line_color = "goldenrod";
+    var line_thickness = 3;
+    var filename = "sphere.png";
 
     var below_line = null;
     var above_line = null;
@@ -48,24 +53,37 @@
         return result;
     };
 
+    var interpolate = function(pt1, pt2, array) {
+        for(var i=0; i<=20; i++) {
+            var t = i/20.0;
+            var newPt = {
+                x: (t * pt1.x + (1 - t) * pt2.x),
+                y: (t * pt1.y + (1 - t) * pt2.y),
+                z: (t * pt1.z + (1 - t) * pt2.z)
+            };
+            normalize(newPt);
+            array.push(newPt);
+        }
+    };
+
     var getLineData = function(x1, y1, z_pos1, x2, y2, z_pos2) {
-        var path = [];
+        var result = {above:[], below:[]};
         var point1 = {x:x1, y:y1, z:calcZ({x:x1, y:y1}, z_pos1, center)};
         var point2 = {x:x2, y:y2, z:calcZ({x:x2, y:y2}, z_pos2, center)};
-        var oldPt = null;
-        for(var i=0; i<=20; i++) {
-            var newPt = {x: (i*point1.x + (20-i)*point2.x) / 20,
-                         y: (i*point1.y + (20-i)*point2.y) / 20,
-                         z: (i*point1.z + (20-i)*point2.z) / 20};
-            normalize(newPt);
-            if(oldPt !== null && (oldPt.z>0) != (newPt.z>0)) {
-                path.push(ZIntercept(newPt, oldPt));
-            }
-            path.push(newPt);
-            oldPt = newPt;
+        if(point1.z <= 0 && point2.z <= 0) {
+            interpolate(point1, point2, result.below);
+        } else if ( point1.z <= 0 && point2.z >0) {
+            var intercept = ZIntercept(point1, point2);
+            interpolate(point1, intercept, result.below);
+            interpolate(point2, intercept, result.above);
+        } else if (point1.z > 0 && point2.z <= 0) {
+            var intercept = ZIntercept(point1, point2);
+            interpolate(point1, intercept, result.above);
+            interpolate(point2, intercept, result.below);
+        } else {
+            interpolate(point1, point2, result.above);
         }
-
-        return path;
+        return result;
     };
 
     var svg = d3.select("#output").append("svg")
@@ -74,34 +92,32 @@
 
     var back_lines = svg.append("g");
 
-    if (use_sphere_image) {
-        svg.append("image")
-                .attr("x", center.x - radius)
-                .attr("y", center.y - radius)
-                .attr("width", radius * 2)
-                .attr("height", radius * 2)
-                .attr("xlink:href", "sphere.png");
-    } else {
-        svg.append("circle")
-                .attr("stroke-width", 5)
-                .attr("stroke", "black")
-                .attr("fill", "white")
-                .attr("opacity", 0.9)
-                .attr("cx", center.x)
-                .attr("cy", center.y)
-                .attr("r", radius);
-    }
+    svg.append("circle")
+            .attr("stroke-width", 2)
+            .attr("stroke", "black")
+            .attr("fill", "white")
+            .attr("opacity", 0.8)
+            .attr("visibility", "hidden")
+            .attr("cx", center.x)
+            .attr("cy", center.y)
+            .attr("r", radius);
+    svg.append("image")
+            .attr("x", center.x - radius)
+            .attr("y", center.y - radius)
+            .attr("width", radius * 2)
+            .attr("height", radius * 2)
+            .attr("xlink:href", filename);
 
     var front_lines = svg.append("g");
 
     doNewLines = function() {
         below_line = back_lines.append("path")
-                .attr("stroke", "black")
-                .attr("stroke-width", 2)
+                .attr("stroke", line_color)
+                .attr("stroke-width", line_thickness)
                 .attr("fill", "none");
         above_line = front_lines.append("path")
-                .attr("stroke", "black")
-                .attr("stroke-width", 2)
+                .attr("stroke", line_color)
+                .attr("stroke-width", line_thickness)
                 .attr("fill", "none");
     };
 
@@ -109,8 +125,8 @@
 
     updateLine = function(x2, y2, z2_positive) {
         var data = getLineData(anchor.x, anchor.y, anchor.zpos, x2, y2, z2_positive);
-        above_line.attr("d", lineFunction(data.filter(function(d) { return d.z >= 0.001;})));
-        below_line.attr("d", lineFunction(data.filter(function(d) { return d.z <= -0.001;})));
+        above_line.attr("d", lineFunction(data.above));
+        below_line.attr("d", lineFunction(data.below));
     };
 
     var snapToAnchors = function(pt) {
@@ -138,5 +154,23 @@
         }
         anchor = {x:pt.x, y:pt.y, zpos:!d3.event.shiftKey};
     });
-</script>
 
+    var onColorChange = function(value) {
+        line_color = value;
+        d3.selectAll("path")
+            .attr("stroke", line_color);
+    };
+
+    var onImageChange = function(value) {
+        filename = value;
+        d3.select("image").attr("xlink:href", filename);
+        d3.select("circle").attr("visibility", (filename === "") ? "visible" : "hidden");
+    };
+
+    var onThicknessChange = function(value) {
+        line_thickness = value;
+        d3.selectAll("path")
+            .attr("stroke-width", line_thickness);
+    };
+
+</script>
