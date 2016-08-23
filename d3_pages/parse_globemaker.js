@@ -1,30 +1,3 @@
-function skeleton() {
-    this.state = [];
-    this.__planepos = {x:250, y:250};
-    this.__planedir = {x:200, y:0};
-    this.__string = 'M' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-
-    this.push = function() {}; 
-    this.pop = function() {}; 
-    this.line = function(length, strength) {
-        this.__planepos.x += length * this.__planedir.x;
-        this.__planepos.y += length * this.__planedir.y;
-        this.__string += 'L' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-    }; 
-    this.move = function(length) {
-        this.__planepos.x += length * this.__planedir.x;
-        this.__planepos.y += length * this.__planedir.y;
-        this.__string += 'L' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-    };
-    this.rotate = function(angle) {
-        var theta = Math.atan2(this.__planedir.y, this.__planedir.x);
-        theta = theta + (angle * Math.PI);
-        this.__planedir = {x: Math.cos(theta) * 200, y: Math.sin(theta) * 200};
-    }
-
-    this.toString = function() { return this.__string; }
-}
-
 var parse_globemaker = function(skeleton_string, skeleton_obj) {
     // tokens
     skeleton_string += ' <EOF>';

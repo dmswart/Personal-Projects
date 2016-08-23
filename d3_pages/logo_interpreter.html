@@ -1,6 +1,7 @@
 <html>
 <head>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="./skeleton.js"></script>
 <script src="./parse_globemaker.js"></script>
 </head>
 
@@ -31,7 +32,7 @@
         .attr("fill", "none");
 
     var newSkeleton = function(skeleton_def) {
-        var skel = new skeleton();
+        var skel = new skeleton(100);
         if(parse_globemaker(skeleton_def, skel)) {
             svg.select("path")
                 .attr("d", skel.toString());
