@@ -31,8 +31,8 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
 
     var __label = '';
     var label = function() {
-        __label = token;
-        if(/[A..Za..z]+/.test(token())) { next_token(); return true;}
+        __label = token();
+        if(/^[A-Za-z]+$/.test(__label)) { next_token(); return true;}
         return false;
     };
 
