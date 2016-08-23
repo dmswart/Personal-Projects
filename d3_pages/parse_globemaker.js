@@ -1,7 +1,10 @@
 var parse_globemaker = function(skeleton_string, skeleton_obj) {
-    // tokens
-    skeleton_string += ' <EOF>';
-    var __tokens = skeleton_string.split(/[ \t\r\n][ \t\r\n]*/);
+    // tokenize
+    skeleton_string = skeleton_string.replace(/#.*/g, ' ');
+    skeleton_string = skeleton_string.replace(/{/g, ' { ');
+    skeleton_string = skeleton_string.replace(/}/g, ' } ');
+    skeleton_string = '<BOF> ' + skeleton_string + ' <EOF>';
+    var __tokens = skeleton_string.split(/[ \t\r\n]+/);
     var __token_idx = 0;
 
     var token = function() {
@@ -26,14 +29,26 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
 
-    // commands
-    var lineto = function() {
-        if( terminal('l') || terminal('line') || terminal('lineto') ) {return true;}
+    var __label = '';
+    var label = function() {
+        __label = token;
+        if(/[A..Za..z]+/.test(token())) { next_token(); return true;}
         return false;
     };
 
-    var moveto = function() {
-        if( terminal('m') || terminal('move') || terminal('moveto') ) {return true;}
+    // commands
+    var save = function() {
+        if( terminal('s') || terminal('save') ) {return true;}
+        return false;
+    };
+
+    var line = function() {
+        if( terminal('l') || terminal('line') ) {return true;}
+        return false;
+    };
+
+    var move = function() {
+        if( terminal('m') || terminal('move') ) {return true;}
         return false;
     };
 
@@ -42,8 +57,8 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
     
-    var lineto_cmd = function() {
-        if( lineto() ) {
+    var line_cmd = function() {
+        if( line() ) {
            var length;
            if(!value()) { /*TODO error*/ return false; }
            else { length = __value; }
@@ -58,8 +73,8 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
 
-    var moveto_cmd = function() {
-        if( moveto() ) {
+    var move_cmd = function() {
+        if( move() ) {
            var length;
            if(!value()) { /*TODO error*/ return false; }
 
@@ -103,11 +118,23 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return true;
     };
 
+    var save_cmd = function() {
+        if( save() ) {
+           if(!label()) { /*TODO error*/ return false; }
+
+           skeleton_obj.save(__label);
+           return true;
+        }
+        return false;
+    };
+
+
     // big stuff
     var statement = function() {
         if (stacked()) { return true; }
-        if (lineto_cmd()) { return true; }
-        if (moveto_cmd()) { return true; }
+        if (save_cmd()) { return true; }
+        if (line_cmd()) { return true; }
+        if (move_cmd()) { return true; }
         if (rotate_cmd()) { return true; }
         return false;
     };
@@ -118,7 +145,8 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return true;
     };
 
-    if (!statements()) { return false; }
+    if (!terminal('<BOF>')) { /* TODO error */ return false; }
+    if (!statements()) { /* TODO error */ return false; }
     if (!terminal('<EOF>')) { /*TODO error*/ return false; }
     return true;
 }

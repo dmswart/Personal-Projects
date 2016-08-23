@@ -43,5 +43,9 @@ function skeleton(scale) {
         this.__planedir = {x: Math.cos(theta) * this.__scale, y: Math.sin(theta) * this.__scale};
     };
 
+    this.save = function(label) {
+        //TODO
+    };
+
     this.toString = function() { return this.__string; };
 }
