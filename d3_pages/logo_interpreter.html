@@ -8,7 +8,7 @@
 <div style="width: 100%; overflow: hidden;">
     <div id="output" style="width: 500px; float: left;"></div>
     <div style="margin-left: 520px;"> 
-        <textarea type="text" cols=40 rows=32 style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea>
+        <textarea id="input" type="text" cols=40 rows=32 style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea>
     </div>
 </div>
 </body>
@@ -25,14 +25,21 @@
         .attr("stroke", "gray")
         .attr("stroke-width", 1)
         .attr("fill", "silver");
-    svg.append("circle")
-        .attr("cx", 25)
-        .attr("cy", 25)
-        .attr("r", 20);
+    svg.append("path")
+        .attr("stroke", "blue")
+        .attr("stroke-width", 2)
+        .attr("fill", "none");
 
-    var newSkeleton = function(skeleton) {
-        svg.select("circle")
-            .attr("fill", "blue");
+    var newSkeleton = function(skeleton_def) {
+        var skel = new skeleton();
+        if(parse_globemaker(skeleton_def, skel)) {
+            svg.select("path")
+                .attr("d", skel.toString());
+            d3.select("#input")
+                .attr("style", "background-color:white");
+        } else {
+            d3.select("#input")
+                .attr("style", "background-color:pink");
+        }
     }
 </script>
-
