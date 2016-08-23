@@ -1,0 +1,38 @@
+<html>
+<head>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="./parse_globemaker.js"></script>
+</head>
+
+<body>
+<div style="width: 100%; overflow: hidden;">
+    <div id="output" style="width: 500px; float: left;"></div>
+    <div style="margin-left: 520px;"> 
+        <textarea type="text" cols=40 rows=32 style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea>
+    </div>
+</div>
+</body>
+
+</html>
+
+<script>
+    var svg = d3.select("#output").append("svg")
+            .attr("width", 500)
+            .attr("height",500)
+    svg.append("rect")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("stroke", "gray")
+        .attr("stroke-width", 1)
+        .attr("fill", "silver");
+    svg.append("circle")
+        .attr("cx", 25)
+        .attr("cy", 25)
+        .attr("r", 20);
+
+    var newSkeleton = function(skeleton) {
+        svg.select("circle")
+            .attr("fill", "blue");
+    }
+</script>
+
