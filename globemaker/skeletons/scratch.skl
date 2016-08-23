@@ -1,24 +1,8 @@
-s north
-m 1.0
-l 0.0
-m -0.5
-r 0.5
-
-p 1
-l north
-p -1
-m 0.5
-
-p 1
-l north
-p -1
-m 0.5
-
-p 1
-l north
-p -1
-m 0.5
-
-p 1
-l north
-p -1
+r 1.25
+l 1.0
+r 1.5
+l 1
+r -1.5
+l 1
+r 1.5
+l 1.0
