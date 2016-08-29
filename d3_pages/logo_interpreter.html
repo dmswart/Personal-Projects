@@ -27,6 +27,13 @@
         .attr("stroke-width", 1)
         .attr("fill", "silver");
     svg.append("path")
+        .attr("id", "moves")
+        .attr("stroke", "blue")
+        .attr("stroke-dasharray", "5,5")
+        .attr("stroke-width", 2)
+        .attr("fill", "none");
+    svg.append("path")
+        .attr("id", "lines")
         .attr("stroke", "blue")
         .attr("stroke-width", 2)
         .attr("fill", "none");
@@ -34,8 +41,10 @@
     var newSkeleton = function(skeleton_def) {
         var skel = new skeleton(100);
         if(parse_globemaker(skeleton_def, skel)) {
-            svg.select("path")
-                .attr("d", skel.toString());
+            svg.select("#moves")
+                .attr("d", skel.toString('move'));
+            svg.select("#lines")
+                .attr("d", skel.toString('line'));
             d3.select("#input")
                 .attr("style", "background-color:white");
         } else {

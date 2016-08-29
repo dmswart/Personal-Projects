@@ -53,6 +53,11 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
 
+    var move_in_plane = function() {
+        if( terminal('o') ) {return true;}
+        return false;
+    };
+
     var rotate = function() {
         if( terminal('r') || terminal('rotate') ) {return true;}
         return false;
@@ -69,6 +74,16 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
            else { strength = __value; }
            
            skeleton_obj.line(length, strength);
+           return true;
+        }
+        return false;
+    };
+
+    var move_in_plane_cmd = function() {
+        if( move_in_plane() ) {
+           var length;
+           if(!value()) { /*TODO error*/ return false; }
+           skeleton_obj.move_in_plane(__value);
            return true;
         }
         return false;
@@ -134,6 +149,7 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         if (save_cmd()) { return true; }
         if (line_cmd()) { return true; }
         if (move_cmd()) { return true; }
+        if (move_in_plane_cmd()) { return true; }
         if (rotate_cmd()) { return true; }
         return false;
     };
