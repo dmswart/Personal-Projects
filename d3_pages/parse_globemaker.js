@@ -1,9 +1,10 @@
 var parse_globemaker = function(skeleton_string, skeleton_obj) {
     // tokenize
-    skeleton_string = skeleton_string.replace(/#.*/g, ' ');
-    skeleton_string = skeleton_string.replace(/{/g, ' { ');
+    skeleton_string = skeleton_string.replace(/#.*/g, ' ');    // comments beginning with #
+    skeleton_string = skeleton_string.replace(/\/\/.*/g, ' '); // comments beginning with // 
+    skeleton_string = skeleton_string.replace(/{/g, ' { ');    // whitespace not required for brackets
     skeleton_string = skeleton_string.replace(/}/g, ' } ');
-    skeleton_string = '<BOF> ' + skeleton_string + ' <EOF>';
+    skeleton_string = '<BOF> ' + skeleton_string + ' <EOF>';   // to help accomodate leading / trailing whitespace
     var __tokens = skeleton_string.split(/[ \t\r\n]+/);
     var __token_idx = 0;
 
@@ -96,25 +97,23 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
     };
     
     // stack fnality
-    var pop = function() {
-        if( terminal('}') || terminal('pop') ) {return true;}
-        return false;
-    };
-    
-    var push = function() {
-        if( terminal('{') || terminal('push') ) {return true;}
-        return false;
-    };
-    
-    var stacked = function() {
-        if( !push() ) { return false; }
-        skeleton_obj.push();
+    var stack_cmd = function() {
+        if( terminal('{') || terminal('push') ) {
+            __value = 1
+        } else if( terminal('}') || terminal('pop') ) {
+            __value = -1;
+        } else if( terminal('p') ) {
+            if( !value() ) { /*TODO error*/ return false; }
+        } else {
+            return false;
+        }
 
-        if( !statements() ){ /*TODO error*/ return false; }
 
-        if( !pop() ) { /*TODO error*/ return false; }
-        skeleton_obj.pop();
-
+        if( __value > 0 ) {
+           skeleton_obj.push();
+        } else {
+           skeleton_obj.pop();
+        }
         return true;
     };
 
@@ -131,7 +130,7 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
 
     // big stuff
     var statement = function() {
-        if (stacked()) { return true; }
+        if (stack_cmd()) { return true; }
         if (save_cmd()) { return true; }
         if (line_cmd()) { return true; }
         if (move_cmd()) { return true; }
