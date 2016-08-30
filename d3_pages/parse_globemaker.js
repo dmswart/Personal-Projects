@@ -163,5 +163,6 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
     if (!terminal('<BOF>')) { /* TODO error */ return false; }
     if (!statements()) { /* TODO error */ return false; }
     if (!terminal('<EOF>')) { /*TODO error*/ return false; }
+    skeleton_obj.init();
     return true;
 }

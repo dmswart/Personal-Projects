@@ -1,15 +1,15 @@
 <html>
 <head>
-<script src="http://d3js.org/d3.v3.min.js"></script>
-<script src="./skeleton.js"></script>
-<script src="./parse_globemaker.js"></script>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+<script src='./skeleton.js'></script>
+<script src='./parse_globemaker.js'></script>
 </head>
 
 <body>
-<div style="width: 100%; overflow: hidden;">
-    <div id="output" style="width: 500px; float: left;"></div>
-    <div style="margin-left: 520px;"> 
-        <textarea id="input" type="text" cols=40 rows=32 style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea>
+<div style='width: 100%; overflow: hidden;'>
+    <div id='output' style='width: 500px; float: left;'></div>
+    <div style='margin-left: 520px;'> 
+        <textarea id='input' type='text' cols=40 rows=32 style='overflow:scroll' onchange='newSkeleton(this.value);'>l 0</textarea>
     </div>
 </div>
 </body>
@@ -17,39 +17,80 @@
 </html>
 
 <script>
-    var svg = d3.select("#output").append("svg")
-            .attr("width", 500)
-            .attr("height",500)
-    svg.append("rect")
-        .attr("width", "100%")
-        .attr("height", "100%")
-        .attr("stroke", "gray")
-        .attr("stroke-width", 1)
-        .attr("fill", "silver");
-    svg.append("path")
-        .attr("id", "moves")
-        .attr("stroke", "blue")
-        .attr("stroke-dasharray", "5,5")
-        .attr("stroke-width", 2)
-        .attr("fill", "none");
-    svg.append("path")
-        .attr("id", "lines")
-        .attr("stroke", "blue")
-        .attr("stroke-width", 2)
-        .attr("fill", "none");
+    var svg = d3.select('#output').append('svg')
+            .attr('width', 500)
+            .attr('height',500)
+    svg.append('rect')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 1)
+        .attr('fill', 'silver');
+    svg.append('g').attr('id', 'lines')
+        .attr('stroke', 'blue')
+        .attr('stroke-width', 2)
+        .attr('fill', 'none');
+    svg.append('g').attr('id', 'moves')
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 1)
+        .attr('fill', 'none');
+    svg.append('g').attr('id', 'move_on_plane')
+        .attr('stroke', 'gray')
+        .attr('stroke-width', 1)
+        .attr('fill', 'none');
 
     var newSkeleton = function(skeleton_def) {
         var skel = new skeleton(100);
         if(parse_globemaker(skeleton_def, skel)) {
-            svg.select("#moves")
-                .attr("d", skel.toString('move'));
-            svg.select("#lines")
-                .attr("d", skel.toString('line'));
-            d3.select("#input")
-                .attr("style", "background-color:white");
+            // lines
+            var selection = svg.select('#lines').selectAll('path')
+                .data(skel.list('line'), function(d) { return d.id; });
+            selection.enter().append('path')
+                    .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); });
+            selection.exit().remove();
+            selection = svg.select('#lines').selectAll('circle')
+                .data(skel.list('line'), function(d) { return d.id; });
+            selection.enter().append('circle')
+                    .attr('r', 2)
+                    .attr('cx', function(d) { return d.x2; })
+                    .attr('cy', function(d) { return d.y2; });
+            selection.exit().remove();
+
+            // moves on plane
+            selection = svg.select('#move_on_plane').selectAll('path')
+                .data(skel.list('move_on_plane'), function(d) { return d.id; });
+            selection.enter().append('path')
+                    .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); })
+        			.attr('stroke-dasharray', '3,3');
+            selection.exit().remove();
+            selection = svg.select('#move_on_plane').selectAll('circle')
+                .data(skel.list('move_on_plane'), function(d) { return d.id; });
+            selection.enter().append('circle')
+                    .attr('r', 1)
+                    .attr('fill', 'gray')
+                    .attr('cx', function(d) { return d.x2; })
+                    .attr('cy', function(d) { return d.y2; });
+            selection.exit().remove();
+
+            selection = svg.select('#moves').selectAll('path')
+                .data(skel.list('move'), function(d) { return d.id; });
+            selection.enter().append('path')
+                    .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); });
+            selection.exit().remove();
+            selection = svg.select('#moves').selectAll('circle')
+                .data(skel.list('move'), function(d) { return d.id; });
+            selection.enter().append('circle')
+                    .attr('r', 1)
+                    .attr('fill', 'gray')
+                    .attr('cx', function(d) { return d.x2; })
+                    .attr('cy', function(d) { return d.y2; });
+            selection.exit().remove();
+
+            d3.select('#input')
+                .attr('style', 'background-color:white');
         } else {
-            d3.select("#input")
-                .attr("style", "background-color:pink");
+            d3.select('#input')
+                .attr('style', 'background-color:pink');
         }
     }
 </script>

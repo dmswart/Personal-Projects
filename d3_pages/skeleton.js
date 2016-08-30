@@ -1,10 +1,20 @@
+var unique_id = 0;
+
 function skeleton_node(length, strength, theta) {
+	if( strength > 0 ) { this.type = 'line'; }
+    else if ( strength === 0 && this.length !== 0 ) { this.type = 'move'; }
+    else if ( strength < 0 && this.length !== 0 ) { this.type = 'move_on_plane'; }
+    else if ( theta !== 0 ) { this.type = 'rotate'; }
+    else { this.type = 'none'; }
+
     this.parent = null;
     this.children = [];
 
     this.length = length;
     this.strength = strength;
     this.theta = theta;
+	this.id = unique_id++; 
+
     this.global_state = {x:0, y:0, theta:0};
 
     this.add_child = function(node) {
@@ -24,34 +34,29 @@ function skeleton_node(length, strength, theta) {
         this.children.forEach(function(child) {child.calc_global_state();});
     }
 
-    this.move_list = function() {
+    this.list = function(type) {
         var result = [];
-        if( this.parent !== null && this.strength == 0 && Math.abs(this.length) > 0) {
-            var parent_state = this.parent.global_state;
-            result.push({x1:parent_state.x, y1:parent_state.y, x2:this.global_state.x, y2:this.global_state.y});
-        }
-        this.children.forEach(function(child) {result = result.concat(child.move_list());});
-        return result;
-    }
+        var valid = false;
 
-    this.line_list = function() {
-        var result = [];
-        if( this.parent !== null && this.strength > 0 ) {
+        if( this.parent !== null && this.type === type ) {
             var parent_state = this.parent.global_state;
-            result.push({x1:parent_state.x, y1:parent_state.y, x2:this.global_state.x, y2:this.global_state.y});
+            result.push({x1:parent_state.x, y1:parent_state.y, x2:this.global_state.x, y2:this.global_state.y, id:this.id});
         }
-        this.children.forEach(function(child) {result = result.concat(child.line_list());});
+        this.children.forEach(function(child) {result = result.concat(child.list(type));});
         return result;
     }
 }
 
 function skeleton(scale) {
+    // private
+    this.__id_counter;
     this.__scale = scale;
     this.__parent_node = new skeleton_node(0, 0, 0);
     this.__current_node = this.__parent_node;
 
     this.__node_stack = [];
 
+    // construction commands
     this.push = function() {
         this.__node_stack.push(this.__current_node);
     };
@@ -79,23 +84,14 @@ function skeleton(scale) {
         this.__current_node.add_child(new_node);
         this.__current_node = new_node;
     };
-
     this.save = function(label) {
         //TODO
     };
 
-    this.toString = function(type) {
-        this.__parent_node.calc_global_state();
-        var result = "";
-        
-        var seg_list = type === 'line' ? 
-                       this.__parent_node.line_list() :
-                       this.__parent_node.move_list();
-        seg_list.forEach(function(seg) {
-            result += 'M' + String(seg.x1) + ',' + String(seg.y1) + ' ';
-            result += 'L' + String(seg.x2) + ',' + String(seg.y2) + ' ';
-        });
-        return result;
-    };
+
+    // init before use
+    this.init = function() { this.__parent_node.calc_global_state(); }
+
+    this.list = function(type) {return this.__parent_node.list(type); };
 
 }
