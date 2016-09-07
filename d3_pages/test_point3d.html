@@ -188,7 +188,24 @@
             test('Point3D_toString', a.toString(), '(3,4,5)');
         }
 
-        // TODO mercator, projected
+        var Point3D_projected = function() {
+            var a = new DMSLib.Point3D(35, 63, 7);
+            var b = a.projected();
+            test_near('Point3D_projected', b.x, 5);
+            test_near('Point3D_projected', b.y, 9);
+        };
+
+        var Point3D_mercator = function() {
+            var on_sphere = DMSLib.Point3D.fromSphericalCoords(2.0, 0.5, 0.8);
+            var on_plane = on_sphere.mercator();
+            test_near('Point3D_mercator', on_plane.x, 0.8);
+            test_near('Point3D_mercator', on_plane.y, 1.3651517645);
+
+            var back_on_sphere = DMSLib.Point3D.fromMercator(on_plane);
+            test_near('Point3D_mercator', back_on_sphere.R(), 1.0);
+            test_near('Point3D_mercator', back_on_sphere.theta(), 0.8);
+            test_near('Point3D_mercator', back_on_sphere.phi(), 0.5);
+        };
 
 
         var Point3D_staticValues = function() {
@@ -229,7 +246,12 @@
             test_near('Point3D_fromSphericalCoords', a.z, 5);
         };
 
-        // TODO fromCylindrical fromMercator
+        var Point3D_fromCylindricalCoords = function() {
+            var a = DMSLib.Point3D.fromCylindricalCoords(5, 5, 0.927295218);
+            test_near('Point3D_fromCylindricalCoords', a.x, 3);
+            test_near('Point3D_fromCylindricalCoords', a.y, 4);
+            test_near('Point3D_fromCylindricalCoords', a.z, 5);
+        };
 
         var Point3D_dot = function () {
             var a = new DMSLib.Point3D(1, 2, 3);
@@ -238,18 +260,27 @@
             test('Point3D_dot', val, 26);
         };
 
-        // TODO cross
-
-        var Point3D_angle = function () {
-            var a = new DMSLib.Point3D(0, 0, 0);
-            var b = new DMSLib.Point3D(3, 3, 3);
-            var c = new DMSLib.Point3D(6, 6, 0);
-            var val = DMSLib.Point2D.angle(a, b, c);
-            test_near('Point3D_angle', val, Math.acos(-13)); // from dihedral angle of octahedron
+        var Point3D_cross = function () {
+            var a = new DMSLib.Point3D(1, 2, 3);
+            var b = new DMSLib.Point3D(3, 4, 5);
+            var val = DMSLib.Point3D.cross(a, b);
+            test('Point3D_cross', val.x, -2);
+            test('Point3D_cross', val.y, 4);
+            test('Point3D_cross', val.z, -2);
         };
 
-        // TODO dihedral angle
-        // ..
+        var Point3D_angles = function () {
+            var a = new DMSLib.Point3D(1, 1, -1);
+            var b = new DMSLib.Point3D(1, 1, 1);
+            var c = new DMSLib.Point3D(1, -1, 1);
+
+            var val = DMSLib.Point3D.angle(a, b, c);
+            test_near('Point3D_angles', val, DMSLib.QUARTERTAU);
+
+            val = DMSLib.Point3D.sphereAngle(a, b, c);
+            test_near('Point3D_angles', val, DMSLib.TAU / 3.0);
+        };
+
 
     </script>
 </head>
@@ -265,10 +296,14 @@
     Point3D_arithmetic();
     Point3D_scaling();
     Point3D_stereographicToPlane();
+    Point3D_mercator();
+    Point3D_projected();
     Point3D_toString();
     Point3D_staticValues();
     Point3D_fromSphericalCoords();
+    Point3D_fromCylindricalCoords();
     Point3D_dot();
-    Point3D_angle();
+    Point3D_cross();
+    Point3D_angles();
     document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
 </script>

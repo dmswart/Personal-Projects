@@ -147,7 +147,7 @@
         if ( dot_product >= 1 ) { return 0.0; }
         return Math.acos(dot_product);
     };
-    $.Point3D.dihedralAngle = function(a, b, c) {
+    $.Point3D.sphereAngle = function(a, b, c) {
         // returns the angle between the plane containing points ABO and the plane containing points CBO
         var normal1 = $.Point3D.cross(a.sub(b), b);
         var normal2 = $.Point3D.cross(c.sub(b), b);
