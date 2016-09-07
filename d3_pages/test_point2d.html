@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Refactored date examples</title>
+    <script src='./dmslib_core.js'></script>
+    <script src='./dmslib_point3d.js'></script>
+    <script src='./dmslib_point2d.js'></script>
+    <script>
+        // ==========================================================
+        // TEST HARNESS
+        // ==========================================================
+        var test = function(name, actual, expected) {
+            results.total++;
+            if (actual !== expected) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+
+        var test_near = function(name, actual, expected) {
+            results.total++;
+            if (Math.abs(actual - expected) > DMSLib.EPSILON) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+    
+    
+        var results = {
+            total: 0,
+            bad: 0
+        };
+
+
+        // ==========================================================
+        // TESTS
+        // ==========================================================
+        var Point2D_constructor = function() {
+            var a = new DMSLib.Point2D();
+            test('Point2D_constructor', a.x, 0);
+            test('Point2D_constructor', a.y, 0);
+
+            var b = new DMSLib.Point2D(1, 2);
+            test('Point2D_constructor', b.x, 1);
+            test('Point2D_constructor', b.y, 2);
+
+            var c = new DMSLib.Point2D(b);
+            test('Point2D_constructor', c.x, 1);
+            test('Point2D_constructor', c.y, 2);
+            c.x = 7;
+            test('Point2D_constructor', b.x, 1);
+            test('Point2D_constructor', c.x, 7);
+        }
+
+        var Point2D_accessors = function() {
+            var a = new DMSLib.Point2D();
+            a.x = 3;
+            a.y = 4;
+            test('Point2D_accessors', a.x, 3);
+            test('Point2D_accessors', a.y, 4);
+            test('Point2D_accessors', a.R(), 5);
+            test_near('Point2D_accessors', a.theta(), .927295218);
+
+            var b = new DMSLib.Point2D(a);
+            b.setR(10);
+            test('Point2D_accessors', b.x, 6);
+            test('Point2D_accessors', b.y, 8);
+            test('Point2D_accessors', b.R(), 10);
+            test_near('Point2D_accessors', b.theta(), .927295218);
+
+            var c = new DMSLib.Point2D(a);
+            c.setTheta(0);
+            test('Point2D_accessors', c.x, 5);
+            test('Point2D_accessors', c.y, 0);
+            test('Point2D_accessors', c.R(), 5);
+            test('Point2D_accessors', c.theta(), 0);
+        };
+
+        var Point2D_arithmetic = function() {
+            var a = new DMSLib.Point2D(3,4);
+            var b = new DMSLib.Point2D(5,6);
+
+            test('Point2D_arithmetic', a.equals(a), true);
+            test('Point2D_arithmetic', a.equals(b), false);
+            test('Point2D_arithmetic', a.nequal(a), false);
+            test('Point2D_arithmetic', a.nequal(b), true);
+
+            var c = a.negate();
+            test('Point2D_arithmetic', c.x, -3);
+            test('Point2D_arithmetic', c.y, -4);
+
+            c = a.add(b);
+            test('Point2D_arithmetic', c.x, 8);
+            test('Point2D_arithmetic', c.y, 10);
+
+            c = a.sub(b);
+            test('Point2D_arithmetic', c.x, -2);
+            test('Point2D_arithmetic', c.y, -2);
+
+            c = a.mul(b);
+            test('Point2D_arithmetic', c.x, -9);
+            test('Point2D_arithmetic', c.y, 38);
+
+            c = a.mul(2);
+            test('Point2D_arithmetic', c.x, 6);
+            test('Point2D_arithmetic', c.y, 8);
+
+            c = a.div(4);
+            test('Point2D_arithmetic', c.x, 0.75);
+            test('Point2D_arithmetic', c.y, 1);
+
+            c = new DMSLib.Point2D(-9,38).div(a);
+            test('Point2D_arithmetic', c.x, 5);
+            test('Point2D_arithmetic', c.y, 6);
+
+            c = a.pow(3);
+            test_near('Point2D_arithmetic', c.x, -117);
+            test_near('Point2D_arithmetic', c.y, 44);
+        };
+
+        var Point2D_scaling = function() {
+            var a = new DMSLib.Point2D(3,4);
+            var b = new DMSLib.Point2D(1,2);
+
+            var c = a.normalized();
+            test_near('Point2D_scaling', c.x, 0.6);
+            test_near('Point2D_scaling', c.y, 0.8);
+            test('Point2D_scaling', a.x, 3);
+            test('Point2D_scaling', a.y, 4);
+
+            a.normalize();
+            test_near('Point2D_scaling', a.x, 0.6);
+            test_near('Point2D_scaling', a.y, 0.8);
+
+            b.scale(2);
+            test('Point2D_scaling', b.x, 2);
+            test('Point2D_scaling', b.y, 4);
+
+            a = new DMSLib.Point2D(3,4);
+            c = a.scaledTo(10);
+            test('Point2D_scaling', c.x, 6);
+            test('Point2D_scaling', c.y, 8);
+        };
+
+        var Point2D_invStereographicToSphere = function() {
+            var a = new DMSLib.Point2D(1, 0);
+            var sphere_a = a.invStereographicToSphere();
+            test('Point2D_invStereographicToSphere', sphere_a.x, 1);
+            test('Point2D_invStereographicToSphere', sphere_a.y, 0);
+            test('Point2D_invStereographicToSphere', sphere_a.z, 0);
+
+            var b = new DMSLib.Point2D(0, 1);
+            var sphere_b = b.invStereographicToSphere();
+            test('Point2D_invStereographicToSphere', sphere_b.x, 0);
+            test('Point2D_invStereographicToSphere', sphere_b.y, 1);
+            test('Point2D_invStereographicToSphere', sphere_b.z, 0);
+
+            var c = new DMSLib.Point2D(0, 0);
+            var sphere_c = c.invStereographicToSphere();
+            test('Point2D_invStereographicToSphere', sphere_c.x, 0);
+            test('Point2D_invStereographicToSphere', sphere_c.y, 0);
+            test('Point2D_invStereographicToSphere', sphere_c.z, -1);
+
+            var d = new DMSLib.Point2D(3, 4);
+            var sphere_d = d.invStereographicToSphere();
+            test_near('Point2D_invStereographicToSphere', sphere_d.x, 0.23076923076923078);
+            test_near('Point2D_invStereographicToSphere', sphere_d.y, 0.3076923076923077);
+            test_near('Point2D_invStereographicToSphere', sphere_d.z, 0.9230769230769231);
+        };
+
+        var Point2D_toString = function() {
+            var a = new DMSLib.Point2D(3, 4);
+            test('Point2D_toString', a.toString(), '(3,4)');
+        }
+
+
+        var Point2D_staticValues = function() {
+            // static values (origin, axes)
+            var a = DMSLib.Point2D.origin();
+            test('Point2D_staticValues', a.x, 0);
+            test('Point2D_staticValues', a.y, 0);
+            a.x += 1;
+            test('Point2D_staticValues', DMSLib.Point2D.origin().x, 0);
+
+            a = DMSLib.Point2D.x_axis();
+            test('Point2D_staticValues', a.x, 1);
+            test('Point2D_staticValues', a.y, 0);
+            a.x += 1;
+            test('Point2D_staticValues', DMSLib.Point2D.x_axis().x, 1);
+
+            a = DMSLib.Point2D.y_axis();
+            test('Point2D_staticValues', a.x, 0);
+            test('Point2D_staticValues', a.y, 1);
+            a.x += 1;
+            test('Point2D_staticValues', DMSLib.Point2D.y_axis().x, 0);
+        };
+
+        var Point2D_fromPolar = function () {
+            var a = DMSLib.Point2D.fromPolar(5, 0.927295218);
+            test_near('Point2D_fromPolar', a.x, 3);
+            test_near('Point2D_fromPolar', a.y, 4);
+        };
+
+        var Point2D_dot = function () {
+            var a = new DMSLib.Point2D(1, 2);
+            var b = new DMSLib.Point2D(3, 4);
+            var val = DMSLib.Point2D.dot(a, b);
+            test('Point2D_dot', val, 11);
+        };
+
+        var Point2D_angle = function () {
+            var a = new DMSLib.Point2D(1, 1);
+            var b = new DMSLib.Point2D(4, 2);
+            var c = new DMSLib.Point2D(3, 5);
+            var val = DMSLib.Point2D.angle(a, b, c);
+            test_near('Point2D_angle', val, DMSLib.QUARTERTAU);
+        };
+
+    </script>
+</head>
+
+<body>
+    <div id="results">Catastrophic failure</div>
+</body>
+
+<script>
+    // run!
+    Point2D_constructor();
+    Point2D_accessors();
+    Point2D_arithmetic();
+    Point2D_scaling();
+    Point2D_invStereographicToSphere();
+    Point2D_toString();
+    Point2D_staticValues();
+    Point2D_fromPolar();
+    Point2D_dot();
+    Point2D_angle();
+    document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
+</script>
