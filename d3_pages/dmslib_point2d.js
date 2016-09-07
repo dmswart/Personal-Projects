@@ -1,9 +1,11 @@
+var DMSLib = DMSLib || {};
+
 (function($) {
     // -----------------------------------------------------------------
     // Point2D
     // -----------------------------------------------------------------
     $.Point2D = function(a, b) {
-        if (a instance of Point2D && b === undefined) {
+        if (a instanceof $.Point2D && b === undefined) {
             this.x = a.x;
             this.y = a.y;
         } else if (a === undefined && b === undefined) {
@@ -17,99 +19,100 @@
 
     $.Point2D.prototype = {
         // chained arithmetic
-        equals = function(other) {return new Point2D(this.x == other.x && this.y == other.y);},
-        nequal = function(other) {return new Point2D(this.x != other.x || this.y !== other.y);},
-        negate = function() {return new Point2D(-this.x, -this.y);},
-        invert = function() { 
+        equals : function(other) {return this.x == other.x && this.y == other.y;},
+        nequal : function(other) {return this.x != other.x || this.y !== other.y;},
+        negate : function() {return new $.Point2D(-this.x, -this.y);},
+        invert : function() { 
             // complex inversion 
-            if (this.R() < DMSCore.EPSILON) {
+            if (this.R() < $.EPSILON) {
                 return Point2D.origin();
             }
             var factor = this.x * this.x + this.y * this.y;
-            return new Point2D(this.x, -this.y).div(factor);
+            return new $.Point2D(this.x, -this.y).div(factor);
         },
-        add = function(other) {return new Point2D(this.x + other.x, this.y + other.y);},
-        sub = function(other) {return new Point2D(this.x - other.x, this.y - other.y);},
-        mul = function(val) {
-            if (val instance of Point2D) {
+        add : function(other) {return new $.Point2D(this.x + other.x, this.y + other.y);},
+        sub : function(other) {return new $.Point2D(this.x - other.x, this.y - other.y);},
+        mul : function(val) {
+            if (val instanceof $.Point2D) {
                 // complex multiplication
-                return new Point2D(this.x * val.x - this.y * val.y, this.x * val.y + this.y * val.x);
-            return new Point2D(this.x * scale, this.y * scale);
+                return new $.Point2D(this.x * val.x - this.y * val.y, this.x * val.y + this.y * val.x);
+            }
+            return new $.Point2D(this.x * val, this.y * val);
         },
-        div = function(val) {
-            if (val instance of Point2D) {
+        div : function(val) {
+            if (val instanceof $.Point2D) {
                 // complex division
                 return this.mul(val.invert());
             }
-            return new Point2D(this.x / val, this.y / val);
-        }
+            return new $.Point2D(this.x / val, this.y / val);
+        },
+        pow : function(d) {
+            return $.Point2D.fromPolar(Math.pow(this.R(), d), this.theta() * d);
+        },
 
         // accessors
-        theta = function() {
+        theta : function() {
             return Math.atan2(this.y, this.x);
         },
-        setTheta = function(val) {
+        setTheta : function(val) {
             var r = this.R();
             this.x = r * Math.cos(val);
             this.y = r * Math.sin(val);
         },
-        R = function() { return Math.sqrt(this.x * this.x + this.y * this.y); },
-        setR = function(val) {
+        R : function() { return Math.sqrt(this.x * this.x + this.y * this.y); },
+        setR : function(val) {
             var r = this.R();
             if (r != 0) { this.scale(val/r); }
         },
 
         // regular functions
-        normalized = function() {
+        normalized : function() {
             var factor = 1.0;
             var r = this.R();
             if( r != 0 ) {
                 factor /= r;
-                return new Point2D(this.x * factor, this.y * factor);
+                return new $.Point2D(this.x * factor, this.y * factor);
             }
         },
-        toString = function() {
+        toString : function() {
             return '(' + this.x + ',' + this.y + ')'; 
         },
-        pow = function(d) {
-            return Point2D.fromPolar(Math.Pow(this.R(), d), this.theta() * d);
-        },
-        normalize = function() {
+        normalize : function() {
             var r = this.R();
             if (r !== 0) {
                 this.scale(1.0 / r);
             }
         },
-        scale = function(factor) {
+        scale : function(factor) {
             this.x *= factor;
             this.y *= factor;
         },
-        scaledTo = function(new_length) {
-            var result = new Point2D(this);
+        scaledTo : function(new_length) {
+            var result = new $.Point2D(this);
             result.setR(new_length);
             return result;
         },
-        invStereographicToSphere = function() {
-            return new Point3D( 2.0 * this.x, 
-                                2.0 * this.y,
-                                -1 + this.x * this.x + this.y * this.y ).normalized();
+        invStereographicToSphere : function() {
+            return new $.Point3D( 2.0 * this.x, 
+                                  2.0 * this.y,
+                                  -1 + this.x * this.x + this.y * this.y ).normalized();
         }
-    } ());
+    };
 
     // static variables, functions
-    $.Point2D.origin = function() { new Point2D(0.0, 0.0); };
-    $.Point2D.x_axis = function() { new Point2D(1.0, 0.0); };
-    $.Point2D.y_axis = function() { new Point2D(0.0, 1.0); };
+    $.Point2D.origin = function() { return new $.Point2D(0.0, 0.0); };
+    $.Point2D.x_axis = function() { return new $.Point2D(1.0, 0.0); };
+    $.Point2D.y_axis = function() { return new $.Point2D(0.0, 1.0); };
 
-    $.Point2D.fromPolar = function(r, theta) {return new Point2D(r * Math.cos(theta), r * Math.sin(theta));};
+    $.Point2D.fromPolar = function(r, theta) {return new $.Point2D(r * Math.cos(theta), r * Math.sin(theta));};
     $.Point2D.dot = function(a, b) { return a.x * b.x + a.y * b.y; }
-    $.Point2D.angle(a, b, c) {
-        if ((a.sub(b).r == 0 || c.sub(b).r == 0) {
+    $.Point2D.angle = function(a, b, c) {
+        if (a.sub(b).r == 0 || c.sub(b).r == 0) {
             return 0;
         }
 
-        var dot_product = Point2D.dot(a.sub(b).normalized(), c.sub(b).normalized());
-        if ( dot_product <= -1 ) { return DMSCore.HALFTAU; }
+        var dot_product = $.Point2D.dot(a.sub(b).normalized(), c.sub(b).normalized());
+        if ( dot_product <= -1 ) { return $.HALFTAU; }
         if ( dot_product >= 1 ) { return 0.0; }
         return Math.acos(dot_product);
     };
