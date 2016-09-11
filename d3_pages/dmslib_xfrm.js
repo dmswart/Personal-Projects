@@ -49,7 +49,7 @@ var DMSLib = DMSLib || {};
         },
 
         // functions
-        inverse : function() { return new $.rotation(-this._q0, this._qx, this._qy, this._qz); },
+        inverse : function() { return new $.Rotation(-this._q0, this._qx, this._qy, this._qz); },
 
         combine : function(other) {
             var q0 = this._q0 * other._q0 - this._qx * other._qx - this._qy * other._qy - this._qz * other._qz;

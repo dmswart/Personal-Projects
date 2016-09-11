@@ -122,7 +122,7 @@
             var rotb = rota.inverse();
 
             var a = rotb.apply(DMSLib.Point3D.x_axis());
-            test('Rotation_inverse', b.equals(DMSLib.Point3D.z_axis()));
+            test('Rotation_inverse', a.equals(DMSLib.Point3D.z_axis()));
         };
 
 
@@ -156,6 +156,7 @@
     Rotation_angle();
     Rotation_toString();
     Rotation_combine();
+    Rotation_inverse();
     Transform_construct_apply();
     document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
 </script>
