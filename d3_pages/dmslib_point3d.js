@@ -20,8 +20,12 @@
 
     $.Point3D.prototype = {
         // chained arithmetic
-        equals : function(other) {return this.x == other.x && this.y == other.y && this.z == other.z;},
-        nequal : function(other) {return this.x != other.x || this.y != other.y || this.z != other.z;},
+        equals : function(other) {
+			return Math.abs(this.x - other.x) < DMSLib.EPSILON && 
+			       Math.abs(this.y - other.y) < DMSLib.EPSILON && 
+			       Math.abs(this.z - other.z) < DMSLib.EPSILON;
+        },
+        nequal : function(other) {!this.equals(other)},
         negate : function() {return new $.Point3D(-this.x, -this.y, -this.z);},
         add : function(other) {return new $.Point3D(this.x + other.x, this.y + other.y, this.z + other.z);},
         sub : function(other) {return new $.Point3D(this.x - other.x, this.y - other.y, this.z - other.z);},
