@@ -1,0 +1,199 @@
+<html>
+<head>
+<script src='./dmslib_core.js'></script>
+<script src='./dmslib_point2d.js'></script>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+Thickness:<input type='number' min='1' value='3' onchange='onThicknessChange(this.value);'><br>
+Colour: <input type='text' value='black' onchange='onColorChange(this.value);'><br>
+Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
+<button onclick='pts=get_random_pts();normalize_pts();update_line();'>rnd</button>
+<button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button> 
+<button onclick='pts=get_spiral_pts();normalize_pts();update_line();'>spiral</button> 
+<input type='button' id='go' onclick='go()' value='Go'/>
+<br>
+</head>
+<body>
+<div id='output'></div>
+</body>
+</html>
+
+<script>
+    var scale = 250,
+        buffer = 25,
+        size = new DMSLib.Point2D(2*scale+buffer, 2*scale+buffer),
+        center = size.div(2),
+        line_color = 'black',
+        line_thickness = 2,
+        num_random_pts = 400,
+        timer;
+
+    var get_E_pts = function() {
+        result = []
+        for(var i=-10; i<10; i+=4) {
+            for(var j=-8; j<=10; j+=2) {result.push( new DMSLib.Point2D(j,i) );}
+            for(var j=10; j>=-8; j-=2) {result.push( new DMSLib.Point2D(j,i+2) );}
+        }
+        for(var i=8; i>=-10; i-=1) {
+            result.push( new DMSLib.Point2D(-10,i) );
+        }
+
+        return result;
+    };
+
+    var get_spiral_pts = function(n=4) {
+        result = []
+
+        // way in
+        for(i=0; i<300; i++) {
+            result.push( new DMSLib.Point2D.fromPolar(i, i/5) );
+        }
+        // way out
+        for(i=300; i>=0; i--) {
+            result.push( new DMSLib.Point2D.fromPolar(i+10, i/5) );
+        }
+
+        return result;
+    }
+
+    var get_random_pts = function() {
+        result = []
+        for(var i=0; i<num_random_pts; i++) {
+            result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
+        }
+        return result;
+    }
+
+    var calc_centroid = function(pts) {
+        result = new DMSLib.Point2D();
+        pts.forEach( function(pt) {
+            result = result.add(pt); 
+        });
+        return result.div(pts.length); 
+    }; 
+
+    var avg_R = function(pts) {
+        var total = 0;
+        pts.forEach( function(pt) {
+            total += pt.R();
+        });
+        return total / pts.length;
+    }; 
+
+    var curve_length = function(pts) {
+        result = 0;
+        for(var i=0; i<pts.length-1; i++) {
+           result += pts[i].sub(pts[i+1]).R();
+        }
+        return result;
+    };
+
+
+
+    var svg = d3.select('#output').append('svg')
+            .attr('width', size.x)
+            .attr('height', size.y);
+
+    var line_space = svg.append('g')
+            .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
+
+    line = line_space.append('path')
+            .attr('stroke', line_color)
+            .attr('stroke-width', line_thickness/scale)
+            .attr('fill', 'none');
+
+    var lineFunction = d3.svg.line()
+            .x(function(d) { return d.x;})
+            .y(function(d) { return d.y;})
+            .interpolate('linear-closed');
+
+    update_line = function() {
+        line.attr('d', lineFunction(pts));
+    };
+
+    var onColorChange = function(value) {
+        line_color = value;
+        d3.selectAll('path')
+            .attr('stroke', line_color);
+    };
+
+    var onThicknessChange = function(value) {
+        line_thickness = value;
+        d3.selectAll('path')
+            .attr('stroke-width', line_thickness/scale);
+    };
+
+    var normalize_pts = function() {
+        var centroid = calc_centroid(pts); 
+        for(var i=0; i<pts.length; i++) {
+            pts[i] = pts[i].sub(centroid);
+        }
+
+        var avg = avg_R(pts);
+        var factor = 0.5/avg_R(pts);
+        for(var i=0; i<pts.length; i++) {
+            pts[i].scale(factor);
+        };
+    };
+
+    var go = function() {
+        if(!timer) {
+            d3.select('#go').property('value', 'Stop');
+            smooth();
+        } else {
+            clearTimeout(timer);
+            timer = null;
+            d3.select('#go').property('value', 'Go');
+        }
+    };
+
+    var copy_pts = function() {
+        for(var i=0; i<pts.length; i++) {
+            saved_pts[i] = pts[i];
+        }
+    }
+
+    var movement = function() {
+        result = 0;
+        for(var i=0; i<pts.length; i++) {
+            result += pts[i].sub(saved_pts[i]).R(); 
+        }
+        return result / pts.length;
+    } 
+
+    var smooth = function() {
+        copy_pts();
+
+        for(num_iter=0; num_iter<80; num_iter++) {
+            new_pts = [];
+            for(var idx = 0; idx<pts.length; idx++) {
+                var prev = idx===0 ? pts.length-1 : idx-1;
+                var next = idx===pts.length-1 ? 0 : idx+1;
+                new_pts[idx] = pts[prev]
+                              .add(pts[idx])
+                              .add(pts[idx])
+                              .add(pts[next])
+                              .div(4);
+            }
+            pts = new_pts;
+        }
+
+        normalize_pts();
+        update_line();
+
+        if(movement() * size.x < 0.1) {
+            timer = null;
+            d3.select('#go').property('value', 'Go');
+        } else {
+            timer = setTimeout(function() {smooth(); }, 21);
+        }
+    };
+
+
+    // kick it off!
+    var pts = get_random_pts();
+    var saved_pts = [];
+    normalize_pts();
+    update_line();
+
+
+</script>
