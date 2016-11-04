@@ -11,7 +11,10 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 <button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button>
 <button onclick='pts=get_spiral_pts(1);normalize_pts();update_line();'>CW spiral</button>
 <button onclick='pts=get_spiral_pts(-1);normalize_pts();update_line();'>CCW spiral</button>
-<input type='button' id='go' onclick='go()' value='Go'/> <br>
+<button onclick='target_pts=copy_pts();update_line();'>Set Target</button><br><br>
+
+<input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
+<input type='button' id='Target' onclick='go("Target")' value='Target'/> <br>
 </head>
 <body>
 <div id='output'></div>
@@ -67,8 +70,10 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 
     var get_test_pts = function() {
         result = [];
-        for(var i=0; i<test_data.length; i+=2) {
-            result.push( new DMSLib.Point2D(test_data[i].x, test_data[i].y) );
+        step = Math.max(test_data.length / requested_pts, 1);
+        for(var i=0; i<test_data.length; i+=step) {
+            var data = test_data[Math.floor(i)];
+            result.push( new DMSLib.Point2D(data.x, data.y) );
         }
         return result;
     };
@@ -106,6 +111,10 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
     var line_space = svg.append('g')
             .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
 
+    target_line = line_space.append('path')
+            .attr('stroke', "red")
+            .attr('stroke-width', line_thickness/scale)
+            .attr('fill', 'none');
     line = line_space.append('path')
             .attr('stroke', line_color)
             .attr('stroke-width', line_thickness/scale)
@@ -117,9 +126,10 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             .interpolate('linear-closed');
 
     update_line = function() {
+        target_line.attr('d', lineFunction(target_pts));
         line.attr('d', lineFunction(pts));
 
-        updateSelection = line_space.selectAll(".dot").data(pts);
+        /* updateSelection = line_space.selectAll(".dot").data(pts);
         updateSelection
             .attr("r", (line_thickness/2+1) / scale)
             .attr("cx", function(d) { return d.x; })
@@ -131,7 +141,7 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             .attr("cx", function(d) { return d.x; })
             .attr("cy", function(d) { return d.y; });
         updateSelection
-          .exit().remove();
+          .exit().remove(); */
     };
 
     var onColorChange = function(value) {
@@ -159,21 +169,30 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         };
     };
 
-    var go = function() {
+    var go = function(method) {
+        var method_fn;
+        if (method === "Smooth") {
+            method_fn = smooth;
+        } else if (method==="Target") {
+            method_fn = target;
+        }
+
         if(!timer) {
-            d3.select('#go').property('value', 'Stop');
-            smooth();
+            d3.select("#"+method).property('value', 'Stop');
+            method_fn();
         } else {
             clearTimeout(timer);
             timer = null;
-            d3.select('#go').property('value', 'Go');
+            d3.select("#"+method).property('value', method);
         }
     };
 
-    var copy_pts = function() {
+    var copy_pts = function(dest) {
+        var result = [];
         for(var i=0; i<pts.length; i++) {
-            saved_pts[i] = pts[i];
+            result.push( new DMSLib.Point2D(pts[i]));
         }
+        return result;
     }
 
     var movement = function() {
@@ -184,19 +203,27 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         return result / pts.length;
     }
 
+    var local_scale = function(new_pt, idx) {
+        var prev = idx===0 ? pts.length-1 : idx-1;
+        var next = idx===pts.length-1 ? 0 : idx+1;
+        result = Math.min(pts[prev].sub(pts[idx]).R(), pts[idx].sub(pts[next]).R());
+    }
+
     var is_valid_new_point = function(new_pt, idx) {
-        var prev = pts[idx===0 ? pts.length-1 : idx-1];
-        var next = pts[idx===pts.length-1 ? 0 : idx+1];
-        tolerance = Math.min(prev.sub(pts[idx]).R(), next.sub(pts[idx]).R()) * 0.5;
+        var prev = idx===0 ? pts.length-1 : idx-1;
+        var next = idx===pts.length-1 ? 0 : idx+1;
+        tolerance = local_scale(new_pt, idx) * 0.333333;
         for(var i=0; i<pts.length; i++) {
-            if(i===idx || i===prev || i===next) continue;
+            if(i===idx || i===prev || i===next) {
+                continue;
+            }
             if(pts[i].sub(new_pt).R() < tolerance) return false;
         }
         return true;
     };
 
     var smooth = function() {
-        copy_pts();
+        saved_pts = copy_pts();
 
         for(num_iter=0; num_iter<20; num_iter++) {
             var new_pts = [];
@@ -205,9 +232,8 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
                 var next = idx===pts.length-1 ? 0 : idx+1;
                 var new_pt = pts[prev]
                               .add(pts[idx])
-                              .add(pts[idx])
                               .add(pts[next])
-                              .mul(0.25);
+                              .div(3);
                 if(is_valid_new_point(new_pt, idx)) {
                     new_pts[idx] = new_pt;
                 } else {
@@ -222,9 +248,36 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 
         if(movement() * size.x < 0.1) {
             timer = null;
-            d3.select('#go').property('value', 'Go');
+            d3.select('#Smooth').property('value', 'Smooth');
         } else {
             timer = setTimeout(function() {smooth(); }, 21);
+        }
+    };
+
+    var target = function() {
+        saved_pts = copy_pts();
+
+        var new_pts = [];
+        for(var idx = 0; idx<pts.length; idx++) {
+            target_pt = target_pts[idx];
+            dir = target_pt.sub(pts[idx]).mul(0.01);
+            var new_pt = pts[idx].add(dir);
+
+            //if(is_valid_new_point(new_pt, idx)) {
+                new_pts[idx] = new_pt;
+            //} else {
+            //    new_pts[idx] = pts[idx];
+            //}
+        }
+        pts = new_pts;
+
+        update_line();
+
+        if(movement() * size.x < 0.1) {
+            timer = null;
+            d3.select('#Target').property('value', 'Target');
+        } else {
+            timer = setTimeout(function() {target(); }, 21);
         }
     };
 
@@ -252,8 +305,9 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
                 {x:2,y:49}, {x:0,y:49}, {x:2,y:52}, {x:0,y:60}, {x:2,y:62}, {x:3,y:63}, {x:2,y:70}, {x:0,y:71}, {x:5,y:75}, {x:5,y:78}, {x:5,y:82}, {x:2,y:85}, {x:2,y:87}, {x:2,y:89}, {x:2,y:90}, {x:2,y:93}, {x:0,y:97}, {x:2,y:103}, {x:2,y:104} ];
 
     // kick it off!
-    var pts = get_random_pts();
-    var saved_pts = [];
+    var pts = get_test_pts();
+    var target_pts = copy_pts();
+    var saved_pts = copy_pts();
     normalize_pts();
     update_line();
 </script>
