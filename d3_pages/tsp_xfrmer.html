@@ -5,17 +5,19 @@
 <script src='http://d3js.org/d3.v3.min.js'></script>
 Thickness:<input type='number' min='1' value='3' onchange='onThicknessChange(this.value);'><br>
 Colour: <input type='text' value='black' onchange='onColorChange(this.value);'><br>
-Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
-<button onclick='pts=get_random_pts();normalize_pts();update_line();'>rnd</button>
-<button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button> 
-<button onclick='pts=get_spiral_pts();normalize_pts();update_line();'>spiral</button> 
-<input type='button' id='go' onclick='go()' value='Go'/>
-<br>
+Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
+<button onclick='pts=get_random_pts();normalize_pts();update_line();'>random</button>
+<button onclick='pts=get_test_pts();normalize_pts();update_line();'>test</button>
+<button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button>
+<button onclick='pts=get_spiral_pts(1);normalize_pts();update_line();'>CW spiral</button>
+<button onclick='pts=get_spiral_pts(-1);normalize_pts();update_line();'>CCW spiral</button>
+<input type='button' id='go' onclick='go()' value='Go'/> <br>
 </head>
 <body>
 <div id='output'></div>
 </body>
 </html>
+
 
 <script>
     var scale = 250,
@@ -24,11 +26,11 @@ Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
         center = size.div(2),
         line_color = 'black',
         line_thickness = 2,
-        num_random_pts = 400,
+        requested_pts = 200,
         timer;
 
     var get_E_pts = function() {
-        result = []
+        var result = [];
         for(var i=-10; i<10; i+=4) {
             for(var j=-8; j<=10; j+=2) {result.push( new DMSLib.Point2D(j,i) );}
             for(var j=10; j>=-8; j-=2) {result.push( new DMSLib.Point2D(j,i+2) );}
@@ -40,28 +42,36 @@ Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
         return result;
     };
 
-    var get_spiral_pts = function(n=4) {
-        result = []
+    var get_spiral_pts = function(turn) {
+        var result = [];
 
         // way in
-        for(i=0; i<300; i++) {
-            result.push( new DMSLib.Point2D.fromPolar(i, i/5) );
+        for(i=0; i<=requested_pts/2; i++) {
+            result.push( new DMSLib.Point2D.fromPolar((i+30) * turn, i/10) );
         }
         // way out
-        for(i=300; i>=0; i--) {
-            result.push( new DMSLib.Point2D.fromPolar(i+10, i/5) );
+        for(i=requested_pts/2; i>=0; i--) {
+            result.push( new DMSLib.Point2D.fromPolar((i+60) * turn, i/10) );
         }
 
         return result;
-    }
+    };
 
     var get_random_pts = function() {
-        result = []
-        for(var i=0; i<num_random_pts; i++) {
+        result = [];
+        for(var i=0; i<requested_pts; i++) {
             result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
         }
         return result;
-    }
+    };
+
+    var get_test_pts = function() {
+        result = [];
+        for(var i=0; i<test_data.length; i+=2) {
+            result.push( new DMSLib.Point2D(test_data[i].x, test_data[i].y) );
+        }
+        return result;
+    };
 
     var calc_centroid = function(pts) {
         result = new DMSLib.Point2D();
@@ -108,6 +118,20 @@ Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
 
     update_line = function() {
         line.attr('d', lineFunction(pts));
+
+        updateSelection = line_space.selectAll(".dot").data(pts);
+        updateSelection
+            .attr("r", (line_thickness/2+1) / scale)
+            .attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+        updateSelection
+          .enter().append("circle")
+            .attr("class", "dot")
+            .attr("r", (line_thickness/2+1) / scale)
+            .attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+        updateSelection
+          .exit().remove();
     };
 
     var onColorChange = function(value) {
@@ -158,21 +182,37 @@ Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
             result += pts[i].sub(saved_pts[i]).R(); 
         }
         return result / pts.length;
-    } 
+    }
+
+    var is_valid_new_point = function(new_pt, idx) {
+        var prev = pts[idx===0 ? pts.length-1 : idx-1];
+        var next = pts[idx===pts.length-1 ? 0 : idx+1];
+        tolerance = Math.min(prev.sub(pts[idx]).R(), next.sub(pts[idx]).R()) * 0.5;
+        for(var i=0; i<pts.length; i++) {
+            if(i===idx || i===prev || i===next) continue;
+            if(pts[i].sub(new_pt).R() < tolerance) return false;
+        }
+        return true;
+    };
 
     var smooth = function() {
         copy_pts();
 
-        for(num_iter=0; num_iter<80; num_iter++) {
-            new_pts = [];
+        for(num_iter=0; num_iter<20; num_iter++) {
+            var new_pts = [];
             for(var idx = 0; idx<pts.length; idx++) {
                 var prev = idx===0 ? pts.length-1 : idx-1;
                 var next = idx===pts.length-1 ? 0 : idx+1;
-                new_pts[idx] = pts[prev]
+                var new_pt = pts[prev]
                               .add(pts[idx])
                               .add(pts[idx])
                               .add(pts[next])
-                              .div(4);
+                              .mul(0.25);
+                if(is_valid_new_point(new_pt, idx)) {
+                    new_pts[idx] = new_pt;
+                } else {
+                    new_pts[idx] = pts[idx];
+                }
             }
             pts = new_pts;
         }
@@ -189,11 +229,31 @@ Pts: <input type='number' value=400 onchange='num_random_pts=this.value;'> <br>
     };
 
 
+
+    /////////////////////////// data
+    var test_data = [ {x:1,y:108}, {x:5,y:108}, {x:5,y:112}, {x:8,y:113}, {x:5,y:116}, {x:5,y:121}, {x:9,y:124}, {x:10,y:125}, {x:9,y:127}, {x:5,y:127}, {x:5,y:131}, {x:2,y:137}, {x:2,y:139}, {x:5,y:142}, {x:5,y:145}, {x:5,y:147}, {x:2,y:150}, {x:11,y:156}, {x:14,y:167}, {x:17,y:150}, {x:15,y:147},
+                {x:15,y:145}, {x:15,y:142}, {x:11,y:144}, {x:11,y:141}, {x:11,y:133}, {x:9,y:131}, {x:10,y:129}, {x:15,y:130}, {x:15,y:126}, {x:15,y:121}, {x:15,y:116}, {x:15,y:112}, {x:12,y:109}, {x:11,y:106}, {x:17,y:104}, {x:10,y:92}, {x:11,y:92}, {x:17,y:90}, {x:17,y:87}, {x:17,y:85},
+                {x:11,y:76}, {x:11,y:73}, {x:18,y:70}, {x:15,y:64}, {x:18,y:55}, {x:17,y:49}, {x:15,y:47}, {x:25,y:52}, {x:26,y:53}, {x:25,y:54}, {x:25,y:60}, {x:25,y:62}, {x:28,y:65}, {x:28,y:68}, {x:28,y:70}, {x:25,y:74}, {x:25,y:75}, {x:25,y:78}, {x:25,y:79}, {x:26,y:81},
+                {x:25,y:83}, {x:25,y:84}, {x:25,y:87}, {x:25,y:88}, {x:25,y:90}, {x:25,y:94}, {x:25,y:96}, {x:25,y:99}, {x:25,y:100}, {x:26,y:102}, {x:25,y:104}, {x:25,y:105}, {x:25,y:108}, {x:25,y:109}, {x:25,y:110}, {x:25,y:115}, {x:28,y:123}, {x:28,y:127}, {x:28,y:131}, {x:28,y:135},
+                {x:28,y:141}, {x:31,y:142}, {x:28,y:145}, {x:28,y:150}, {x:28,y:156}, {x:28,y:160}, {x:32,y:160}, {x:33,y:158}, {x:32,y:156}, {x:32,y:153}, {x:33,y:154}, {x:38,y:155}, {x:38,y:159}, {x:42,y:167}, {x:54,y:167}, {x:56,y:152}, {x:57,y:152}, {x:63,y:148}, {x:63,y:150}, {x:71,y:157},
+                {x:70,y:167}, {x:74,y:162}, {x:80,y:160}, {x:87,y:157}, {x:80,y:147}, {x:86,y:141}, {x:84,y:138}, {x:84,y:136}, {x:84,y:133}, {x:80,y:135}, {x:80,y:132}, {x:80,y:129}, {x:86,y:127}, {x:84,y:125}, {x:84,y:119}, {x:84,y:115}, {x:81,y:116}, {x:81,y:112}, {x:80,y:105}, {x:86,y:103},
+                {x:86,y:101}, {x:99,y:104}, {x:99,y:102}, {x:87,y:95}, {x:86,y:94}, {x:86,y:91}, {x:87,y:89}, {x:86,y:85}, {x:86,y:82}, {x:86,y:80}, {x:99,y:85}, {x:99,y:68}, {x:87,y:74}, {x:86,y:73}, {x:86,y:70}, {x:87,y:68}, {x:86,y:64}, {x:84,y:59}, {x:84,y:55}, {x:84,y:50},
+                {x:84,y:45}, {x:86,y:40}, {x:99,y:51}, {x:99,y:34}, {x:99,y:17}, {x:86,y:9}, {x:84,y:6}, {x:80,y:5}, {x:74,y:6}, {x:71,y:9}, {x:80,y:15}, {x:87,y:25}, {x:86,y:29}, {x:80,y:31}, {x:71,y:29}, {x:71,y:28}, {x:71,y:25}, {x:64,y:27}, {x:63,y:26}, {x:63,y:23},
+                {x:64,y:21}, {x:63,y:17}, {x:62,y:10}, {x:57,y:9}, {x:56,y:9}, {x:57,y:5}, {x:54,y:0}, {x:51,y:7}, {x:48,y:10}, {x:48,y:17}, {x:48,y:18}, {x:49,y:20}, {x:48,y:22}, {x:48,y:23}, {x:48,y:26}, {x:48,y:27}, {x:48,y:28}, {x:48,y:33}, {x:48,y:35}, {x:48,y:38},
+                {x:48,y:39}, {x:49,y:41}, {x:48,y:43}, {x:48,y:44}, {x:48,y:47}, {x:48,y:48}, {x:48,y:49}, {x:48,y:54}, {x:48,y:56}, {x:57,y:58}, {x:63,y:56}, {x:63,y:54}, {x:64,y:48}, {x:63,y:47}, {x:63,y:44}, {x:64,y:42}, {x:63,y:38}, {x:63,y:35}, {x:63,y:33}, {x:71,y:35},
+                {x:71,y:37}, {x:71,y:39}, {x:71,y:40}, {x:77,y:42}, {x:74,y:45}, {x:74,y:50}, {x:74,y:56}, {x:78,y:53}, {x:79,y:54}, {x:78,y:56}, {x:79,y:58}, {x:78,y:60}, {x:74,y:60}, {x:71,y:64}, {x:71,y:65}, {x:72,y:67}, {x:71,y:69}, {x:71,y:70}, {x:71,y:73}, {x:71,y:74},
+                {x:71,y:75}, {x:64,y:78}, {x:63,y:79}, {x:71,y:80}, {x:71,y:82}, {x:71,y:85}, {x:71,y:86}, {x:72,y:88}, {x:71,y:90}, {x:71,y:91}, {x:64,y:89}, {x:64,y:95}, {x:71,y:94}, {x:71,y:95}, {x:71,y:96}, {x:71,y:101}, {x:71,y:103}, {x:63,y:105}, {x:63,y:107}, {x:64,y:108},
+                {x:74,y:107}, {x:74,y:111}, {x:74,y:115}, {x:74,y:119}, {x:74,y:125}, {x:71,y:126}, {x:71,y:127}, {x:74,y:131}, {x:74,y:133}, {x:74,y:136}, {x:74,y:138}, {x:71,y:141}, {x:64,y:142}, {x:63,y:141}, {x:63,y:138}, {x:64,y:136}, {x:63,y:132}, {x:57,y:124}, {x:55,y:124}, {x:48,y:132},
+                {x:48,y:133}, {x:49,y:135}, {x:48,y:137}, {x:48,y:138}, {x:48,y:141}, {x:48,y:142}, {x:48,y:143}, {x:48,y:148}, {x:48,y:150}, {x:48,y:153}, {x:38,y:150}, {x:38,y:145}, {x:38,y:141}, {x:38,y:135}, {x:38,y:131}, {x:35,y:132}, {x:35,y:128}, {x:34,y:121}, {x:34,y:117}, {x:40,y:115},
+                {x:41,y:109}, {x:40,y:108}, {x:48,y:108}, {x:48,y:107}, {x:48,y:106}, {x:48,y:105}, {x:40,y:105}, {x:41,y:103}, {x:40,y:99}, {x:40,y:96}, {x:40,y:94}, {x:49,y:94}, {x:48,y:93}, {x:48,y:91}, {x:48,y:90}, {x:41,y:88}, {x:40,y:87}, {x:40,y:84}, {x:41,y:82}, {x:48,y:80},
+                {x:48,y:79}, {x:40,y:78}, {x:40,y:75}, {x:38,y:70}, {x:38,y:68}, {x:38,y:65}, {x:34,y:67}, {x:34,y:64}, {x:34,y:56}, {x:34,y:52}, {x:38,y:53}, {x:40,y:54}, {x:41,y:43}, {x:40,y:37}, {x:38,y:36}, {x:40,y:25}, {x:38,y:24}, {x:40,y:14}, {x:38,y:11}, {x:40,y:6},
+                {x:32,y:10}, {x:25,y:6}, {x:25,y:11}, {x:25,y:12}, {x:25,y:14}, {x:25,y:17}, {x:25,y:21}, {x:25,y:25}, {x:25,y:28}, {x:25,y:35}, {x:25,y:37}, {x:25,y:40}, {x:18,y:38}, {x:17,y:32}, {x:15,y:30}, {x:17,y:20}, {x:15,y:11}, {x:15,y:8}, {x:12,y:5}, {x:9,y:10},
+                {x:5,y:8}, {x:2,y:11}, {x:2,y:12}, {x:2,y:18}, {x:3,y:19}, {x:2,y:20}, {x:2,y:22}, {x:0,y:21}, {x:0,y:20}, {x:0,y:22}, {x:0,y:23}, {x:0,y:24}, {x:0,y:28}, {x:2,y:29}, {x:3,y:30}, {x:2,y:32}, {x:0,y:33}, {x:2,y:35}, {x:2,y:46}, {x:3,y:47},
+                {x:2,y:49}, {x:0,y:49}, {x:2,y:52}, {x:0,y:60}, {x:2,y:62}, {x:3,y:63}, {x:2,y:70}, {x:0,y:71}, {x:5,y:75}, {x:5,y:78}, {x:5,y:82}, {x:2,y:85}, {x:2,y:87}, {x:2,y:89}, {x:2,y:90}, {x:2,y:93}, {x:0,y:97}, {x:2,y:103}, {x:2,y:104} ];
+
     // kick it off!
     var pts = get_random_pts();
     var saved_pts = [];
     normalize_pts();
     update_line();
-
-
 </script>
