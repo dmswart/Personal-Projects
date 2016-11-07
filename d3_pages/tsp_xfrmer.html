@@ -10,11 +10,10 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 <button onclick='pts=get_test_pts();normalize_pts();update_line();'>test</button>
 <button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button>
 <button onclick='pts=get_spiral_pts(1);normalize_pts();update_line();'>CW spiral</button>
-<button onclick='pts=get_spiral_pts(-1);normalize_pts();update_line();'>CCW spiral</button>
-<button onclick='target_pts=copy_pts();update_line();'>Set Target</button><br><br>
+<button onclick='pts=get_spiral_pts(-1);normalize_pts();update_line();'>CCW spiral</button> <br><br>
 
-<input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-<input type='button' id='Target' onclick='go("Target")' value='Target'/> <br>
+<input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
+<input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
 </head>
 <body>
 <div id='output'></div>
@@ -111,10 +110,6 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
     var line_space = svg.append('g')
             .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
 
-    target_line = line_space.append('path')
-            .attr('stroke', "red")
-            .attr('stroke-width', line_thickness/scale)
-            .attr('fill', 'none');
     line = line_space.append('path')
             .attr('stroke', line_color)
             .attr('stroke-width', line_thickness/scale)
@@ -126,7 +121,6 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             .interpolate('linear-closed');
 
     update_line = function() {
-        target_line.attr('d', lineFunction(target_pts));
         line.attr('d', lineFunction(pts));
 
         /* updateSelection = line_space.selectAll(".dot").data(pts);
@@ -173,8 +167,8 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         var method_fn;
         if (method === "Smooth") {
             method_fn = smooth;
-        } else if (method==="Target") {
-            method_fn = target;
+        } else if (method === "TSP") {
+            method_fn = tsp;
         }
 
         if(!timer) {
@@ -203,37 +197,66 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         return result / pts.length;
     }
 
-    var local_scale = function(new_pt, idx) {
-        var prev = idx===0 ? pts.length-1 : idx-1;
-        var next = idx===pts.length-1 ? 0 : idx+1;
-        result = Math.min(pts[prev].sub(pts[idx]).R(), pts[idx].sub(pts[next]).R());
-    }
 
     var is_valid_new_point = function(new_pt, idx) {
-        var prev = idx===0 ? pts.length-1 : idx-1;
-        var next = idx===pts.length-1 ? 0 : idx+1;
-        tolerance = local_scale(new_pt, idx) * 0.333333;
+        var prev = (idx-1+pts.length) % pts.length;
+        var next = (idx+1) % pts.length;
+
+        tolerance = Math.min(pts[prev].sub(pts[idx]).R(),
+                             pts[idx].sub(pts[next]).R(),
+                             pts[prev].sub(pts[next]).R() * 0.5);
+
         for(var i=0; i<pts.length; i++) {
             if(i===idx || i===prev || i===next) {
                 continue;
             }
-            if(pts[i].sub(new_pt).R() < tolerance) return false;
+            if(pts[i].sub(new_pt).R() < tolerance) {
+                return false;
+            }
         }
+        return true;
+    };
+
+    var is_convex = function() {
+        var is_clockwise = pts[pts.length-1].y * (pts[0].x-pts[pts.length-1].x) >
+                           pts[pts.length-1].x * (pts[0].y-pts[pts.length-1].y);
+
+        for(var idx = 0; idx<pts.length-1; idx++) {
+            var test = pts[idx].y * (pts[idx+1].x-pts[idx].x) >
+                       pts[idx].x * (pts[idx+1].y-pts[idx].y);
+            if(test != is_clockwise) {
+                return false;
+            }
+        }
+
         return true;
     };
 
     var smooth = function() {
         saved_pts = copy_pts();
 
-        for(num_iter=0; num_iter<20; num_iter++) {
+        // rounding step
+        if(is_convex()) {
+            for(var idx = 0; idx<pts.length-1; idx++) {
+                var magnitude = pts[idx].R();
+                pts[idx] = pts[idx].scaledTo(magnitude * 0.75 + 0.125)
+            }
+        }
+
+        // smoothing step
+        for(num_iter=0; num_iter<30; num_iter++) {
             var new_pts = [];
             for(var idx = 0; idx<pts.length; idx++) {
-                var prev = idx===0 ? pts.length-1 : idx-1;
-                var next = idx===pts.length-1 ? 0 : idx+1;
-                var new_pt = pts[prev]
-                              .add(pts[idx])
+                var prev = (idx-1+pts.length) % pts.length;
+                var next = (idx+1) % pts.length;
+
+                var angle = DMSLib.Point2D.angle(pts[prev], pts[idx], pts[next]);
+                var factor = angle / DMSLib.QUARTERTAU;
+                var new_pt = pts[idx].mul(factor)
+                              .add(pts[prev])
                               .add(pts[next])
-                              .div(3);
+                              .div(2+factor);
+
                 if(is_valid_new_point(new_pt, idx)) {
                     new_pts[idx] = new_pt;
                 } else {
@@ -242,6 +265,7 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             }
             pts = new_pts;
         }
+
 
         normalize_pts();
         update_line();
@@ -254,33 +278,42 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         }
     };
 
-    var target = function() {
-        saved_pts = copy_pts();
+    var tsp = function() {
+        var changed = false;
 
-        var new_pts = [];
-        for(var idx = 0; idx<pts.length; idx++) {
-            target_pt = target_pts[idx];
-            dir = target_pt.sub(pts[idx]).mul(0.01);
-            var new_pt = pts[idx].add(dir);
+        for(var a = 0; a<pts.length; a++) {
+            for (var b = a+2; b < pts.length; b++) {
+                var anext = (a + 1) % pts.length;
+                var bnext = (b + 1) % pts.length;
 
-            //if(is_valid_new_point(new_pt, idx)) {
-                new_pts[idx] = new_pt;
-            //} else {
-            //    new_pts[idx] = pts[idx];
-            //}
+                var atoanext = pts[anext].sub(pts[a]).R();
+                var btobnext = pts[bnext].sub(pts[b]).R();
+                var atob = pts[b].sub(pts[a]).R();
+                var anexttobnext = pts[bnext].sub(pts[anext]).R();
+
+                if (atob + anexttobnext < atoanext + btobnext) {
+                    // swap [anext ... b]
+                    for (var idx = 0; anext + idx < b - idx; idx++) {
+                        var from = (anext + idx) % pts.length;
+                        var to = (b - idx) % pts.length;
+                        var tmp = new DMSLib.Point2D(pts[from]);
+                        pts[from] = new DMSLib.Point2D(pts[to]);
+                        pts[to] = new DMSLib.Point2D(tmp);
+                    }
+                    changed = true;
+                }
+            }
         }
-        pts = new_pts;
 
         update_line();
 
-        if(movement() * size.x < 0.1) {
+        if(!changed) {
             timer = null;
-            d3.select('#Target').property('value', 'Target');
+            d3.select('#TSP').property('value', 'TSP');
         } else {
-            timer = setTimeout(function() {target(); }, 21);
+            timer = setTimeout(function() {tsp(); }, 21);
         }
     };
-
 
 
     /////////////////////////// data
@@ -306,7 +339,6 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 
     // kick it off!
     var pts = get_test_pts();
-    var target_pts = copy_pts();
     var saved_pts = copy_pts();
     normalize_pts();
     update_line();
