@@ -1,19 +1,22 @@
 <html>
 <head>
-<script src='./dmslib_core.js'></script>
-<script src='./dmslib_point2d.js'></script>
-<script src='http://d3js.org/d3.v3.min.js'></script>
-Thickness:<input type='number' min='1' value='3' onchange='onThicknessChange(this.value);'><br>
-Colour: <input type='text' value='black' onchange='onColorChange(this.value);'><br>
-Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
-<button onclick='pts=get_random_pts();normalize_pts();update_line();'>random</button>
-<button onclick='pts=get_test_pts();normalize_pts();update_line();'>test</button>
-<button onclick='pts=get_E_pts();normalize_pts();update_line();'>E</button>
-<button onclick='pts=get_spiral_pts(1);normalize_pts();update_line();'>CW spiral</button>
-<button onclick='pts=get_spiral_pts(-1);normalize_pts();update_line();'>CCW spiral</button> <br><br>
+    <script src='./dmslib_core.js'></script>
+    <script src='./dmslib_point2d.js'></script>
+    <script src='http://d3js.org/d3.v3.min.js'></script>
+    Thickness:<input type='number' min='1' value='3' onchange='onThicknessChange(this.value);'><br>
+    1st Colour: <input type='text' value='red' onchange='first_color=this.value;onColorChange();'>
+    %:<input type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
+    2nd Colour: <input type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
+    Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
+    <button onclick='pts=get_random_pts();normalize_pts();updateLine();'>random</button>
+    <button onclick='pts=get_test_pts();normalize_pts();updateLine();'>test</button>
+    <button onclick='pts=get_house();normalize_pts();updateLine();'>house</button>
+    <button onclick='pts=get_E_pts();normalize_pts();updateLine();'>E</button>
+    <button onclick='pts=get_spiral_pts(1);normalize_pts();updateLine();'>CW spiral</button>
+    <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
 
-<input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-<input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
+    <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
+    <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
 </head>
 <body>
 <div id='output'></div>
@@ -26,7 +29,9 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         buffer = 25,
         size = new DMSLib.Point2D(2*scale+buffer, 2*scale+buffer),
         center = size.div(2),
-        line_color = 'black',
+        first_color_percentage = 0.0,
+        first_color = 'red',
+        second_color = 'black',
         line_thickness = 2,
         requested_pts = 200,
         timer;
@@ -64,6 +69,14 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         for(var i=0; i<requested_pts; i++) {
             result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
         }
+        return result;
+    };
+
+    var get_house = function() {
+        result = [];
+        house_pts.forEach(function(pt) {
+            result.push( new DMSLib.Point2D(pt.x, pt.y));
+        });
         return result;
     };
 
@@ -110,18 +123,30 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
     var line_space = svg.append('g')
             .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
 
-    line = line_space.append('path')
-            .attr('stroke', line_color)
+    first_line = line_space.append('path')
+            .attr('id', 'first_line')
+            .attr('stroke', first_color)
+            .attr('stroke-width', line_thickness/scale)
+            .attr('fill', 'none');
+    second_line = line_space.append('path')
+            .attr('id', 'second_line')
+            .attr('stroke', second_color)
             .attr('stroke-width', line_thickness/scale)
             .attr('fill', 'none');
 
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
             .y(function(d) { return d.y;})
-            .interpolate('linear-closed');
+            .interpolate('linear');
 
-    update_line = function() {
-        line.attr('d', lineFunction(pts));
+    var updateLine = function() {
+        // split first, second
+        var split = Math.floor(pts.length * first_color_percentage / 100.0);
+        first_line.attr('d', lineFunction(pts.slice(0,split+1)));
+
+        var second_line_pts = pts.slice(split,pts.length);
+        second_line_pts.push(pts[0]);
+        second_line.attr('d', lineFunction(second_line_pts));
 
         /* updateSelection = line_space.selectAll(".dot").data(pts);
         updateSelection
@@ -138,32 +163,31 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
           .exit().remove(); */
     };
 
-    var onColorChange = function(value) {
-        line_color = value;
-        d3.selectAll('path')
-            .attr('stroke', line_color);
+    var onColorChange = function() {
+        d3.select('#first_line').attr('stroke', first_color);
+        d3.select('#second_line').attr('stroke', second_color);
     };
 
-    var onThicknessChange = function(value) {
+    var onThicknessChange = function (value) {
         line_thickness = value;
         d3.selectAll('path')
-            .attr('stroke-width', line_thickness/scale);
+                .attr('stroke-width', line_thickness / scale);
     };
 
-    var normalize_pts = function() {
-        var centroid = calc_centroid(pts); 
-        for(var i=0; i<pts.length; i++) {
+    var normalize_pts = function () {
+        var centroid = calc_centroid(pts);
+        for (var i = 0; i < pts.length; i++) {
             pts[i] = pts[i].sub(centroid);
         }
 
         var avg = avg_R(pts);
-        var factor = 0.5/avg_R(pts);
-        for(var i=0; i<pts.length; i++) {
+        var factor = 0.5 / avg_R(pts);
+        for (var i = 0; i < pts.length; i++) {
             pts[i].scale(factor);
-        };
+        }
     };
 
-    var go = function(method) {
+    var go = function (method) {
         var method_fn;
         if (method === "Smooth") {
             method_fn = smooth;
@@ -171,60 +195,60 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             method_fn = tsp;
         }
 
-        if(!timer) {
-            d3.select("#"+method).property('value', 'Stop');
+        if (!timer) {
+            d3.select("#" + method).property('value', 'Stop');
             method_fn();
         } else {
             clearTimeout(timer);
             timer = null;
-            d3.select("#"+method).property('value', method);
+            d3.select("#" + method).property('value', method);
         }
     };
 
-    var copy_pts = function(dest) {
+    var copy_pts = function (dest) {
         var result = [];
-        for(var i=0; i<pts.length; i++) {
-            result.push( new DMSLib.Point2D(pts[i]));
+        for (var i = 0; i < pts.length; i++) {
+            result.push(new DMSLib.Point2D(pts[i]));
         }
         return result;
-    }
+    };
 
-    var movement = function() {
+    var movement = function () {
         result = 0;
-        for(var i=0; i<pts.length; i++) {
-            result += pts[i].sub(saved_pts[i]).R(); 
+        for (var i = 0; i < pts.length; i++) {
+            result += pts[i].sub(saved_pts[i]).R();
         }
         return result / pts.length;
-    }
+    };
 
 
-    var is_valid_new_point = function(new_pt, idx) {
-        var prev = (idx-1+pts.length) % pts.length;
-        var next = (idx+1) % pts.length;
+    var is_valid_new_point = function (new_pt, idx) {
+        var prev = (idx - 1 + pts.length) % pts.length;
+        var next = (idx + 1) % pts.length;
 
         tolerance = Math.min(pts[prev].sub(pts[idx]).R(),
-                             pts[idx].sub(pts[next]).R(),
-                             pts[prev].sub(pts[next]).R() * 0.5);
+                pts[idx].sub(pts[next]).R(),
+                pts[prev].sub(pts[next]).R() * 0.5);
 
-        for(var i=0; i<pts.length; i++) {
-            if(i===idx || i===prev || i===next) {
+        for (var i = 0; i < pts.length; i++) {
+            if (i === idx || i === prev || i === next) {
                 continue;
             }
-            if(pts[i].sub(new_pt).R() < tolerance) {
+            if (pts[i].sub(new_pt).R() < tolerance) {
                 return false;
             }
         }
         return true;
     };
 
-    var is_convex = function() {
-        var is_clockwise = pts[pts.length-1].y * (pts[0].x-pts[pts.length-1].x) >
-                           pts[pts.length-1].x * (pts[0].y-pts[pts.length-1].y);
+    var is_convex = function () {
+        var is_clockwise = pts[pts.length - 1].y * (pts[0].x - pts[pts.length - 1].x) >
+                pts[pts.length - 1].x * (pts[0].y - pts[pts.length - 1].y);
 
-        for(var idx = 0; idx<pts.length-1; idx++) {
-            var test = pts[idx].y * (pts[idx+1].x-pts[idx].x) >
-                       pts[idx].x * (pts[idx+1].y-pts[idx].y);
-            if(test != is_clockwise) {
+        for (var idx = 0; idx < pts.length - 1; idx++) {
+            var test = pts[idx].y * (pts[idx + 1].x - pts[idx].x) >
+                    pts[idx].x * (pts[idx + 1].y - pts[idx].y);
+            if (test != is_clockwise) {
                 return false;
             }
         }
@@ -232,32 +256,32 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         return true;
     };
 
-    var smooth = function() {
+    var smooth = function () {
         saved_pts = copy_pts();
 
         // rounding step
-        if(is_convex()) {
-            for(var idx = 0; idx<pts.length-1; idx++) {
+        if (is_convex()) {
+            for (var idx = 0; idx < pts.length - 1; idx++) {
                 var magnitude = pts[idx].R();
                 pts[idx] = pts[idx].scaledTo(magnitude * 0.75 + 0.125)
             }
         }
 
         // smoothing step
-        for(num_iter=0; num_iter<30; num_iter++) {
+        for (num_iter = 0; num_iter < 30; num_iter++) {
             var new_pts = [];
-            for(var idx = 0; idx<pts.length; idx++) {
-                var prev = (idx-1+pts.length) % pts.length;
-                var next = (idx+1) % pts.length;
+            for (var idx = 0; idx < pts.length; idx++) {
+                var prev = (idx - 1 + pts.length) % pts.length;
+                var next = (idx + 1) % pts.length;
 
                 var angle = DMSLib.Point2D.angle(pts[prev], pts[idx], pts[next]);
                 var factor = angle / DMSLib.QUARTERTAU;
                 var new_pt = pts[idx].mul(factor)
-                              .add(pts[prev])
-                              .add(pts[next])
-                              .div(2+factor);
+                        .add(pts[prev])
+                        .add(pts[next])
+                        .div(2 + factor);
 
-                if(is_valid_new_point(new_pt, idx)) {
+                if (is_valid_new_point(new_pt, idx)) {
                     new_pts[idx] = new_pt;
                 } else {
                     new_pts[idx] = pts[idx];
@@ -268,9 +292,9 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
 
 
         normalize_pts();
-        update_line();
+        updateLine();
 
-        if(movement() * size.x < 0.1) {
+        if (movement() * size.x < 0.1) {
             timer = null;
             d3.select('#Smooth').property('value', 'Smooth');
         } else {
@@ -278,11 +302,11 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
         }
     };
 
-    var tsp = function() {
+    var tsp = function () {
         var changed = false;
 
-        for(var a = 0; a<pts.length; a++) {
-            for (var b = a+2; b < pts.length; b++) {
+        for (var a = 0; a < pts.length; a++) {
+            for (var b = a + 2; b < pts.length; b++) {
                 var anext = (a + 1) % pts.length;
                 var bnext = (b + 1) % pts.length;
 
@@ -305,16 +329,15 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
             }
         }
 
-        update_line();
+        updateLine();
 
-        if(!changed) {
+        if (!changed) {
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
         } else {
             timer = setTimeout(function() {tsp(); }, 21);
         }
     };
-
 
     /////////////////////////// data
     var test_data = [ {x:1,y:108}, {x:5,y:108}, {x:5,y:112}, {x:8,y:113}, {x:5,y:116}, {x:5,y:121}, {x:9,y:124}, {x:10,y:125}, {x:9,y:127}, {x:5,y:127}, {x:5,y:131}, {x:2,y:137}, {x:2,y:139}, {x:5,y:142}, {x:5,y:145}, {x:5,y:147}, {x:2,y:150}, {x:11,y:156}, {x:14,y:167}, {x:17,y:150}, {x:15,y:147},
@@ -337,9 +360,16 @@ Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
                 {x:5,y:8}, {x:2,y:11}, {x:2,y:12}, {x:2,y:18}, {x:3,y:19}, {x:2,y:20}, {x:2,y:22}, {x:0,y:21}, {x:0,y:20}, {x:0,y:22}, {x:0,y:23}, {x:0,y:24}, {x:0,y:28}, {x:2,y:29}, {x:3,y:30}, {x:2,y:32}, {x:0,y:33}, {x:2,y:35}, {x:2,y:46}, {x:3,y:47},
                 {x:2,y:49}, {x:0,y:49}, {x:2,y:52}, {x:0,y:60}, {x:2,y:62}, {x:3,y:63}, {x:2,y:70}, {x:0,y:71}, {x:5,y:75}, {x:5,y:78}, {x:5,y:82}, {x:2,y:85}, {x:2,y:87}, {x:2,y:89}, {x:2,y:90}, {x:2,y:93}, {x:0,y:97}, {x:2,y:103}, {x:2,y:104} ];
 
+    var house_pts = [ {x:10,y:1}, {x:9,y:2}, {x:11,y:2}, {x:8,y:3}, {x:12,y:3}, {x:7,y:4}, {x:13,y:4}, {x:6,y:4.95}, {x:7,y:5}, {x:13,y:5}, {x:14,y:4.95}, {x:7,y:6}, {x:13,y:6},
+                      {x:7,y:7}, {x:13,y:7}, {x:7,y:8}, {x:13,y:8}, {x:7,y:9}, {x:13,y:9}, {x:7,y:10}, {x:13,y:10}, {x:7,y:11}, {x:13,y:11}, {x:13,y:12}, {x:13,y:13},
+                      {x:6,y:12}, {x:7,y:12}, {x:5,y:13}, {x:6,y:13},
+                      {x:0,y:14}, {x:1,y:14}, {x:2,y:14}, {x:3,y:14}, {x:4,y:14}, {x:5,y:14}, {x:13,y:14}, {x:14,y:14}, {x:15,y:14}, {x:16,y:14}, {x:17,y:14}, {x:18,y:14}, {x:19,y:14}, {x:20,y:14},
+                      {x:0,y:16}, {x:2,y:16}, {x:4,y:16}, {x:6,y:16}, {x:8,y:16}, {x:10,y:16}, {x:14,y:16}, {x:16,y:16}, {x:18,y:16}, {x:20,y:16} ];
+
     // kick it off!
     var pts = get_test_pts();
     var saved_pts = copy_pts();
     normalize_pts();
-    update_line();
+    updateLine();
+
 </script>
