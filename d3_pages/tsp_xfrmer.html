@@ -20,7 +20,8 @@
 
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/> <br>
+        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
+        <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/> <br>
     </div>
 
     <div id='output'></div>
@@ -94,7 +95,7 @@
 
     ////////////////////////////////// Launching framework
     var go = function (method) {
-        var method_fns = { "Smooth" : smooth, "TSP" : tsp, "Animate" : animate};
+        var method_fns = { "Smooth" : smooth, "TSP" : tsp, "Animate" : animate, "OptimizeAnimation" : optimize_animation};
         var method_fn = method_fns[method];
 
         if (!timer) {
@@ -248,6 +249,34 @@
         } else {
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
+        }
+    };
+
+    var optimize_animation = function() {
+        if(animation2.length) {
+            animation2.reverse();
+            animation1.concat(animation2);
+            animation2 = [];
+        }
+
+        var changed = false;
+        for(var i=0; i<10; i++) {
+            for(var f = 1; f < animation1.length-1; f++) {
+                for(var p = 0; p < animation1[f].length; p++) {
+                    var newpt = animation1[f-1][p].add(animation1[f+1][p]).mul(0.5);
+                    if( is_valid_new_point(animation1[f], newpt, p)) {
+                        animation1[f][p] = newpt;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        if (!changed) {
+            timer = null;
+            d3.select('#OptimizeAnimation').property('value', 'OptimizeAnimation');
+        } else {
+            timer = setTimeout(function() {optimize_animation(); }, 11);
         }
     };
 
