@@ -3,22 +3,25 @@
     <script src='./dmslib_core.js'></script>
     <script src='./dmslib_point2d.js'></script>
     <script src='http://d3js.org/d3.v3.min.js'></script>
-    1st Colour: <input type='text' value='red' onchange='first_color=this.value;onColorChange();'>
-    %:<input type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
-    2nd Colour: <input type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
-    Pts: <input type='number' value=200 onchange='requested_pts=this.value;'> <br>
-    <button onclick='pts=get_random_pts();normalize_pts();updateLine();'>random</button>
-    <button onclick='pts=get_house();normalize_pts();updateLine();'>house</button>
-    <button onclick='pts=get_E_pts();normalize_pts();updateLine();'>E</button>
-    <button onclick='pts=get_spiral_pts(1);normalize_pts();updateLine();'>CW spiral</button>
-    <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
-
-    <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-    <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-    <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/> <br>
 </head>
 <body>
-<div id='output'></div>
+    <div id='controls'>
+        <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
+        <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
+        <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
+        <label for='requested_pts'>Pts:</label> <input id='requested_pts' type='number' value=200 onchange='requested_pts=this.value;'> <br>
+        <button onclick='pts=get_random_pts();normalize_pts();updateLine();'>random</button>
+        <button onclick='pts=get_house_pts();normalize_pts();updateLine();'>house</button>
+        <button onclick='pts=get_E_pts();normalize_pts();updateLine();'>E</button>
+        <button onclick='pts=get_spiral_pts(1);normalize_pts();updateLine();'>CW spiral</button>
+        <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
+
+        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
+        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
+        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/> <br>
+    </div>
+
+    <div id='output'></div>
 </body>
 </html>
 
@@ -35,12 +38,14 @@
         timer;
 
     var get_E_pts = function() {
-        var result = [];
-        for(var i=-10; i<10; i+=4) {
-            for(var j=-8; j<=10; j+=2) {result.push( new DMSLib.Point2D(j,i) );}
-            for(var j=10; j>=-8; j-=2) {result.push( new DMSLib.Point2D(j,i+2) );}
+        var result = [],
+            i, j;
+
+        for(i=-10; i<10; i+=4) {
+            for(j=-8; j<=10; j+=2) {result.push( new DMSLib.Point2D(j,i) );}
+            for(j=10; j>=-8; j-=2) {result.push( new DMSLib.Point2D(j,i+2) );}
         }
-        for(var i=8; i>=-10; i-=1) {
+        for(i=8; i>=-10; i-=1) {
             result.push( new DMSLib.Point2D(-10,i) );
         }
 
@@ -48,7 +53,8 @@
     };
 
     var get_spiral_pts = function(turn) {
-        var result = [];
+        var result = [],
+            i;
 
         // way in
         for(i=0; i<=requested_pts/2; i++) {
@@ -63,15 +69,15 @@
     };
 
     var get_random_pts = function() {
-        result = [];
+        var result = [];
         for(var i=0; i<requested_pts; i++) {
             result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
         }
         return result;
     };
 
-    var get_house = function() {
-        result = [];
+    var get_house_pts = function() {
+        var result = [];
         house_pts.forEach(function(pt) {
             result.push( new DMSLib.Point2D(pt.x, pt.y));
         });
@@ -79,7 +85,7 @@
     };
 
     var calc_centroid = function(pts) {
-        result = new DMSLib.Point2D();
+        var result = new DMSLib.Point2D();
         pts.forEach( function(pt) {
             result = result.add(pt); 
         });
@@ -88,20 +94,12 @@
 
     var avg_R = function(pts) {
         var total = 0;
+
         pts.forEach( function(pt) {
             total += pt.R();
         });
         return total / pts.length;
     }; 
-
-    var curve_length = function(pts) {
-        result = 0;
-        for(var i=0; i<pts.length-1; i++) {
-           result += pts[i].sub(pts[i+1]).R();
-        }
-        return result;
-    };
-
 
 
     var svg = d3.select('#output').append('svg')
@@ -127,32 +125,37 @@
             .y(function(d) { return d.y;})
             .interpolate('linear');
 
-    var updateLine = function(transition = 0) {
+    var updateLine = function(transition) {
         // split first, second
         var split = Math.floor(pts.length * first_color_percentage / 100.0);
         var second_line_pts = pts.slice(split,pts.length);
         second_line_pts.push(pts[0]);
 
-        first_line
-            .transition()
-            .duration(transition)
-            .attr('d', lineFunction(pts.slice(0,split+1)));
-        second_line
-            .transition()
-            .duration(transition)
-            .attr('d', lineFunction(second_line_pts));
+        if (transition===undefined) {
+            first_line.attr('d', lineFunction(pts.slice(0,split+1)));
+            second_line.attr('d', lineFunction(second_line_pts));
+        } else {
+            first_line
+                    .transition()
+                    .duration(transition)
+                    .attr('d', lineFunction(pts.slice(0,split+1)));
+            second_line
+                    .transition()
+                    .duration(transition)
+                    .attr('d', lineFunction(second_line_pts));
+        }
 
-        /* updateSelection = line_space.selectAll(".dot").data(pts);
+        /* updateSelection = line_space.selectAll('.dot').data(pts);
         updateSelection
-            .attr("r", (line_thickness/2+1) / scale)
-            .attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; });
+            .attr('r', (line_thickness/2+1) / scale)
+            .attr('cx', function(d) { return d.x; })
+            .attr('cy', function(d) { return d.y; });
         updateSelection
-          .enter().append("circle")
-            .attr("class", "dot")
-            .attr("r", (line_thickness/2+1) / scale)
-            .attr("cx", function(d) { return d.x; })
-            .attr("cy", function(d) { return d.y; });
+          .enter().append('circle')
+            .attr('class', 'dot')
+            .attr('r', (line_thickness/2+1) / scale)
+            .attr('cx', function(d) { return d.x; })
+            .attr('cy', function(d) { return d.y; });
         updateSelection
           .exit().remove(); */
     };
@@ -163,48 +166,52 @@
     };
 
     var normalize_pts = function () {
-        var centroid = calc_centroid(pts);
-        for (var i = 0; i < pts.length; i++) {
+        var centroid = calc_centroid(pts),
+            i,
+            factor;
+
+        for (i = 0; i < pts.length; i++) {
             pts[i] = pts[i].sub(centroid);
         }
 
-        var avg = avg_R(pts);
-        var factor = 0.5 / avg_R(pts);
-        for (var i = 0; i < pts.length; i++) {
+        factor = 0.5 / avg_R(pts);
+        for (i = 0; i < pts.length; i++) {
             pts[i].scale(factor);
         }
     };
 
     var go = function (method) {
         var method_fn;
-        if (method === "Smooth") {
+        if (method === 'Smooth') {
             method_fn = smooth;
-        } else if (method === "TSP") {
+        } else if (method === 'TSP') {
             method_fn = tsp;
-        } else if (method === "Animate") {
+        } else if (method === 'Animate') {
             method_fn = animate;
         }
 
         if (!timer) {
-            d3.select("#" + method).property('value', 'Stop');
+            d3.select('#' + method).property('value', 'Stop');
             method_fn();
         } else {
             clearTimeout(timer);
             timer = null;
-            d3.select("#" + method).property('value', method);
+            d3.select('#' + method).property('value', method);
         }
     };
 
-    var copy_pts = function (dest) {
+    var copy_pts = function () {
         var result = [];
-        for (var i = 0; i < pts.length; i++) {
-            result.push(new DMSLib.Point2D(pts[i]));
-        }
+
+        pts.forEach(function(pt) {
+            result.push(new DMSLib.Point2D(pt));
+        });
+
         return result;
     };
 
     var movement = function () {
-        result = 0;
+        var result = 0;
         for (var i = 0; i < pts.length; i++) {
             result += pts[i].sub(saved_pts[i]).R();
         }
@@ -233,11 +240,12 @@
 
     var is_convex = function () {
         var is_clockwise = pts[pts.length - 1].y * (pts[0].x - pts[pts.length - 1].x) >
-                pts[pts.length - 1].x * (pts[0].y - pts[pts.length - 1].y);
+                           pts[pts.length - 1].x * (pts[0].y - pts[pts.length - 1].y);
 
-        for (var idx = 0; idx < pts.length - 1; idx++) {
-            var test = pts[idx].y * (pts[idx + 1].x - pts[idx].x) >
-                    pts[idx].x * (pts[idx + 1].y - pts[idx].y);
+        var idx, test;
+        for (idx = 0; idx < pts.length - 1; idx++) {
+            test = pts[idx].y * (pts[idx + 1].x - pts[idx].x) >
+                   pts[idx].x * (pts[idx + 1].y - pts[idx].y);
             if (test != is_clockwise) {
                 return false;
             }
@@ -246,9 +254,13 @@
         return true;
     };
 
-    var smooth = function(max_mvmt = 0) {
-        // if max_mvt = 0, it's first frame: start animation 
-        if (max_mvmt === 0) {
+    var smooth = function(max_mvmt) {
+        var mvmt = 0;
+
+        // if max_mvt = undefined, it's first frame: start animation
+        if (max_mvmt === undefined) {
+            max_mvmt = 0;
+
             animation2 = animation1;
             animation1 = [];
             var frame = copy_pts();
@@ -256,17 +268,18 @@
         }
 
         saved_pts = copy_pts();
-        var mvmt = 0;
 
-        for (var num_iter = 0; num_iter < 2000; num_iter++) {
-            var new_pts = [];
-            for (var idx = 0; idx < pts.length; idx++) {
-                var prev = (idx - 1 + pts.length) % pts.length;
-                var next = (idx + 1) % pts.length;
+        var num_iter, idx, prev, next;
+        for (num_iter = 0; num_iter < 2000; num_iter++) {
+            new_pts = [];
+            for (idx = 0; idx < pts.length; idx++) {
+                prev = (idx - 1 + pts.length) % pts.length;
+                next = (idx + 1) % pts.length;
 
-                var angle = DMSLib.Point2D.angle(pts[prev], pts[idx], pts[next]);
-                var factor = angle / DMSLib.QUARTERTAU;
-                var new_pt = pts[idx].mul(factor)
+                var angle, factor, new_pt;
+                angle = DMSLib.Point2D.angle(pts[prev], pts[idx], pts[next]);
+                factor = angle / DMSLib.QUARTERTAU;
+                new_pt = pts[idx].mul(factor)
                         .add(pts[prev])
                         .add(pts[next])
                         .div(2 + factor);
@@ -287,8 +300,7 @@
         // if this is first time through, we use this amount of movement as the step amount.
         if (max_mvmt === 0) {max_mvmt = mvmt;}
 
-        var frame = copy_pts();
-        animation1.push(frame);
+        animation1.push(copy_pts());
 
         updateLine();
 
@@ -303,22 +315,25 @@
     var tsp = function () {
         var changed = false;
 
-        for (var a = 0; a < pts.length; a++) {
-            for (var b = a + 2; b < pts.length; b++) {
-                var anext = (a + 1) % pts.length;
-                var bnext = (b + 1) % pts.length;
+        var a, b, anext, bnext;
+        var atoanext, btobnext, atob, anexttobnext;
+        for (a = 0; a < pts.length; a++) {
+            for (b = a + 2; b < pts.length; b++) {
+                anext = (a + 1) % pts.length;
+                bnext = (b + 1) % pts.length;
 
-                var atoanext = pts[anext].sub(pts[a]).R();
-                var btobnext = pts[bnext].sub(pts[b]).R();
-                var atob = pts[b].sub(pts[a]).R();
-                var anexttobnext = pts[bnext].sub(pts[anext]).R();
+                atoanext = pts[anext].sub(pts[a]).R();
+                btobnext = pts[bnext].sub(pts[b]).R();
+                atob = pts[b].sub(pts[a]).R();
+                anexttobnext = pts[bnext].sub(pts[anext]).R();
 
                 if (atob + anexttobnext < atoanext + btobnext) {
                     // swap [anext ... b]
-                    for (var idx = 0; anext + idx < b - idx; idx++) {
-                        var from = (anext + idx) % pts.length;
-                        var to = (b - idx) % pts.length;
-                        var tmp = new DMSLib.Point2D(pts[from]);
+                    var idx, from, to, tmp;
+                    for (idx = 0; anext + idx < b - idx; idx++) {
+                        from = (anext + idx) % pts.length;
+                        to = (b - idx) % pts.length;
+                        tmp = new DMSLib.Point2D(pts[from]);
                         pts[from] = new DMSLib.Point2D(pts[to]);
                         pts[to] = new DMSLib.Point2D(tmp);
                     }
@@ -337,7 +352,8 @@
         }
     };
 
-    var animate = function(frame = 0) {
+    var animate = function(frame) {
+        if(frame === undefined) { frame = 0; }
         if(frame < animation1.length + animation2.length) {
             if(frame < animation1.length) {
                 pts = animation1[frame]; 
@@ -350,7 +366,7 @@
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
         }
-    }
+    };
 
     /////////////////////////// data
     var house_pts = [ {x:10,y:1}, {x:9,y:2}, {x:11,y:2}, {x:8,y:3}, {x:12,y:3}, {x:7,y:4}, {x:13,y:4}, {x:6,y:4.95}, {x:7,y:5}, {x:13,y:5}, {x:14,y:4.95}, {x:7,y:6}, {x:13,y:6},
