@@ -88,5 +88,5 @@ var match_other = function(pts, other) {
     if(is_cw(pts)) { theta_offset *= -1; } // get positive offset in line with our winding.
 
     var pts_shift = Math.floor(DMSLib.fixAnglePositive(theta_offset) * pts.length / DMSLib.TAU);
-    pts = pts.slice(pts_shift, pts.length).concat(pts.slice(0, pts_shift));
+    return pts.slice(pts_shift, pts.length).concat(pts.slice(0, pts_shift));
 };

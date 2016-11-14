@@ -226,7 +226,7 @@
         if (!changed) {
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(animation1.length) { match_other(tour, animation1[0]);}
+            if(animation1.length) { tour = match_other(tour, animation1[0]);}
             updateLine();
         } else {
             updateLine();
