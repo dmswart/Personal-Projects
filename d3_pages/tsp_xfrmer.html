@@ -2,6 +2,8 @@
 <head>
     <script src='./dmslib_core.js'></script>
     <script src='./dmslib_point2d.js'></script>
+    <script src='./tsp_tour_generation.js'></script>
+    <script src='./tsp_tour_utilities.js'></script>
     <script src='http://d3js.org/d3.v3.min.js'></script>
 </head>
 <body>
@@ -9,13 +11,12 @@
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
-        <label for='requested_pts'>Pts:</label> <input id='requested_pts' type='number' value=200 onchange='requested_pts=this.value;'>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br>
-        <button onclick='pts=get_random_pts();normalize_pts();updateLine();'>random</button>
-        <button onclick='pts=get_house_pts();normalize_pts();updateLine();'>house</button>
-        <button onclick='pts=get_circle_pts();normalize_pts();updateLine();'>circle</button>
-        <button onclick='pts=get_spiral_pts(1);normalize_pts();updateLine();'>CW spiral</button>
-        <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
+        <button onclick='get_tour("random");'>random</button>
+        <button onclick='get_tour("house");'>house</button>
+        <button onclick='get_tour("circle");'>circle</button>
+        <button onclick='get_tour("spiral");'>spiral</button><br><br>
 
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
@@ -35,68 +36,12 @@
         first_color = 'red',
         second_color = 'black',
         line_thickness = 4,
-        requested_pts = 200,
+        requested_size = 200,
         timer,
         fps = 30;
 
-    var get_spiral_pts = function(turn) {
-        var result = [],
-            i;
 
-        // way in
-        for(i=0; i<=requested_pts/2; i++) {
-            result.push( new DMSLib.Point2D.fromPolar((i+30) * turn, i/10) );
-        }
-        // way out
-        for(i=requested_pts/2; i>=0; i--) {
-            result.push( new DMSLib.Point2D.fromPolar((i+60) * turn, i/10) );
-        }
-
-        return result;
-    };
-
-    var get_circle_pts = function() {
-        var result = [];
-        for(var i=0; i<requested_pts; i++) {
-            result.push(new DMSLib.Point2D.fromPolar(1, i * DMSLib.TAU / requested_pts));
-        }
-        return result;
-    };
-
-    var get_random_pts = function() {
-        var result = [];
-        for(var i=0; i<requested_pts; i++) {
-            result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
-        }
-        return result;
-    };
-
-    var get_house_pts = function() {
-        var result = [];
-        house_pts.forEach(function(pt) {
-            result.push( new DMSLib.Point2D(pt.x, pt.y));
-        });
-        return result;
-    };
-
-    var calc_centroid = function(pts) {
-        var result = new DMSLib.Point2D();
-        pts.forEach( function(pt) {
-            result = result.add(pt); 
-        });
-        return result.div(pts.length); 
-    }; 
-
-    var avg_R = function(pts) {
-        var total = 0;
-
-        pts.forEach( function(pt) {
-            total += pt.R();
-        });
-        return total / pts.length;
-    }; 
-
-
+    ///////////////////// D3 focused display routines.
     var svg = d3.select('#output').append('svg')
             .attr('width', size.x)
             .attr('height', size.y);
@@ -122,37 +67,23 @@
 
     var updateLine = function(frame_time) {
         // split first, second
-        var split = Math.floor(pts.length * first_color_percentage / 100.0);
-        var second_line_pts = pts.slice(split,pts.length);
-        second_line_pts.push(pts[0]);
+        var split = Math.floor(tour.length * first_color_percentage / 100.0);
+        var second_line_pts = tour.slice(split,tour.length);
+        second_line_pts.push(tour[0]);
 
         if (frame_time===undefined) {
-            first_line.attr('d', lineFunction(pts.slice(0,split+1)));
+            first_line.attr('d', lineFunction(tour.slice(0,split+1)));
             second_line.attr('d', lineFunction(second_line_pts));
         } else {
             first_line
                     .transition()
                     .duration(frame_time)
-                    .attr('d', lineFunction(pts.slice(0,split+1)));
+                    .attr('d', lineFunction(tour.slice(0,split+1)));
             second_line
                     .transition()
                     .duration(frame_time)
                     .attr('d', lineFunction(second_line_pts));
         }
-
-        /* updateSelection = line_space.selectAll('.dot').data(pts);
-        updateSelection
-            .attr('r', (line_thickness/2+1) / scale)
-            .attr('cx', function(d) { return d.x; })
-            .attr('cy', function(d) { return d.y; });
-        updateSelection
-          .enter().append('circle')
-            .attr('class', 'dot')
-            .attr('r', (line_thickness/2+1) / scale)
-            .attr('cx', function(d) { return d.x; })
-            .attr('cy', function(d) { return d.y; });
-        updateSelection
-          .exit().remove(); */
     };
 
     var onColorChange = function() {
@@ -160,30 +91,11 @@
         d3.select('#second_line').attr('stroke', second_color);
     };
 
-    var normalize_pts = function () {
-        var centroid = calc_centroid(pts),
-            i,
-            factor;
 
-        for (i = 0; i < pts.length; i++) {
-            pts[i] = pts[i].sub(centroid);
-        }
-
-        factor = 0.5 / avg_R(pts);
-        for (i = 0; i < pts.length; i++) {
-            pts[i].scale(factor);
-        }
-    };
-
+    ////////////////////////////////// Launching framework
     var go = function (method) {
-        var method_fn;
-        if (method === 'Smooth') {
-            method_fn = smooth;
-        } else if (method === 'TSP') {
-            method_fn = tsp;
-        } else if (method === 'Animate') {
-            method_fn = animate;
-        }
+        var method_fns = { "Smooth" : smooth, "TSP" : tsp, "Animate" : animate};
+        var method_fn = method_fns[method];
 
         if (!timer) {
             d3.select('#' + method).property('value', 'Stop');
@@ -195,26 +107,16 @@
         }
     };
 
-    var copy_pts = function () {
-        var result = [];
+    var get_tour = function(method) {
+        var method_fns = {'circle' : get_circle_pts, 'spiral' : get_spiral_pts, 'house' : get_house_pts, 'random' : get_random_pts};
+        var method_fn = method_fns[method];
 
-        pts.forEach(function(pt) {
-            result.push(new DMSLib.Point2D(pt));
-        });
-
-        return result;
+        tour = method_fn(requested_size);
+        normalize(tour);
+        updateLine();
     };
 
-    var movement = function () {
-        var result = 0;
-        for (var i = 0; i < pts.length; i++) {
-            result += pts[i].sub(saved_pts[i]).R();
-        }
-        return result / pts.length;
-    };
-
-
-    var is_valid_new_point = function (new_pt, idx) {
+    var is_valid_new_point = function(pts, new_pt, idx) {
         var prev = (idx - 1 + pts.length) % pts.length;
         var next = (idx + 1) % pts.length;
 
@@ -233,22 +135,6 @@
         return true;
     };
 
-    var is_convex = function () {
-        var is_clockwise = pts[pts.length - 1].y * (pts[0].x - pts[pts.length - 1].x) >
-                           pts[pts.length - 1].x * (pts[0].y - pts[pts.length - 1].y);
-
-        var idx, test;
-        for (idx = 0; idx < pts.length - 1; idx++) {
-            test = pts[idx].y * (pts[idx + 1].x - pts[idx].x) >
-                   pts[idx].x * (pts[idx + 1].y - pts[idx].y);
-            if (test != is_clockwise) {
-                return false;
-            }
-        }
-
-        return true;
-    };
-
     var smooth = function(max_mvmt) {
         var mvmt = 0;
 
@@ -258,44 +144,44 @@
 
             animation2 = animation1;
             animation1 = [];
-            var frame = copy_pts();
+            var frame = copy_pts(tour);
             animation1.push(frame);
         }
 
-        saved_pts = copy_pts();
+        var saved_tour = copy_pts(tour);
 
         var num_iter, idx, prev, next;
         for (num_iter = 0; num_iter < 2000; num_iter++) {
-            new_pts = [];
-            for (idx = 0; idx < pts.length; idx++) {
-                prev = (idx - 1 + pts.length) % pts.length;
-                next = (idx + 1) % pts.length;
+            new_tour = [];
+            for (idx = 0; idx < tour.length; idx++) {
+                prev = (idx - 1 + tour.length) % tour.length;
+                next = (idx + 1) % tour.length;
 
                 var angle, factor, new_pt;
-                angle = DMSLib.Point2D.angle(pts[prev], pts[idx], pts[next]);
+                angle = DMSLib.Point2D.angle(tour[prev], tour[idx], tour[next]);
                 factor = angle / DMSLib.QUARTERTAU;
-                new_pt = pts[idx].mul(factor)
-                        .add(pts[prev])
-                        .add(pts[next])
+                new_pt = tour[idx].mul(factor)
+                        .add(tour[prev])
+                        .add(tour[next])
                         .div(2 + factor);
 
-                if (is_valid_new_point(new_pt, idx)) {
-                    new_pts[idx] = new_pt;
+                if (is_valid_new_point(tour, new_pt, idx)) {
+                    new_tour[idx] = new_pt;
                 } else {
-                    new_pts[idx] = pts[idx];
+                    new_tour[idx] = tour[idx];
                 }
             }
-            pts = new_pts;
-            normalize_pts();
+            tour = new_tour;
+            normalize(tour);
 
-            mvmt = movement();
+            mvmt = movement(tour, saved_tour);
             if(mvmt >= max_mvmt) { break; }
         }
 
         // if this is first time through, we use this amount of movement as the step amount.
         if (max_mvmt === 0) {max_mvmt = mvmt;}
 
-        animation1.push(copy_pts());
+        animation1.push(copy_pts(tour));
 
         updateLine();
 
@@ -312,25 +198,25 @@
 
         var a, b, anext, bnext;
         var atoanext, btobnext, atob, anexttobnext;
-        for (a = 0; a < pts.length; a++) {
-            for (b = a + 2; b < pts.length; b++) {
-                anext = (a + 1) % pts.length;
-                bnext = (b + 1) % pts.length;
+        for (a = 0; a < tour.length; a++) {
+            for (b = a + 2; b < tour.length; b++) {
+                anext = (a + 1) % tour.length;
+                bnext = (b + 1) % tour.length;
 
-                atoanext = pts[anext].sub(pts[a]).R();
-                btobnext = pts[bnext].sub(pts[b]).R();
-                atob = pts[b].sub(pts[a]).R();
-                anexttobnext = pts[bnext].sub(pts[anext]).R();
+                atoanext = tour[anext].sub(tour[a]).R();
+                btobnext = tour[bnext].sub(tour[b]).R();
+                atob = tour[b].sub(tour[a]).R();
+                anexttobnext = tour[bnext].sub(tour[anext]).R();
 
                 if (atob + anexttobnext < atoanext + btobnext) {
                     // swap [anext ... b]
                     var idx, from, to, tmp;
                     for (idx = 0; anext + idx < b - idx; idx++) {
-                        from = (anext + idx) % pts.length;
-                        to = (b - idx) % pts.length;
-                        tmp = new DMSLib.Point2D(pts[from]);
-                        pts[from] = new DMSLib.Point2D(pts[to]);
-                        pts[to] = new DMSLib.Point2D(tmp);
+                        from = (anext + idx) % tour.length;
+                        to = (b - idx) % tour.length;
+                        tmp = new DMSLib.Point2D(tour[from]);
+                        tour[from] = new DMSLib.Point2D(tour[to]);
+                        tour[to] = new DMSLib.Point2D(tmp);
                     }
                     changed = true;
                 }
@@ -340,7 +226,7 @@
         if (!changed) {
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(animation1.length) { match_other_pts(animation1[0]);}
+            if(animation1.length) { match_other(tour, animation1[0]);}
             updateLine();
         } else {
             updateLine();
@@ -349,56 +235,13 @@
     };
 
 
-    var is_cw = function(tour) {
-        // get lowest rightmost point
-        var lr = 0, idx;
-        for(idx = 1; idx < tour.length; idx++) {
-            if( (tour[idx].y < tour[lr].y) || (tour[idx].y === tour[lr].y && tour[idx].x > tour[lr].x) ) {
-                lr = idx;
-            }
-        }
-
-        var a, b, c;
-        a = tour[(lr + tour.length-1) % tour.length];
-        b = tour[lr];
-        c = tour[(lr + 1) % tour.length];
-
-        return (a.x * b.y - a.y * b.x +
-                a.y * c.x - a.x * c.y +
-                b.x * c.y - c.x * b.y) > 0.0;
-    };
-
-    var match_other_pts = function(other) {
-        if(other.length !== pts.length) {
-            return;
-        }
-
-        // fix winding
-        if(is_cw(other) !== is_cw(pts)) {
-            pts.reverse();
-        }
-
-        // calculate theta offset
-        var nominal_offset = pts[0].theta() - other[0].theta();
-        var theta_offset = 0;
-        for(var i=0; i<pts.length; i++) {
-            var delta = (pts[i].theta() - other[i].theta()) - nominal_offset;
-            theta_offset += DMSLib.fixAngle(delta);
-        }
-        theta_offset = (theta_offset /pts.length) + nominal_offset;
-        if(is_cw(pts)) { theta_offset *= -1; } // get positive offset in line with our winding.
-
-        var pts_shift = Math.floor(DMSLib.fixAnglePositive(theta_offset) * pts.length / DMSLib.TAU);
-        pts = pts.slice(pts_shift, pts.length).concat(pts.slice(0, pts_shift));
-    };
-
     var animate = function(frame) {
         if(frame === undefined) { frame = 0; }
         if(frame < animation1.length + animation2.length) {
             if(frame < animation1.length) {
-                pts = animation1[frame]; 
+                tour = animation1[frame];
             } else {
-                pts = animation2[animation2.length + animation1.length - frame - 1]
+                tour = animation2[animation2.length + animation1.length - frame - 1]
             }
             updateLine(frame===0 ? 0 : 1000/fps);
             timer = setTimeout(function() {animate(frame+1); }, 1000/fps);
@@ -408,24 +251,15 @@
         }
     };
 
-    /////////////////////////// data
-    var house_pts = [ {x:10,y:1}, {x:9,y:2}, {x:11,y:2}, {x:8,y:3}, {x:12,y:3}, {x:7,y:4}, {x:13,y:4}, {x:6,y:4.95}, {x:7,y:5}, {x:13,y:5}, {x:14,y:4.95}, {x:7,y:6}, {x:13,y:6},
-                      {x:7,y:7}, {x:13,y:7}, {x:7,y:8}, {x:13,y:8}, {x:7,y:9}, {x:13,y:9}, {x:7,y:10}, {x:13,y:10}, {x:7,y:11}, {x:13,y:11}, {x:13,y:12}, {x:13,y:13},
-                      {x:6,y:12}, {x:7,y:12}, {x:5,y:13}, {x:6,y:13},
-                      {x:0,y:14}, {x:1,y:14}, {x:2,y:14}, {x:3,y:14}, {x:4,y:14}, {x:5,y:14}, {x:13,y:14}, {x:14,y:14}, {x:15,y:14}, {x:16,y:14}, {x:17,y:14}, {x:18,y:14}, {x:19,y:14}, {x:20,y:14},
-                      {x:0,y:16}, {x:2,y:16}, {x:4,y:16}, {x:6,y:16}, {x:8,y:16}, {x:10,y:16}, {x:14,y:16}, {x:16,y:16}, {x:18,y:16}, {x:20,y:16} ];
-
-    // kick it off!
-    var pts = get_random_pts(),
-        saved_pts = copy_pts(),
+    /////////////////////////////// kick it off!
+    var tour = [],
         animation1 = [],
         animation2 = [];
 
-    normalize_pts();
-    updateLine();
+    get_tour('random');
 
 
-    // TODO - split off modules: one for creating routes, utility for modifying routes (tsp and smoothing), one for animation
+    // TODO - make a tour class, an animation class
     // TODO - 3d version: on a sphere.
     // TODO - read / write routes from file system
     // TODO - write animation to file system
