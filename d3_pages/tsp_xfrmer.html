@@ -14,7 +14,8 @@
     <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
 
     <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-    <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
+    <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
+    <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/> <br>
 </head>
 <body>
 <div id='output'></div>
@@ -126,14 +127,20 @@
             .y(function(d) { return d.y;})
             .interpolate('linear');
 
-    var updateLine = function() {
+    var updateLine = function(transition = 0) {
         // split first, second
         var split = Math.floor(pts.length * first_color_percentage / 100.0);
-        first_line.attr('d', lineFunction(pts.slice(0,split+1)));
-
         var second_line_pts = pts.slice(split,pts.length);
         second_line_pts.push(pts[0]);
-        second_line.attr('d', lineFunction(second_line_pts));
+
+        first_line
+            .transition()
+            .duration(transition)
+            .attr('d', lineFunction(pts.slice(0,split+1)));
+        second_line
+            .transition()
+            .duration(transition)
+            .attr('d', lineFunction(second_line_pts));
 
         /* updateSelection = line_space.selectAll(".dot").data(pts);
         updateSelection
@@ -174,6 +181,8 @@
             method_fn = smooth;
         } else if (method === "TSP") {
             method_fn = tsp;
+        } else if (method === "Animate") {
+            method_fn = animate;
         }
 
         if (!timer) {
@@ -237,19 +246,19 @@
         return true;
     };
 
-    var smooth = function () {
-        saved_pts = copy_pts();
-
-        // rounding step
-        if (is_convex()) {
-            for (var idx = 0; idx < pts.length - 1; idx++) {
-                var magnitude = pts[idx].R();
-                pts[idx] = pts[idx].scaledTo(magnitude * 0.75 + 0.125)
-            }
+    var smooth = function(max_mvmt = 0) {
+        // if max_mvt = 0, it's first frame: start animation 
+        if (max_mvmt === 0) {
+            animation2 = animation1;
+            animation1 = [];
+            var frame = copy_pts();
+            animation1.push(frame);
         }
 
-        // smoothing step
-        for (num_iter = 0; num_iter < 30; num_iter++) {
+        saved_pts = copy_pts();
+        var mvmt = 0;
+
+        for (var num_iter = 0; num_iter < 2000; num_iter++) {
             var new_pts = [];
             for (var idx = 0; idx < pts.length; idx++) {
                 var prev = (idx - 1 + pts.length) % pts.length;
@@ -269,17 +278,25 @@
                 }
             }
             pts = new_pts;
+            normalize_pts();
+
+            mvmt = movement();
+            if(mvmt >= max_mvmt) { break; }
         }
 
+        // if this is first time through, we use this amount of movement as the step amount.
+        if (max_mvmt === 0) {max_mvmt = mvmt;}
 
-        normalize_pts();
+        var frame = copy_pts();
+        animation1.push(frame);
+
         updateLine();
 
-        if (movement() * size.x < 0.1) {
+        if (mvmt < max_mvmt) {
             timer = null;
             d3.select('#Smooth').property('value', 'Smooth');
         } else {
-            timer = setTimeout(function() {smooth(); }, 21);
+            timer = setTimeout(function() {smooth(max_mvmt); }, 21);
         }
     };
 
@@ -320,6 +337,21 @@
         }
     };
 
+    var animate = function(frame = 0) {
+        if(frame < animation1.length + animation2.length) {
+            if(frame < animation1.length) {
+                pts = animation1[frame]; 
+            } else {
+                pts = animation2[animation2.length + animation1.length - frame - 1]
+            }
+            updateLine(frame===0 ? 0 : 100);
+            timer = setTimeout(function() {animate(frame+1); }, 100);
+        } else {
+            timer = null;
+            d3.select('#Animate').property('value', 'Animate');
+        }
+    }
+
     /////////////////////////// data
     var house_pts = [ {x:10,y:1}, {x:9,y:2}, {x:11,y:2}, {x:8,y:3}, {x:12,y:3}, {x:7,y:4}, {x:13,y:4}, {x:6,y:4.95}, {x:7,y:5}, {x:13,y:5}, {x:14,y:4.95}, {x:7,y:6}, {x:13,y:6},
                       {x:7,y:7}, {x:13,y:7}, {x:7,y:8}, {x:13,y:8}, {x:7,y:9}, {x:13,y:9}, {x:7,y:10}, {x:13,y:10}, {x:7,y:11}, {x:13,y:11}, {x:13,y:12}, {x:13,y:13},
@@ -328,9 +360,13 @@
                       {x:0,y:16}, {x:2,y:16}, {x:4,y:16}, {x:6,y:16}, {x:8,y:16}, {x:10,y:16}, {x:14,y:16}, {x:16,y:16}, {x:18,y:16}, {x:20,y:16} ];
 
     // kick it off!
-    var pts = get_random_pts();
-    var saved_pts = copy_pts();
+    var pts = get_random_pts(),
+        saved_pts = copy_pts(),
+        animation1 = [],
+        animation2 = [];
+
     normalize_pts();
     updateLine();
+
 
 </script>
