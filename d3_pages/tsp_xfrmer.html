@@ -9,10 +9,11 @@
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
-        <label for='requested_pts'>Pts:</label> <input id='requested_pts' type='number' value=200 onchange='requested_pts=this.value;'> <br>
+        <label for='requested_pts'>Pts:</label> <input id='requested_pts' type='number' value=200 onchange='requested_pts=this.value;'>
+        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br>
         <button onclick='pts=get_random_pts();normalize_pts();updateLine();'>random</button>
         <button onclick='pts=get_house_pts();normalize_pts();updateLine();'>house</button>
-        <button onclick='pts=get_E_pts();normalize_pts();updateLine();'>E</button>
+        <button onclick='pts=get_circle_pts();normalize_pts();updateLine();'>circle</button>
         <button onclick='pts=get_spiral_pts(1);normalize_pts();updateLine();'>CW spiral</button>
         <button onclick='pts=get_spiral_pts(-1);normalize_pts();updateLine();'>CCW spiral</button> <br><br>
 
@@ -35,22 +36,8 @@
         second_color = 'black',
         line_thickness = 4,
         requested_pts = 200,
-        timer;
-
-    var get_E_pts = function() {
-        var result = [],
-            i, j;
-
-        for(i=-10; i<10; i+=4) {
-            for(j=-8; j<=10; j+=2) {result.push( new DMSLib.Point2D(j,i) );}
-            for(j=10; j>=-8; j-=2) {result.push( new DMSLib.Point2D(j,i+2) );}
-        }
-        for(i=8; i>=-10; i-=1) {
-            result.push( new DMSLib.Point2D(-10,i) );
-        }
-
-        return result;
-    };
+        timer,
+        fps = 30;
 
     var get_spiral_pts = function(turn) {
         var result = [],
@@ -65,6 +52,14 @@
             result.push( new DMSLib.Point2D.fromPolar((i+60) * turn, i/10) );
         }
 
+        return result;
+    };
+
+    var get_circle_pts = function() {
+        var result = [];
+        for(var i=0; i<requested_pts; i++) {
+            result.push(new DMSLib.Point2D.fromPolar(1, i * DMSLib.TAU / requested_pts));
+        }
         return result;
     };
 
@@ -125,23 +120,23 @@
             .y(function(d) { return d.y;})
             .interpolate('linear');
 
-    var updateLine = function(transition) {
+    var updateLine = function(frame_time) {
         // split first, second
         var split = Math.floor(pts.length * first_color_percentage / 100.0);
         var second_line_pts = pts.slice(split,pts.length);
         second_line_pts.push(pts[0]);
 
-        if (transition===undefined) {
+        if (frame_time===undefined) {
             first_line.attr('d', lineFunction(pts.slice(0,split+1)));
             second_line.attr('d', lineFunction(second_line_pts));
         } else {
             first_line
                     .transition()
-                    .duration(transition)
+                    .duration(frame_time)
                     .attr('d', lineFunction(pts.slice(0,split+1)));
             second_line
                     .transition()
-                    .duration(transition)
+                    .duration(frame_time)
                     .attr('d', lineFunction(second_line_pts));
         }
 
@@ -342,14 +337,59 @@
             }
         }
 
-        updateLine();
-
         if (!changed) {
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
+            if(animation1.length) { match_other_pts(animation1[0]);}
+            updateLine();
         } else {
+            updateLine();
             timer = setTimeout(function() {tsp(); }, 21);
         }
+    };
+
+
+    var is_cw = function(tour) {
+        // get lowest rightmost point
+        var lr = 0, idx;
+        for(idx = 1; idx < tour.length; idx++) {
+            if( (tour[idx].y < tour[lr].y) || (tour[idx].y === tour[lr].y && tour[idx].x > tour[lr].x) ) {
+                lr = idx;
+            }
+        }
+
+        var a, b, c;
+        a = tour[(lr + tour.length-1) % tour.length];
+        b = tour[lr];
+        c = tour[(lr + 1) % tour.length];
+
+        return (a.x * b.y - a.y * b.x +
+                a.y * c.x - a.x * c.y +
+                b.x * c.y - c.x * b.y) > 0.0;
+    };
+
+    var match_other_pts = function(other) {
+        if(other.length !== pts.length) {
+            return;
+        }
+
+        // fix winding
+        if(is_cw(other) !== is_cw(pts)) {
+            pts.reverse();
+        }
+
+        // calculate theta offset
+        var nominal_offset = pts[0].theta() - other[0].theta();
+        var theta_offset = 0;
+        for(var i=0; i<pts.length; i++) {
+            var delta = (pts[i].theta() - other[i].theta()) - nominal_offset;
+            theta_offset += DMSLib.fixAngle(delta);
+        }
+        theta_offset = (theta_offset /pts.length) + nominal_offset;
+        if(is_cw(pts)) { theta_offset *= -1; } // get positive offset in line with our winding.
+
+        var pts_shift = Math.floor(DMSLib.fixAnglePositive(theta_offset) * pts.length / DMSLib.TAU);
+        pts = pts.slice(pts_shift, pts.length).concat(pts.slice(0, pts_shift));
     };
 
     var animate = function(frame) {
@@ -360,8 +400,8 @@
             } else {
                 pts = animation2[animation2.length + animation1.length - frame - 1]
             }
-            updateLine(frame===0 ? 0 : 100);
-            timer = setTimeout(function() {animate(frame+1); }, 100);
+            updateLine(frame===0 ? 0 : 1000/fps);
+            timer = setTimeout(function() {animate(frame+1); }, 1000/fps);
         } else {
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
@@ -383,6 +423,13 @@
 
     normalize_pts();
     updateLine();
+
+
+    // TODO - split off modules: one for creating routes, utility for modifying routes (tsp and smoothing), one for animation
+    // TODO - 3d version: on a sphere.
+    // TODO - read / write routes from file system
+    // TODO - write animation to file system
+    // TODO - figure out why frame_time isn't smooth for slow transitions.
 
 
 </script>
