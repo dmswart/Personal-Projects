@@ -21,6 +21,8 @@
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
+
+        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='100' value='30' onchange='sa_temp=this.value;'>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/> <br>
     </div>
 
@@ -39,6 +41,7 @@
         line_thickness = 4,
         requested_size = 200,
         timer,
+        sa_temp = 30,
         fps = 30;
 
 
@@ -64,8 +67,8 @@
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
             .y(function(d) { return d.y;})
-            // .interpolate('linear');
-            .interpolate('basis');
+            .interpolate('linear');
+            // .interpolate('basis');
 
     var updateLine = function(frame_time) {
         // split first, second
@@ -137,7 +140,7 @@
         return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
     };
 
-    var is_valid_new_point = function(pts, new_pt, idx) {
+    var is_valid_new_point = function(pts, new_pt, idx, tolerance) {
         var a1 = pts[(idx - 1 + pts.length) % pts.length];
         var a2 = pts[idx];
         var a3 = pts[(idx+1) % pts.length];
@@ -146,11 +149,17 @@
             var b1 = pts[i];
             var b2 = pts[(i+1)%pts.length];
 
-            if (b1 === a1 || b1 === a2) {continue;}
-
-            if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
+            // point proximity
+            if (b1 !== a2 && b1.sub(a2).R() < tolerance) {
                 return false;
             }
+            // edge intersection
+            if (b1 !== a1 && b1 !== a2) {
+                if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
+                    return false;
+                }
+            }
+
         }
         return true;
     };
@@ -162,16 +171,17 @@
         if (max_mvmt === undefined) {
             max_mvmt = 0;
 
-            animation2 = animation1;
-            animation1 = [];
+            animation2 = animation;
+            animation = [];
             var frame = copy_pts(tour);
-            animation1.push(frame);
+            animation.push(frame);
         }
 
         var saved_tour = copy_pts(tour);
 
         var num_iter, idx, prev, next;
         for (num_iter = 0; num_iter < 2000; num_iter++) {
+            var tolerance = min_edge(tour);
             new_tour = [];
             for (idx = 0; idx < tour.length; idx++) {
                 prev = (idx - 1 + tour.length) % tour.length;
@@ -180,7 +190,7 @@
                 var new_pt;
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
-                if (is_valid_new_point(tour, new_pt, idx)) {
+                if (is_valid_new_point(tour, new_pt, idx, tolerance)) {
                     new_tour[idx] = new_pt;
                 } else {
                     new_tour[idx] = tour[idx];
@@ -196,7 +206,7 @@
         // if this is first time through, we use this amount of movement as the step amount.
         if (max_mvmt === 0) {max_mvmt = mvmt;}
 
-        animation1.push(copy_pts(tour));
+        animation.push(copy_pts(tour));
 
         updateLine();
 
@@ -241,7 +251,7 @@
         if (!changed) {
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(animation1.length) { tour = match_other(tour, animation1[0]);}
+            if(animation.length) { tour = match_other(tour, animation[0]);}
             updateLine();
         } else {
             updateLine();
@@ -252,11 +262,11 @@
 
     var animate = function(frame) {
         if(frame === undefined) { frame = 0; }
-        if(frame < animation1.length + animation2.length) {
-            if(frame < animation1.length) {
-                tour = animation1[frame];
+        if(frame < animation.length + animation2.length) {
+            if(frame < animation.length) {
+                tour = animation[frame];
             } else {
-                tour = animation2[animation2.length + animation1.length - frame - 1]
+                tour = animation2[animation2.length + animation.length - frame - 1]
             }
             updateLine(frame===0 ? 0 : 1000/fps);
             timer = setTimeout(function() {animate(frame+1); }, 1000/fps);
@@ -268,36 +278,39 @@
 
     var optimize_animation = function() {
         if(animation2.length) {
-            animation1 = animation1.concat(animation2.reverse());
+            animation = animation.concat(animation2.reverse());
             animation2 = [];
         }
 
-        for(var f = 1; f < animation1.length-1; f++) {
+        for(var f = 1; f < animation.length-1; f++) {
+            var tolerance = min_edge(animation[f]);
             var new_frame = [];
-            for(var p = 0; p < animation1[f].length; p++) {
-                if(animation1[f][p].alpha === undefined) {
-                    animation1[f][p].alpha = 1.0;
-                }
-                var alpha = animation1[f][p].alpha;
+            for(var p = 0; p < animation[f].length; p++) {
 
-                var prev = (p + animation1[f].length - 1) % animation1[f].length;
-                var next = (p + 1) % animation1[f].length;
-                var newpt = animation1[f][p].mul(alpha)
-                    .add(animation1[f+1][p])
-                    .add(animation1[f-1][p])
-                    .div(alpha+2);
-                if( is_valid_new_point(animation1[f], newpt, p)) {
-                    new_frame[p] = newpt;
-                    new_frame[p].alpha = alpha * 0.9;
+                var pt = animation[f][p];
+
+                var prev = (p + animation[f].length - 1) % animation[f].length;
+                var next = (p + 1) % animation[f].length;
+
+                var newpt = pt
+                        .add(animation[f+1][p])
+                        .add(animation[f-1][p])
+                        .add(animation[f][prev].mul(0.0))
+                        .add(animation[f][next].mul(0.0))
+                        .div(3.0)
+                        .add(DMSLib.Point2D.fromPolar(Math.random() * (DMSLib.TAU * 0.5 / animation[f].length) * (sa_temp / 100),
+                                                      Math.random() * DMSLib.TAU));
+
+                if( is_valid_new_point(animation[f], newpt, p, 0)) {
+                    new_frame.push(newpt);
                 } else {
-                    new_frame[p] = animation1[f][p];
-                    new_frame[p].alpha = alpha * 1.2;
+                    new_frame.push(animation[f][p]);
                 }
             }
-            animation1[f] = new_frame;
+            animation[f] = new_frame;
         }
 
-        tour = animation1[Math.floor(animation1.length/2)];
+        tour = animation[Math.floor(animation.length/2)];
         updateLine();
 
         timer = setTimeout(function() {optimize_animation();}, 11);
@@ -305,7 +318,7 @@
 
     /////////////////////////////// kick it off!
     var tour = [],
-        animation1 = [],
+        animation = [],
         animation2 = [];
 
     get_tour('random');
