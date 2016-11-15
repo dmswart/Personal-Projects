@@ -74,19 +74,20 @@ var match_other = function(pts, other) {
 
     // fix winding
     if(is_cw(other) !== is_cw(pts)) {
-        pts.reverse();
+        pts = pts.reverse();
     }
 
-    // calculate theta offset
-    var nominal_offset = pts[0].theta() - other[0].theta();
-    var theta_offset = 0;
-    for(var i=0; i<pts.length; i++) {
-        var delta = (pts[i].theta() - other[i].theta()) - nominal_offset;
-        theta_offset += DMSLib.fixAngle(delta);
-    }
-    theta_offset = (theta_offset /pts.length) + nominal_offset;
-    if(is_cw(pts)) { theta_offset *= -1; } // get positive offset in line with our winding.
+    var best_mvmt = movement(pts, other);
+    var result = pts;
 
-    var pts_shift = Math.floor(DMSLib.fixAnglePositive(theta_offset) * pts.length / DMSLib.TAU);
-    return pts.slice(pts_shift, pts.length).concat(pts.slice(0, pts_shift));
+    for(shift = 0; shift<pts.length; shift++) {
+        var candidate = pts.slice(shift, pts.length).concat(pts.slice(0, shift));
+        var mvmt = movement(candidate, other)
+        if(mvmt < best_mvmt) {
+            best_mvmt = mvmt;
+            result = candidate;
+        }
+    }
+
+    return result;
 };

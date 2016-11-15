@@ -9,7 +9,7 @@
 <body>
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
-        <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='0' onchange='first_color_percentage=this.value;updateLine();'>
+        <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='3' onchange='first_color_percentage=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br>
@@ -33,7 +33,7 @@
     var scale = 350,
         size = new DMSLib.Point2D(2*scale+580, 2*scale+20),
         center = size.div(2),
-        first_color_percentage = 0.0,
+        first_color_percentage = 3.0,
         first_color = 'red',
         second_color = 'black',
         line_thickness = 4,
@@ -64,7 +64,8 @@
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
             .y(function(d) { return d.y;})
-            .interpolate('linear');
+            // .interpolate('linear');
+            .interpolate('basis');
 
     var updateLine = function(frame_time) {
         // split first, second
@@ -117,19 +118,37 @@
         updateLine();
     };
 
-    var is_valid_new_point = function(pts, new_pt, idx) {
-        var prev = (idx - 1 + pts.length) % pts.length;
-        var next = (idx + 1) % pts.length;
 
-        tolerance = Math.min(pts[prev].sub(pts[idx]).R(),
-                pts[idx].sub(pts[next]).R(),
-                pts[prev].sub(pts[next]).R() * 0.5);
+    // returns true iff the line from a1->a2 intersects with b1->b2
+    var edge_intersects_edge = function(a1, a2, b1, b2) {
+        // shortcut
+        if( Math.max(a1.x, a2.x) < Math.min(b1.x, b2.x) ||
+            Math.max(b1.x, b2.x) < Math.min(a1.x, a2.x) ||
+            Math.max(a1.y, a2.y) < Math.min(b1.y, b2.y) ||
+            Math.max(b1.y, b2.y) < Math.min(a1.y, a2.y) ) {
+            return false;
+        } 
+            
+        det = (a2.x - a1.x) * (b2.y - b1.y) - (b2.x - b1.x) * (a2.y - a1.y);
+        if (det === 0) return false;
+
+        lambda = ((b2.y - b1.y) * (b2.x - a1.x) + (b1.x - b2.x) * (b2.y - a1.y)) / det;
+        gamma = ((a1.y - a2.y) * (b2.x - a1.x) + (a2.x - a1.x) * (b2.y - a1.y)) / det;
+        return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
+    };
+
+    var is_valid_new_point = function(pts, new_pt, idx) {
+        var a1 = pts[(idx - 1 + pts.length) % pts.length];
+        var a2 = pts[idx];
+        var a3 = pts[(idx+1) % pts.length];
 
         for (var i = 0; i < pts.length; i++) {
-            if (i === idx || i === prev || i === next) {
-                continue;
-            }
-            if (pts[i].sub(new_pt).R() < tolerance) {
+            var b1 = pts[i];
+            var b2 = pts[(i+1)%pts.length];
+
+            if (b1 === a1 || b1 === a2) {continue;}
+
+            if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
                 return false;
             }
         }
@@ -158,13 +177,8 @@
                 prev = (idx - 1 + tour.length) % tour.length;
                 next = (idx + 1) % tour.length;
 
-                var angle, factor, new_pt;
-                angle = DMSLib.Point2D.angle(tour[prev], tour[idx], tour[next]);
-                factor = angle / DMSLib.QUARTERTAU;
-                new_pt = tour[idx].mul(factor)
-                        .add(tour[prev])
-                        .add(tour[next])
-                        .div(2 + factor);
+                var new_pt;
+                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
                 if (is_valid_new_point(tour, new_pt, idx)) {
                     new_tour[idx] = new_pt;
@@ -197,24 +211,24 @@
     var tsp = function () {
         var changed = false;
 
-        var a, b, anext, bnext;
-        var atoanext, btobnext, atob, anexttobnext;
-        for (a = 0; a < tour.length; a++) {
-            for (b = a + 2; b < tour.length; b++) {
-                anext = (a + 1) % tour.length;
-                bnext = (b + 1) % tour.length;
+        var a1, b1, a2, b2,
+            a1toa2, b1tob2, a1tob1, a2tob2;
+        for (a1 = 0; a1 < tour.length; a1++) {
+            for (b1 = a1 + 2; b1 < tour.length; b1++) {
+                a2 = (a1 + 1) % tour.length;
+                b2 = (b1 + 1) % tour.length;
 
-                atoanext = tour[anext].sub(tour[a]).R();
-                btobnext = tour[bnext].sub(tour[b]).R();
-                atob = tour[b].sub(tour[a]).R();
-                anexttobnext = tour[bnext].sub(tour[anext]).R();
+                a1toa2 = tour[a2].sub(tour[a1]).R();
+                b1tob2 = tour[b2].sub(tour[b1]).R();
+                a1tob1 = tour[b1].sub(tour[a1]).R();
+                a2tob2 = tour[b2].sub(tour[a2]).R();
 
-                if (atob + anexttobnext < atoanext + btobnext) {
-                    // swap [anext ... b]
+                if (a1tob1 + a2tob2 < a1toa2 + b1tob2) {
+                    // swap [a2 ... b1]
                     var idx, from, to, tmp;
-                    for (idx = 0; anext + idx < b - idx; idx++) {
-                        from = (anext + idx) % tour.length;
-                        to = (b - idx) % tour.length;
+                    for (idx = 0; a2 + idx < b1 - idx; idx++) {
+                        from = (a2 + idx) % tour.length;
+                        to = (b1 - idx) % tour.length;
                         tmp = new DMSLib.Point2D(tour[from]);
                         tour[from] = new DMSLib.Point2D(tour[to]);
                         tour[to] = new DMSLib.Point2D(tmp);
@@ -254,30 +268,39 @@
 
     var optimize_animation = function() {
         if(animation2.length) {
-            animation2.reverse();
-            animation1.concat(animation2);
+            animation1 = animation1.concat(animation2.reverse());
             animation2 = [];
         }
 
-        var changed = false;
-        for(var i=0; i<10; i++) {
-            for(var f = 1; f < animation1.length-1; f++) {
-                for(var p = 0; p < animation1[f].length; p++) {
-                    var newpt = animation1[f-1][p].add(animation1[f+1][p]).mul(0.5);
-                    if( is_valid_new_point(animation1[f], newpt, p)) {
-                        animation1[f][p] = newpt;
-                        changed = true;
-                    }
+        for(var f = 1; f < animation1.length-1; f++) {
+            var new_frame = [];
+            for(var p = 0; p < animation1[f].length; p++) {
+                if(animation1[f][p].alpha === undefined) {
+                    animation1[f][p].alpha = 1.0;
+                }
+                var alpha = animation1[f][p].alpha;
+
+                var prev = (p + animation1[f].length - 1) % animation1[f].length;
+                var next = (p + 1) % animation1[f].length;
+                var newpt = animation1[f][p].mul(alpha)
+                    .add(animation1[f+1][p])
+                    .add(animation1[f-1][p])
+                    .div(alpha+2);
+                if( is_valid_new_point(animation1[f], newpt, p)) {
+                    new_frame[p] = newpt;
+                    new_frame[p].alpha = alpha * 0.9;
+                } else {
+                    new_frame[p] = animation1[f][p];
+                    new_frame[p].alpha = alpha * 1.2;
                 }
             }
+            animation1[f] = new_frame;
         }
 
-        if (!changed) {
-            timer = null;
-            d3.select('#OptimizeAnimation').property('value', 'OptimizeAnimation');
-        } else {
-            timer = setTimeout(function() {optimize_animation(); }, 11);
-        }
+        tour = animation1[Math.floor(animation1.length/2)];
+        updateLine();
+
+        timer = setTimeout(function() {optimize_animation();}, 11);
     };
 
     /////////////////////////////// kick it off!
@@ -293,6 +316,7 @@
     // TODO - read / write routes from file system
     // TODO - write animation to file system
     // TODO - figure out why frame_time isn't smooth for slow transitions.
+    // TODO - add a way for pts to slink along side to side.
 
 
 </script>
