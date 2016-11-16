@@ -10,7 +10,8 @@
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='3' onchange='first_color_segments=this.value;updateLine();'>
-        <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
+        <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
+        <input type="checkbox" id='dot' onclick='initial_dot.attr("fill",this.checked?"green":"none");' value='true'> <label for='dot'>Dot</label><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br> <br>
         <button onclick='get_tour("random");'>random</button>
@@ -18,12 +19,13 @@
         <button onclick='get_tour("circle");'>circle</button>
         <button onclick='get_tour("spiral");'>spiral</button><br>
 
+        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
 
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='100' value='30' onchange='sa_temp=this.value;'>
+        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/> <br>
     </div>
 
@@ -42,7 +44,7 @@
         line_thickness = 4,
         requested_size = 200,
         timer,
-        sa_temp = 30,
+        sa_temp = 3,
         fps = 30;
 
 
@@ -54,16 +56,22 @@
     var line_space = svg.append('g')
             .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
 
-    first_line = line_space.append('path')
+    var first_line = line_space.append('path')
             .attr('id', 'first_line')
             .attr('stroke', first_color)
             .attr('stroke-width', line_thickness/scale)
             .attr('fill', 'none');
-    second_line = line_space.append('path')
+    var second_line = line_space.append('path')
             .attr('id', 'second_line')
             .attr('stroke', second_color)
             .attr('stroke-width', line_thickness/scale)
             .attr('fill', 'none');
+    var initial_dot = line_space.append('circle')
+            .attr('id', 'initial_dot')
+            .attr('fill', 'none')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', line_thickness/scale);
 
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
@@ -81,6 +89,9 @@
         if (frame_time===undefined) {
             first_line.attr('d', lineFunction(first_line_pts));
             second_line.attr('d', lineFunction(second_line_pts));
+            initial_dot
+                    .attr('cx', tour[0].x)
+                    .attr('cy', tour[0].y);
         } else {
             first_line
                     .transition()
@@ -92,6 +103,12 @@
                     .duration(frame_time)
                     .ease('linear')
                     .attr('d', lineFunction(second_line_pts));
+            initial_dot
+                    .transition()
+                    .duration(frame_time)
+                    .ease('linear')
+                    .attr('cx', tour[0].x)
+                    .attr('cy', tour[0].y);
         }
     };
 
@@ -104,6 +121,7 @@
     ////////////////////////////////// Launching framework
     var go = function (method) {
         var method_fns = { "Smooth" : smooth,
+                           "Stipple" : stipple,
                            "TSP" : tsp,
                            "Animate" : animate,
                            "TakeTour" : take_tour,
@@ -205,6 +223,38 @@
         }
     };
 
+    var stipple = function (iter) {
+        if(iter=== undefined) iter=50;
+        // d3.voronoi(tour) x(d) { return d.x} y(d) { return d.y} //TODO
+
+        // initialize accumulator variables
+        var newpos = [];
+        var sumofweights = [];
+        var i;
+        for(i=0; i<tour.length; i++) {
+            newpos.push(new DMSLib.Point2D());
+            sumofweights.push(0);
+        }
+
+        //for each pixel in picture //TODO picture?
+        //    find polygon i that this pixel belongs to
+        //    newpos[i] = (pixel.x, pixel.y) * weight(pixel.r)
+        //    sumofweights[i] = weight(pixel.r)
+
+        for(i=0; i<tour.length; i++) {
+            if(sumofweights[i]) {
+                tour[i] = newpos[i].div(sumofweights[i]);
+            }
+        }
+
+        if(iter) {
+            timer = setTimeout(function() {stipple(iter-1); }, 1000/fps);
+        } else {
+            timer = null;
+            d3.select('#Stipple').property('value', 'Stipple');
+        }
+    };
+
     var tsp = function () {
         var changed = false;
 
@@ -299,7 +349,7 @@
                         .add(animation[f][prev].mul(0.05))
                         .add(animation[f][next].mul(0.05))
                         .div(3.1)
-                        .add(DMSLib.Point2D.fromPolar(Math.random() * (DMSLib.TAU * 0.5 / animation[f].length) * (sa_temp / 100),
+                        .add(DMSLib.Point2D.fromPolar(Math.random() * (DMSLib.TAU * 0.5 / animation[f].length) * (sa_temp / 10),
                                                       Math.random() * DMSLib.TAU));
 
                 if( is_valid_new_point(animation[f], newpt, p)) {
