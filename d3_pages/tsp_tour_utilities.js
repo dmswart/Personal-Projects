@@ -91,3 +91,22 @@ var match_other = function(pts, other) {
 
     return result;
 };
+
+
+// returns true iff the line from a1->a2 intersects with b1->b2
+var edge_intersects_edge = function(a1, a2, b1, b2) {
+    // shortcut
+    if( Math.max(a1.x, a2.x) < Math.min(b1.x, b2.x) ||
+        Math.max(b1.x, b2.x) < Math.min(a1.x, a2.x) ||
+        Math.max(a1.y, a2.y) < Math.min(b1.y, b2.y) ||
+        Math.max(b1.y, b2.y) < Math.min(a1.y, a2.y) ) {
+        return false;
+    }
+
+    det = (a2.x - a1.x) * (b2.y - b1.y) - (b2.x - b1.x) * (a2.y - a1.y);
+    if (det === 0) return false;
+
+    lambda = ((b2.y - b1.y) * (b2.x - a1.x) + (b1.x - b2.x) * (b2.y - a1.y)) / det;
+    gamma = ((a1.y - a2.y) * (b2.x - a1.x) + (a2.x - a1.x) * (b2.y - a1.y)) / det;
+    return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
+};

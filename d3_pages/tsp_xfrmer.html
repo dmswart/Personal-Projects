@@ -9,19 +9,20 @@
 <body>
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
-        <label for='first_color_percentage'>%:</label> <input id='first_color_percentage' type='number' min='0' max='100' value='3' onchange='first_color_percentage=this.value;updateLine();'>
+        <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='3' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
-        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br>
+        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br> <br>
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
         <button onclick='get_tour("circle");'>circle</button>
-        <button onclick='get_tour("spiral");'>spiral</button><br><br>
+        <button onclick='get_tour("spiral");'>spiral</button><br>
 
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
+        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
 
+        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='100' value='30' onchange='sa_temp=this.value;'>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/> <br>
     </div>
@@ -35,7 +36,7 @@
     var scale = 350,
         size = new DMSLib.Point2D(2*scale+580, 2*scale+20),
         center = size.div(2),
-        first_color_percentage = 3.0,
+        first_color_segments = 3,
         first_color = 'red',
         second_color = 'black',
         line_thickness = 4,
@@ -71,20 +72,21 @@
             // .interpolate('basis');
 
     var updateLine = function(frame_time) {
-        // split first, second
-        var split = Math.floor(tour.length * first_color_percentage / 100.0);
-        var second_line_pts = tour.slice(split,tour.length);
-        second_line_pts.push(tour[0]);
+        // split into first, second
+        var first_line_pts = tour.slice(0,first_color_segments)
+                                 .concat(tour[first_color_segments%tour.length]);
+        var second_line_pts = tour.slice(first_color_segments,tour.length)
+                                  .concat(tour[0]);
 
         if (frame_time===undefined) {
-            first_line.attr('d', lineFunction(tour.slice(0,split+1)));
+            first_line.attr('d', lineFunction(first_line_pts));
             second_line.attr('d', lineFunction(second_line_pts));
         } else {
             first_line
                     .transition()
                     .duration(frame_time)
                     .ease('linear')
-                    .attr('d', lineFunction(tour.slice(0,split+1)));
+                    .attr('d', lineFunction(first_line_pts));
             second_line
                     .transition()
                     .duration(frame_time)
@@ -101,7 +103,11 @@
 
     ////////////////////////////////// Launching framework
     var go = function (method) {
-        var method_fns = { "Smooth" : smooth, "TSP" : tsp, "Animate" : animate, "OptimizeAnimation" : optimize_animation};
+        var method_fns = { "Smooth" : smooth,
+                           "TSP" : tsp,
+                           "Animate" : animate,
+                           "TakeTour" : take_tour,
+                           "OptimizeAnimation" : optimize_animation };
         var method_fn = method_fns[method];
 
         if (!timer) {
@@ -126,24 +132,6 @@
         updateLine();
     };
 
-
-    // returns true iff the line from a1->a2 intersects with b1->b2
-    var edge_intersects_edge = function(a1, a2, b1, b2) {
-        // shortcut
-        if( Math.max(a1.x, a2.x) < Math.min(b1.x, b2.x) ||
-            Math.max(b1.x, b2.x) < Math.min(a1.x, a2.x) ||
-            Math.max(a1.y, a2.y) < Math.min(b1.y, b2.y) ||
-            Math.max(b1.y, b2.y) < Math.min(a1.y, a2.y) ) {
-            return false;
-        } 
-            
-        det = (a2.x - a1.x) * (b2.y - b1.y) - (b2.x - b1.x) * (a2.y - a1.y);
-        if (det === 0) return false;
-
-        lambda = ((b2.y - b1.y) * (b2.x - a1.x) + (b1.x - b2.x) * (b2.y - a1.y)) / det;
-        gamma = ((a1.y - a2.y) * (b2.x - a1.x) + (a2.x - a1.x) * (b2.y - a1.y)) / det;
-        return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
-    };
 
     var is_valid_new_point = function(pts, new_pt, idx) {
         var a1 = pts[(idx - 1 + pts.length) % pts.length];
@@ -259,15 +247,32 @@
     };
 
 
+    var take_tour = function() {
+        first_color_segments++;
+        d3.select('#first_color_segments').property('value', first_color_segments);
+        updateLine();
+
+        if(first_color_segments < tour.length) {
+            timer = setTimeout(function() {take_tour(); }, 1000/fps);
+        } else {
+            timer = null;
+            d3.select('#TakeTour').property('value', 'Take Tour');
+        }
+    };
+
     var animate = function(frame) {
-        if(frame === undefined) { frame = 0; }
-        if(frame < animation.length + animation2.length) {
+        if(frame === undefined) {
+            frame = 0;
+            tour = animation[0];
+            updateLine();
+            timer = setTimeout(function() {animate(frame+1); }, 2000);
+        } else if(frame < animation.length + animation2.length) {
             if(frame < animation.length) {
                 tour = animation[frame];
             } else {
                 tour = animation2[animation2.length + animation.length - frame - 1]
             }
-            updateLine(frame===0 ? 0 : 1000/fps);
+            updateLine(1000/fps);
             timer = setTimeout(function() {animate(frame+1); }, 1000/fps);
         } else {
             timer = null;
