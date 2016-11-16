@@ -24,7 +24,7 @@ var get_circle_pts = function(num_pts) {
 var get_random_pts = function(num_pts) {
     var result = [];
     for(var i=0; i<num_pts; i++) {
-        result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5).mul(2) );
+        result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5) );
     }
     return result;
 };

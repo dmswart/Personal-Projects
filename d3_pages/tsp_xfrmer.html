@@ -83,10 +83,12 @@
             first_line
                     .transition()
                     .duration(frame_time)
+                    .ease('linear')
                     .attr('d', lineFunction(tour.slice(0,split+1)));
             second_line
                     .transition()
                     .duration(frame_time)
+                    .ease('linear')
                     .attr('d', lineFunction(second_line_pts));
         }
     };
@@ -113,7 +115,10 @@
     };
 
     var get_tour = function(method) {
-        var method_fns = {'circle' : get_circle_pts, 'spiral' : get_spiral_pts, 'house' : get_house_pts, 'random' : get_random_pts};
+        var method_fns = {'circle' : get_circle_pts,
+                          'spiral' : get_spiral_pts,
+                          'house' : get_house_pts,
+                          'random' : get_random_pts};
         var method_fn = method_fns[method];
 
         tour = method_fn(requested_size);
@@ -140,26 +145,21 @@
         return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
     };
 
-    var is_valid_new_point = function(pts, new_pt, idx, tolerance) {
+    var is_valid_new_point = function(pts, new_pt, idx) {
         var a1 = pts[(idx - 1 + pts.length) % pts.length];
-        var a2 = pts[idx];
+        var a2 = new_pt;
         var a3 = pts[(idx+1) % pts.length];
 
         for (var i = 0; i < pts.length; i++) {
             var b1 = pts[i];
             var b2 = pts[(i+1)%pts.length];
 
-            // point proximity
-            if (b1 !== a2 && b1.sub(a2).R() < tolerance) {
-                return false;
-            }
             // edge intersection
             if (b1 !== a1 && b1 !== a2) {
                 if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
                     return false;
                 }
             }
-
         }
         return true;
     };
@@ -181,7 +181,6 @@
 
         var num_iter, idx, prev, next;
         for (num_iter = 0; num_iter < 2000; num_iter++) {
-            var tolerance = min_edge(tour);
             new_tour = [];
             for (idx = 0; idx < tour.length; idx++) {
                 prev = (idx - 1 + tour.length) % tour.length;
@@ -190,7 +189,7 @@
                 var new_pt;
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
-                if (is_valid_new_point(tour, new_pt, idx, tolerance)) {
+                if (is_valid_new_point(tour, new_pt, idx)) {
                     new_tour[idx] = new_pt;
                 } else {
                     new_tour[idx] = tour[idx];
@@ -283,25 +282,22 @@
         }
 
         for(var f = 1; f < animation.length-1; f++) {
-            var tolerance = min_edge(animation[f]);
             var new_frame = [];
             for(var p = 0; p < animation[f].length; p++) {
-
-                var pt = animation[f][p];
 
                 var prev = (p + animation[f].length - 1) % animation[f].length;
                 var next = (p + 1) % animation[f].length;
 
-                var newpt = pt
+                var newpt = animation[f][p]
                         .add(animation[f+1][p])
                         .add(animation[f-1][p])
-                        .add(animation[f][prev].mul(0.0))
-                        .add(animation[f][next].mul(0.0))
-                        .div(3.0)
+                        .add(animation[f][prev].mul(0.05))
+                        .add(animation[f][next].mul(0.05))
+                        .div(3.1)
                         .add(DMSLib.Point2D.fromPolar(Math.random() * (DMSLib.TAU * 0.5 / animation[f].length) * (sa_temp / 100),
                                                       Math.random() * DMSLib.TAU));
 
-                if( is_valid_new_point(animation[f], newpt, p, 0)) {
+                if( is_valid_new_point(animation[f], newpt, p)) {
                     new_frame.push(newpt);
                 } else {
                     new_frame.push(animation[f][p]);
@@ -324,12 +320,10 @@
     get_tour('random');
 
 
-    // TODO - make a tour class, an animation class
+    // TODO - make a tour class, an animation class, move animation to new file
     // TODO - 3d version: on a sphere.
-    // TODO - read / write routes from file system
-    // TODO - write animation to file system
-    // TODO - figure out why frame_time isn't smooth for slow transitions.
-    // TODO - add a way for pts to slink along side to side.
+    // TODO - read / write routes from/to file system
+    // TODO - figure out why sometimes (crowded) points get stuck
 
 
 </script>

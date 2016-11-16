@@ -15,15 +15,6 @@ var avg_R = function(pts) {
     return total / pts.length;
 };
 
-var min_edge = function(pts) {
-    var result = pts[pts.length-1].sub(pts[0]).R();
-
-    for(var i=0; i<pts.length-1; i++) {
-        result = Math.min(result, pts[i].sub(pts[i+1]).R());
-    }
-    return result;
-};
-
 var is_cw = function(pts) {
     // get lowest rightmost point
     var lr = 0, idx;
