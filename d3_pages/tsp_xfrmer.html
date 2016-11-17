@@ -1,35 +1,43 @@
 <html>
 <head>
-    <script src='./dmslib_core.js'></script>
-    <script src='./dmslib_point2d.js'></script>
-    <script src='./tsp_tour_generation.js'></script>
-    <script src='./tsp_tour_utilities.js'></script>
-    <script src='http://d3js.org/d3.v3.min.js'></script>
+    <script src='https://d3js.org/d3.v3.min.js'></script>
+    <script src='https://d3js.org/d3-voronoi.v1.min.js'></script>
+    <script type='text/javascript' src='./dmslib_core.js'></script>
+    <script type='text/javascript' src='./dmslib_point2d.js'></script>
+    <script type='text/javascript' src='./tsp_tour_generation.js'></script>
+    <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
 </head>
 <body>
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='3' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
-        <input type="checkbox" id='dot' onclick='initial_dot.attr("fill",this.checked?"green":"none");' value='true'> <label for='dot'>Dot</label><br>
+        <input type='checkbox' id='dot' onclick='initial_dot.attr("fill",this.checked?"green":"none");' value='true'> <label for='dot'>Dot</label><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br> <br>
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
         <button onclick='get_tour("circle");'>circle</button>
+        <button onclick='get_tour("target");'>target</button>
         <button onclick='get_tour("spiral");'>spiral</button><br>
 
-        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
+        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
 
+        <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
+        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/> <br>
+
+        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
+        <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'>
-        <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/> <br>
+        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br>
     </div>
 
     <div id='output'></div>
+
+    <div id='target' hidden>
+        <img id='target_picture' style='border-width:1px' src=""/>
+    </div>
 </body>
 </html>
 
@@ -45,7 +53,9 @@
         requested_size = 200,
         timer,
         sa_temp = 3,
-        fps = 30;
+        fps = 30,
+        target = {width:1280, height:720, pixel: function() {return 0;} };
+
 
 
     ///////////////////// D3 focused display routines.
@@ -120,12 +130,12 @@
 
     ////////////////////////////////// Launching framework
     var go = function (method) {
-        var method_fns = { "Smooth" : smooth,
-                           "Stipple" : stipple,
-                           "TSP" : tsp,
-                           "Animate" : animate,
-                           "TakeTour" : take_tour,
-                           "OptimizeAnimation" : optimize_animation };
+        var method_fns = { 'Smooth' : smooth,
+                           'Stipple' : stipple,
+                           'TSP' : tsp,
+                           'Animate' : animate,
+                           'TakeTour' : take_tour,
+                           'OptimizeAnimation' : optimize_animation };
         var method_fn = method_fns[method];
 
         if (!timer) {
@@ -142,10 +152,11 @@
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
                           'house' : get_house_pts,
+                          'target': get_target_pts,
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
 
-        tour = method_fn(requested_size);
+        tour = method_fn(requested_size, target);
         normalize(tour);
         updateLine();
     };
@@ -223,9 +234,41 @@
         }
     };
 
+    var onTargetSelected = function(event) {
+        // d3.select('#target_picture').attr('src', event.target.files[0].name);
+        var img = document.getElementById('target_picture');
+
+        var selectedFile = event.target.files[0];
+        var reader = new FileReader();
+        img.title = selectedFile.name;
+
+        reader.onload = function(event) {
+            img.onload = getTargetFromImage;
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(selectedFile);
+    };
+
+    var getTargetFromImage = function() {
+        var img = document.getElementById('target_picture');
+
+        var c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+
+        var ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        target = ctx.getImageData(0, 0, c.width, c.height);
+        target.pixel = function(x,y) { x=Math.floor(x); y=Math.floor(y); return this.data[y*this.width*4+x*4]; };
+    };
+
     var stipple = function (iter) {
-        if(iter=== undefined) iter=50;
-        // d3.voronoi(tour) x(d) { return d.x} y(d) { return d.y} //TODO
+        var voronoi = d3.voronoi()
+                .x(function(d) {return d.x;})
+                .y(function(d) {return d.y;})
+                .extent([[-target.width/2/scale, -target.height/2/scale], [target.width/2/scale, target.height/2/scale]]);
+        var diagram = voronoi(tour);
 
         // initialize accumulator variables
         var newpos = [];
@@ -236,18 +279,28 @@
             sumofweights.push(0);
         }
 
-        //for each pixel in picture //TODO picture?
-        //    find polygon i that this pixel belongs to
-        //    newpos[i] = (pixel.x, pixel.y) * weight(pixel.r)
-        //    sumofweights[i] = weight(pixel.r)
+        // add weighted images pixels to nearest cities
+        for(var x=0; x<target.width; x++) {
+            for (var y = 0; y < target.height; y++) {
+                var pos = new DMSLib.Point2D((x-target.width/2) / scale,
+                                             (y-target.height/2) / scale);
+                var idx = diagram.find(x,y).index;
+                var weight = 1.0 - target(x,y);
+                newpos[idx] = newpos[idx].add(pos.mul(weight));
+                sumofweights[idx] += weight;
+            }
+        }
 
+        // calculate weighted average and show
         for(i=0; i<tour.length; i++) {
             if(sumofweights[i]) {
                 tour[i] = newpos[i].div(sumofweights[i]);
             }
         }
+        updateLine();
 
-        if(iter) {
+        if(iter=== undefined) iter=50;
+        if(iter!=0) {
             timer = setTimeout(function() {stipple(iter-1); }, 1000/fps);
         } else {
             timer = null;
@@ -375,10 +428,12 @@
     get_tour('random');
 
 
-    // TODO - make a tour class, an animation class, move animation to new file
+    // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
     // TODO - read / write routes from/to file system
-    // TODO - figure out why sometimes (crowded) points get stuck
+    // TODO - deal with target size / normalized scale etc.
+
+
 
 
 </script>

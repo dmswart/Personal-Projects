@@ -21,10 +21,27 @@ var get_circle_pts = function(num_pts) {
     return result;
 };
 
-var get_random_pts = function(num_pts) {
+var get_random_pts = function(num_pts, target) {
     var result = [];
     for(var i=0; i<num_pts; i++) {
-        result.push( new DMSLib.Point2D(Math.random() - 0.5, Math.random() - 0.5) );
+        var x = Math.random() * target.width;
+        var y = Math.random() * target.height;
+        result.push(new DMSLib.Point2D(x, y));
+    }
+    return result;
+};
+
+var get_target_pts = function(num_pts, target) {
+    result=[];
+    while(result.length < num_pts)
+    {
+        var x = Math.random() * target.width;
+        var y = Math.random() * target.height;
+        var dice = Math.random()*255;
+        var tobeat = target.pixel(x, y);
+        if( dice > tobeat) {
+            result.push( new DMSLib.Point2D(x, y) );
+        }
     }
     return result;
 };
