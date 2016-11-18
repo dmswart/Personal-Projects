@@ -12,7 +12,7 @@
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='3' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
-        <input type='checkbox' id='dot' onclick='initial_dot.attr("fill",this.checked?"green":"none");' value='true'> <label for='dot'>Dot</label><br>
+        <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br> <br>
         <button onclick='get_tour("random");'>random</button>
@@ -43,8 +43,7 @@
 
 
 <script>
-    var scale = 350,
-        size = new DMSLib.Point2D(2*scale+580, 2*scale+20),
+    var size = new DMSLib.Point2D(1280, 720),
         center = size.div(2),
         first_color_segments = 3,
         first_color = 'red',
@@ -52,6 +51,7 @@
         line_thickness = 4,
         requested_size = 200,
         timer,
+        do_dots = true,
         sa_temp = 3,
         fps = 30,
         target = {width:1280, height:720, pixel: function() {return 0;} };
@@ -63,31 +63,30 @@
             .attr('width', size.x)
             .attr('height', size.y);
 
-    var line_space = svg.append('g')
-            .attr('transform', 'translate('+center.x+','+center.y+') scale('+scale+')');
+    var line_space = svg.append('g');
 
     var first_line = line_space.append('path')
             .attr('id', 'first_line')
             .attr('stroke', first_color)
-            .attr('stroke-width', line_thickness/scale)
+            .attr('stroke-width', line_thickness)
             .attr('fill', 'none');
     var second_line = line_space.append('path')
             .attr('id', 'second_line')
             .attr('stroke', second_color)
-            .attr('stroke-width', line_thickness/scale)
+            .attr('stroke-width', line_thickness)
             .attr('fill', 'none');
-    var initial_dot = line_space.append('circle')
+    /* var initial_dot = line_space.append('circle')
             .attr('id', 'initial_dot')
-            .attr('fill', 'none')
+            .attr('fill', 'green')
             .attr('cx', 0)
             .attr('cy', 0)
-            .attr('r', line_thickness/scale);
+            .attr('r', line_thickness);*/
 
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
             .y(function(d) { return d.y;})
-            .interpolate('linear');
-            // .interpolate('basis');
+            // .interpolate('linear');
+            .interpolate('cardinal');
 
     var updateLine = function(frame_time) {
         // split into first, second
@@ -99,9 +98,7 @@
         if (frame_time===undefined) {
             first_line.attr('d', lineFunction(first_line_pts));
             second_line.attr('d', lineFunction(second_line_pts));
-            initial_dot
-                    .attr('cx', tour[0].x)
-                    .attr('cy', tour[0].y);
+            /* initial_dot.attr('cx', tour[0].x).attr('cy', tour[0].y);*/
         } else {
             first_line
                     .transition()
@@ -113,12 +110,30 @@
                     .duration(frame_time)
                     .ease('linear')
                     .attr('d', lineFunction(second_line_pts));
-            initial_dot
+            /* initial_dot
                     .transition()
                     .duration(frame_time)
                     .ease('linear')
                     .attr('cx', tour[0].x)
-                    .attr('cy', tour[0].y);
+                    .attr('cy', tour[0].y);*/
+        }
+
+        dotSelection = line_space.selectAll('.dot').data(tour);
+        if(do_dots) {
+            dotSelection
+                .attr('r', line_thickness/2+1 )
+                .attr('cx', function(d) { return d.x; })
+                .attr('cy', function(d) { return d.y; });
+            dotSelection
+              .enter().append('circle')
+                .attr('class', 'dot')
+                .attr('r', line_thickness/2+1 )
+                .attr('cx', function(d) { return d.x; })
+                .attr('cy', function(d) { return d.y; });
+            dotSelection
+              .exit().remove();
+        } else {
+            dotSelection.remove();
         }
     };
 
@@ -157,7 +172,6 @@
         var method_fn = method_fns[method];
 
         tour = method_fn(requested_size, target);
-        normalize(tour);
         updateLine();
     };
 
@@ -183,6 +197,7 @@
 
     var smooth = function(max_mvmt) {
         var mvmt = 0;
+        pointspread = get_pointspread(tour);
 
         // if max_mvt = undefined, it's first frame: start animation
         if (max_mvmt === undefined) {
@@ -213,7 +228,7 @@
                 }
             }
             tour = new_tour;
-            normalize(tour);
+            set_pointspread(tour, pointspread)
 
             mvmt = movement(tour, saved_tour);
             if(mvmt >= max_mvmt) { break; }
@@ -267,7 +282,7 @@
         var voronoi = d3.voronoi()
                 .x(function(d) {return d.x;})
                 .y(function(d) {return d.y;})
-                .extent([[-target.width/2/scale, -target.height/2/scale], [target.width/2/scale, target.height/2/scale]]);
+                .extent([[-1, -1], [target.width, target.height]]);
         var diagram = voronoi(tour);
 
         // initialize accumulator variables
@@ -282,12 +297,12 @@
         // add weighted images pixels to nearest cities
         for(var x=0; x<target.width; x++) {
             for (var y = 0; y < target.height; y++) {
-                var pos = new DMSLib.Point2D((x-target.width/2) / scale,
-                                             (y-target.height/2) / scale);
                 var idx = diagram.find(x,y).index;
-                var weight = 1.0 - target(x,y);
-                newpos[idx] = newpos[idx].add(pos.mul(weight));
-                sumofweights[idx] += weight;
+                var weight = 255-target.pixel(x,y);
+                if(weight) {
+                    newpos[idx] = newpos[idx].add(new DMSLib.Point2D(x,y).mul(weight));
+                    sumofweights[idx] += weight;
+                }
             }
         }
 
@@ -391,6 +406,7 @@
 
         for(var f = 1; f < animation.length-1; f++) {
             var new_frame = [];
+            var avg_edge_size = avg_edge(tour);
             for(var p = 0; p < animation[f].length; p++) {
 
                 var prev = (p + animation[f].length - 1) % animation[f].length;
@@ -402,7 +418,7 @@
                         .add(animation[f][prev].mul(0.05))
                         .add(animation[f][next].mul(0.05))
                         .div(3.1)
-                        .add(DMSLib.Point2D.fromPolar(Math.random() * (DMSLib.TAU * 0.5 / animation[f].length) * (sa_temp / 10),
+                        .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (sa_temp / 10),
                                                       Math.random() * DMSLib.TAU));
 
                 if( is_valid_new_point(animation[f], newpt, p)) {
@@ -431,7 +447,6 @@
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
     // TODO - read / write routes from/to file system
-    // TODO - deal with target size / normalized scale etc.
 
 
 

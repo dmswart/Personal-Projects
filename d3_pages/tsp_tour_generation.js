@@ -1,4 +1,4 @@
-var get_spiral_pts = function(num_pts) {
+var get_spiral_pts = function(num_pts, target) {
     var result = [], i;
 
     // way in
@@ -10,14 +10,16 @@ var get_spiral_pts = function(num_pts) {
         result.push( new DMSLib.Point2D.fromPolar(i+60, i/10) );
     }
 
+    set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
     return result;
 };
 
-var get_circle_pts = function(num_pts) {
+var get_circle_pts = function(num_pts, target) {
     var result = [];
     for(var i=0; i<num_pts; i++) {
         result.push(new DMSLib.Point2D.fromPolar(1, i * DMSLib.TAU / num_pts));
     }
+    set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
     return result;
 };
 
@@ -51,6 +53,7 @@ var get_house_pts = function() {
     house_pts.forEach(function(pt) {
         result.push( new DMSLib.Point2D(pt.x, pt.y));
     });
+    set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
     return result;
 };
 

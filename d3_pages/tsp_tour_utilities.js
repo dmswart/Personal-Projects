@@ -1,3 +1,35 @@
+var get_pointspread = function(pts) {
+    var center = calc_centroid(pts);
+    
+    var avgR = 0;
+    pts.forEach( function(pt) {
+        avgR += pt.sub(center).R();
+    });
+    avgR /= pts.length;
+
+    return {center:center, avgR:avgR};
+};
+
+var set_pointspread = function(pts, target) {
+    // first offset them to the origin.
+    var center = calc_centroid(pts); 
+    var i;
+    for(i=0; i<pts.length; i++) {
+        pts[i] = pts[i].sub(center);
+    }
+
+    // now set radius;
+    var factor = target.avgR / avgR(pts);
+    for(i=0; i<pts.length; i++) {
+        pts[i] = pts[i].mul(factor);
+    }
+
+    // now offset it to the target center
+    for(i=0; i<pts.length; i++) {
+        pts[i] = pts[i].add(target.center);
+    }
+};
+
 var calc_centroid = function(pts) {
     var result = new DMSLib.Point2D();
     pts.forEach( function(pt) {
@@ -6,7 +38,7 @@ var calc_centroid = function(pts) {
     return result.div(pts.length);
 };
 
-var avg_R = function(pts) {
+var avgR = function(pts) {
     var total = 0;
 
     pts.forEach( function(pt) {
@@ -14,6 +46,14 @@ var avg_R = function(pts) {
     });
     return total / pts.length;
 };
+
+var avg_edge = function(pts) {
+    var total = pts[pts.length-1].sub(pts[0]).R();
+    for(var i=0; i<pts.length-2; i++) {
+        total += pts[i].sub(pts[i+1]).R();
+    }
+    return total / pts.length;
+}
 
 var is_cw = function(pts) {
     // get lowest rightmost point
@@ -32,21 +72,6 @@ var is_cw = function(pts) {
     return (a.x * b.y - a.y * b.x +
         a.y * c.x - a.x * c.y +
         b.x * c.y - c.x * b.y) > 0.0;
-};
-
-var normalize = function(pts) {
-    var centroid = calc_centroid(pts),
-        i,
-        factor;
-
-    for (i = 0; i < pts.length; i++) {
-        pts[i] = pts[i].sub(centroid);
-    }
-
-    factor = 0.5 / avg_R(pts);
-    for (i = 0; i < pts.length; i++) {
-        pts[i].scale(factor);
-    }
 };
 
 var copy_pts = function(pts) {
