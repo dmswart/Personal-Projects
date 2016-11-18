@@ -10,7 +10,7 @@
 <body>
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
-        <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='3' onchange='first_color_segments=this.value;updateLine();'>
+        <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
         <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button><br>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
@@ -45,7 +45,7 @@
 <script>
     var size = new DMSLib.Point2D(1280, 720),
         center = size.div(2),
-        first_color_segments = 3,
+        first_color_segments = 0,
         first_color = 'red',
         second_color = 'black',
         line_thickness = 4,
@@ -85,8 +85,8 @@
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
             .y(function(d) { return d.y;})
-            // .interpolate('linear');
-            .interpolate('cardinal');
+            .interpolate('linear');
+            // .interpolate('cardinal');
 
     var updateLine = function(frame_time) {
         // split into first, second
@@ -314,7 +314,7 @@
         }
         updateLine();
 
-        if(iter=== undefined) iter=50;
+        if(iter=== undefined) iter=20;
         if(iter!=0) {
             timer = setTimeout(function() {stipple(iter-1); }, 1000/fps);
         } else {

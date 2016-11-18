@@ -17,6 +17,7 @@
 </html>
 
 <script>
+    var __scale
     var svg = d3.select('#output').append('svg')
             .attr('width', 500)
             .attr('height',500)
@@ -40,7 +41,7 @@
         .attr('fill', 'none');
 
     var newSkeleton = function(skeleton_def) {
-        var skel = new skeleton(100);
+        var skel = new skeleton(__scale);
         if(parse_globemaker(skeleton_def, skel)) {
             // lines
             var selection = svg.select('#lines').selectAll('path')
