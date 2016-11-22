@@ -1,7 +1,7 @@
 <html>
 <head>
-    <script src='https://d3js.org/d3.v3.min.js'></script>
-    <script src='https://d3js.org/d3-voronoi.v1.min.js'></script>
+    <script type='text/javascript' src='./d3.v3.min.js'></script>
+    <script type='text/javascript' src='./d3-voronoi.v1.min.js'></script>
     <script type='text/javascript' src='./dmslib_core.js'></script>
     <script type='text/javascript' src='./dmslib_point2d.js'></script>
     <script type='text/javascript' src='./tsp_tour_generation.js'></script>
@@ -13,24 +13,23 @@
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
         <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button><br>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
-        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'> <br> <br>
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
         <button onclick='get_tour("circle");'>circle</button>
-        <button onclick='get_tour("target");'>target</button>
-        <button onclick='get_tour("spiral");'>spiral</button><br>
-
-        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
+        <button onclick='get_tour("spiral");'>spiral</button><br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/> <br>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
+        <button onclick='get_tour("target");'>target</button>
+        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
+        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
+        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br><br>
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
+        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br>
+        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br><br>
     </div>
 
     <div id='output'></div>
@@ -44,7 +43,6 @@
 
 <script>
     var size = new DMSLib.Point2D(1280, 720),
-        center = size.div(2),
         first_color_segments = 0,
         first_color = 'red',
         second_color = 'black',
@@ -53,7 +51,8 @@
         timer,
         do_dots = true,
         sa_temp = 3,
-        fps = 30,
+        fps = 16,
+        step_size=1,
         target = {width:1280, height:720, pixel: function() {return 0;} };
 
 
@@ -61,7 +60,8 @@
     ///////////////////// D3 focused display routines.
     var svg = d3.select('#output').append('svg')
             .attr('width', size.x)
-            .attr('height', size.y);
+            .attr('height', size.y)
+            .attr("style", "outline: thin solid red;");
 
     var line_space = svg.append('g');
 
@@ -177,13 +177,13 @@
 
 
     var is_valid_new_point = function(pts, new_pt, idx) {
-        var a1 = pts[(idx - 1 + pts.length) % pts.length];
+        var a1 = pts[(idx - step_size + pts.length) % pts.length];
         var a2 = new_pt;
-        var a3 = pts[(idx+1) % pts.length];
+        var a3 = pts[(idx + step_size) % pts.length];
 
-        for (var i = 0; i < pts.length; i++) {
+        for (var i = 0; i < pts.length; i+=step_size) {
             var b1 = pts[i];
-            var b2 = pts[(i+1)%pts.length];
+            var b2 = pts[(i+step_size)%pts.length];
 
             // edge intersection
             if (b1 !== a1 && b1 !== a2) {
@@ -196,12 +196,13 @@
     };
 
     var smooth = function(max_mvmt) {
-        var mvmt = 0;
-        pointspread = get_pointspread(tour);
+        var pointspread = get_pointspread(tour);
 
         // if max_mvt = undefined, it's first frame: start animation
         if (max_mvmt === undefined) {
             max_mvmt = 0;
+
+            step_size=1;
 
             animation2 = animation;
             animation = [];
@@ -211,15 +212,18 @@
 
         var saved_tour = copy_pts(tour);
 
+        if(tour.length/step_size > 360 && avg_bend(tour, step_size) < 0.8) { // ~5 degrees
+            step_size *= 2;
+        }
+
         var num_iter, idx, prev, next;
         for (num_iter = 0; num_iter < 2000; num_iter++) {
-            new_tour = [];
-            for (idx = 0; idx < tour.length; idx++) {
-                prev = (idx - 1 + tour.length) % tour.length;
-                next = (idx + 1) % tour.length;
+            var new_tour = [];
+            for (idx = 0; idx < tour.length; idx+=step_size) {
+                prev = (idx - step_size + tour.length) % tour.length;
+                next = (idx + step_size) % tour.length;
 
-                var new_pt;
-                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
+                var new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
                 if (is_valid_new_point(tour, new_pt, idx)) {
                     new_tour[idx] = new_pt;
@@ -227,16 +231,16 @@
                     new_tour[idx] = tour[idx];
                 }
             }
+            fill_in_tour(new_tour, step_size);
             tour = new_tour;
-            set_pointspread(tour, pointspread)
+            set_pointspread(tour, pointspread);
 
-            mvmt = movement(tour, saved_tour);
+            var mvmt = movement(tour, saved_tour);
+            if (max_mvmt === undefined || max_mvmt === 0) { max_mvmt = mvmt; }
             if(mvmt >= max_mvmt) { break; }
         }
 
         // if this is first time through, we use this amount of movement as the step amount.
-        if (max_mvmt === 0) {max_mvmt = mvmt;}
-
         animation.push(copy_pts(tour));
 
         updateLine();

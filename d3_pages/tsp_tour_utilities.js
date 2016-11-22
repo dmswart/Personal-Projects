@@ -135,3 +135,32 @@ var edge_intersects_edge = function(a1, a2, b1, b2) {
     gamma = ((a1.y - a2.y) * (b2.x - a1.x) + (a2.x - a1.x) * (b2.y - a1.y)) / det;
     return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
 };
+
+var avg_bend = function(tour, step_size) {
+    var result = 0,
+        count = 0,
+        a = tour[tour.length-3*step_size],
+        b = tour[tour.length-2*step_size],
+        c = tour[tour.length-1*step_size];
+    for(idx=0; idx<tour.length; idx+=step_size) {
+        a = b;
+        b = c;
+        c = tour[idx];
+        result += DMSLib.HALFTAU - DMSLib.Point2D.angle(a,b,c);
+        count++;
+    }
+    
+    return result / count;
+}
+
+var fill_in_tour = function(tour, step_size) {
+    var num_pts = Math.ceil(tour.length/step_size) * step_size;
+    
+    for(idx=0; idx<num_pts; idx+=step_size) {
+        var from = tour[idx];
+        var to = tour[(idx+step_size)%num_pts];
+        for(i=1; i<step_size; i++) {
+           tour[idx+i] = from.mul(step_size-i).add(to.mul(i)).div(step_size);
+        }
+    }
+}
