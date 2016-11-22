@@ -136,16 +136,16 @@ var edge_intersects_edge = function(a1, a2, b1, b2) {
     return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
 };
 
-var avg_bend = function(tour, step_size) {
+var avg_bend = function(pts, step_size) {
     var result = 0,
         count = 0,
-        a = tour[tour.length-3*step_size],
-        b = tour[tour.length-2*step_size],
-        c = tour[tour.length-1*step_size];
-    for(idx=0; idx<tour.length; idx+=step_size) {
+        a = pts[pts.length-3*step_size],
+        b = pts[pts.length-2*step_size],
+        c = pts[pts.length-1*step_size];
+    for(idx=0; idx<pts.length; idx+=step_size) {
         a = b;
         b = c;
-        c = tour[idx];
+        c = pts[idx];
         result += DMSLib.HALFTAU - DMSLib.Point2D.angle(a,b,c);
         count++;
     }
@@ -153,14 +153,14 @@ var avg_bend = function(tour, step_size) {
     return result / count;
 }
 
-var fill_in_tour = function(tour, step_size) {
-    var num_pts = Math.ceil(tour.length/step_size) * step_size;
+var fill_in_tour = function(pts, step_size) {
+    var num_pts = Math.ceil(pts.length/step_size) * step_size;
     
     for(idx=0; idx<num_pts; idx+=step_size) {
-        var from = tour[idx];
-        var to = tour[(idx+step_size)%num_pts];
+        var from = pts[idx];
+        var to = pts[(idx+step_size)%num_pts];
         for(i=1; i<step_size; i++) {
-           tour[idx+i] = from.mul(step_size-i).add(to.mul(i)).div(step_size);
+           pts[idx+i] = from.mul(step_size-i).add(to.mul(i)).div(step_size);
         }
     }
 }

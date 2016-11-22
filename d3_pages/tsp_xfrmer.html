@@ -19,7 +19,7 @@
         <button onclick='get_tour("spiral");'>spiral</button><br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=200 onchange='requested_size=this.value;'>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.value;'>
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
@@ -27,6 +27,7 @@
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
+        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step--</button>
         <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br><br>
@@ -47,9 +48,9 @@
         first_color = 'red',
         second_color = 'black',
         line_thickness = 4,
-        requested_size = 200,
+        requested_size = 1024,
         timer,
-        do_dots = true,
+        do_dots = false,
         sa_temp = 3,
         fps = 16,
         step_size=1,
@@ -75,12 +76,6 @@
             .attr('stroke', second_color)
             .attr('stroke-width', line_thickness)
             .attr('fill', 'none');
-    /* var initial_dot = line_space.append('circle')
-            .attr('id', 'initial_dot')
-            .attr('fill', 'green')
-            .attr('cx', 0)
-            .attr('cy', 0)
-            .attr('r', line_thickness);*/
 
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
@@ -98,7 +93,6 @@
         if (frame_time===undefined) {
             first_line.attr('d', lineFunction(first_line_pts));
             second_line.attr('d', lineFunction(second_line_pts));
-            /* initial_dot.attr('cx', tour[0].x).attr('cy', tour[0].y);*/
         } else {
             first_line
                     .transition()
@@ -110,12 +104,6 @@
                     .duration(frame_time)
                     .ease('linear')
                     .attr('d', lineFunction(second_line_pts));
-            /* initial_dot
-                    .transition()
-                    .duration(frame_time)
-                    .ease('linear')
-                    .attr('cx', tour[0].x)
-                    .attr('cy', tour[0].y);*/
         }
 
         dotSelection = line_space.selectAll('.dot').data(tour);
@@ -186,7 +174,7 @@
             var b2 = pts[(i+step_size)%pts.length];
 
             // edge intersection
-            if (b1 !== a1 && b1 !== a2) {
+            if (b1 !== a1 && b1 !== pts[idx]) {
                 if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
                     return false;
                 }
@@ -195,6 +183,8 @@
         return true;
     };
 
+
+    //////////////////////////////// Workhorse routines.
     var smooth = function(max_mvmt) {
         var pointspread = get_pointspread(tour);
 
@@ -411,10 +401,10 @@
         for(var f = 1; f < animation.length-1; f++) {
             var new_frame = [];
             var avg_edge_size = avg_edge(tour);
-            for(var p = 0; p < animation[f].length; p++) {
+            for(var p = 0; p < animation[f].length; p+=step_size) {
 
-                var prev = (p + animation[f].length - 1) % animation[f].length;
-                var next = (p + 1) % animation[f].length;
+                var prev = (p + animation[f].length - step_size) % animation[f].length;
+                var next = (p + step_size) % animation[f].length;
 
                 var newpt = animation[f][p]
                         .add(animation[f+1][p])
@@ -426,11 +416,12 @@
                                                       Math.random() * DMSLib.TAU));
 
                 if( is_valid_new_point(animation[f], newpt, p)) {
-                    new_frame.push(newpt);
+                    new_frame[p] = newpt;
                 } else {
-                    new_frame.push(animation[f][p]);
+                    new_frame[p] = animation[f][p];
                 }
             }
+            fill_in_tour(new_frame,step_size);
             animation[f] = new_frame;
         }
 
@@ -451,8 +442,5 @@
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
     // TODO - read / write routes from/to file system
-
-
-
 
 </script>
