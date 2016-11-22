@@ -21,14 +21,14 @@
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.value;'>
         <button onclick='get_tour("target");'>target</button>
-        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
+        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br><br>
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
         <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step--</button>
-        <label for='fps'>Frames per second:</label> <input id='fps' type='number' min='1' max=1000 value=16 onchange='fps=this.value;'>
+        <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br><br>
     </div>
@@ -52,7 +52,7 @@
         timer,
         do_dots = false,
         sa_temp = 3,
-        fps = 16,
+        pps = 100,
         step_size=1,
         target = {width:1280, height:720, pixel: function() {return 0;} };
 
@@ -83,8 +83,7 @@
             .interpolate('linear');
             // .interpolate('cardinal');
 
-    var updateLine = function(frame_time) {
-        // split into first, second
+    var updateLine = function(frame_time, easing) {
         var first_line_pts = tour.slice(0,first_color_segments)
                                  .concat(tour[first_color_segments%tour.length]);
         var second_line_pts = tour.slice(first_color_segments,tour.length)
@@ -94,15 +93,16 @@
             first_line.attr('d', lineFunction(first_line_pts));
             second_line.attr('d', lineFunction(second_line_pts));
         } else {
+            if(easing===undefined) {easing = 'linear';}
             first_line
                     .transition()
                     .duration(frame_time)
-                    .ease('linear')
+                    .ease(easing)
                     .attr('d', lineFunction(first_line_pts));
             second_line
                     .transition()
                     .duration(frame_time)
-                    .ease('linear')
+                    .ease(easing)
                     .attr('d', lineFunction(second_line_pts));
         }
 
@@ -202,7 +202,9 @@
 
         var saved_tour = copy_pts(tour);
 
-        if(tour.length/step_size > 360 && avg_bend(tour, step_size) < 0.8) { // ~5 degrees
+        if( tour.length/step_size > 360 &&
+            (tour.length % (step_size*2) === 0) &&
+            avg_bend(tour, step_size) < 0.8) { // ~5 degrees
             step_size *= 2;
         }
 
@@ -310,7 +312,7 @@
 
         if(iter=== undefined) iter=20;
         if(iter!=0) {
-            timer = setTimeout(function() {stipple(iter-1); }, 1000/fps);
+            timer = setTimeout(function() {stipple(iter-1); }, 21);
         } else {
             timer = null;
             d3.select('#Stipple').property('value', 'Stipple');
@@ -365,7 +367,8 @@
         updateLine();
 
         if(first_color_segments < tour.length) {
-            timer = setTimeout(function() {take_tour(); }, 1000/fps);
+            var frame_time = tour[first_color_segments].sub(tour[first_color_segments-1]).R() / pps * 1000;
+            timer = setTimeout(function() {take_tour(); }, frame_time);
         } else {
             timer = null;
             d3.select('#TakeTour').property('value', 'Take Tour');
@@ -373,23 +376,35 @@
     };
 
     var animate = function(frame) {
+        var frame_time, delay, easing;
+
         if(frame === undefined) {
             frame = 0;
-            tour = animation[0];
-            updateLine();
-            timer = setTimeout(function() {animate(frame+1); }, 2000);
-        } else if(frame < animation.length + animation2.length) {
-            if(frame < animation.length) {
-                tour = animation[frame];
-            } else {
-                tour = animation2[animation2.length + animation.length - frame - 1]
-            }
-            updateLine(1000/fps);
-            timer = setTimeout(function() {animate(frame+1); }, 1000/fps);
-        } else {
+            frame_time = undefined;
+            delay = 1000;
+        } else if (frame === animation.length) {
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
+            return;
+        } else {
+            frame_time = movement(animation[frame], animation[frame-1]) / pps * 1000;
+            delay = frame_time;
+            easing = 'linear';
         }
+
+        if(frame===1) {
+            easing = 'cubic-in';
+            frame_time *= 3;
+            delay *= 3;
+        } else if(frame === animation.length-1) {
+            easing = 'cubic-out';
+            frame_time *= 3;
+            delay *= 3;
+        }
+
+        tour = animation[frame];
+        updateLine(frame_time, easing);
+        timer = setTimeout(function () { animate(frame + 1); }, delay);
     };
 
     var optimize_animation = function() {
@@ -437,7 +452,6 @@
         animation2 = [];
 
     get_tour('random');
-
 
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
