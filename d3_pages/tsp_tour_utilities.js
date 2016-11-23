@@ -78,7 +78,7 @@ var copy_pts = function(pts) {
     var result = [];
 
     pts.forEach(function(pt) {
-        result.push(new DMSLib.Point2D(pt));
+        result.push(new DMSLib.Point2D(pt.x, pt.y));
     });
 
     return result;

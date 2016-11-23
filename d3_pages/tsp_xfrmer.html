@@ -13,24 +13,30 @@
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
         <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button><br>
+
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
         <button onclick='get_tour("circle");'>circle</button>
-        <button onclick='get_tour("spiral");'>spiral</button><br><br>
+        <button onclick='get_tour("spiral");'>spiral</button>
+        <button id='import_tour' onclick='import_tour();'>import</button>
+        <button id='export_tour' onclick='export_tour();'>export</button>
+        <label for='tour_json'>json:</label><input id='tour_json' type='text' value=''>
+        <br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
         <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.value;'>
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br><br>
+        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
         <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br><br>
+        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
+        <br><br>
     </div>
 
     <div id='output'></div>
@@ -163,7 +169,19 @@
         updateLine();
     };
 
+    var import_tour = function() {
+        var tour_json = document.getElementById('tour_json');
+        tour = copy_pts(JSON.parse(tour_json.value));
+        updateLine();
+    }
 
+    var export_tour = function() {
+        var tour_json = document.getElementById('tour_json');
+        tour_json.value = JSON.stringify(tour);
+    }
+
+
+    //////////////////////////////// Workhorse routines.
     var is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
         var a1 = pts[(idx - step_size + pts.length) % pts.length];
         var old_a2 = pts[idx];
@@ -196,7 +214,6 @@
     };
 
 
-    //////////////////////////////// Workhorse routines.
     var smooth = function(max_mvmt) {
         var pointspread = get_pointspread(tour);
 
@@ -467,6 +484,5 @@
 
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
-    // TODO - read / write routes from/to file system
 
 </script>
