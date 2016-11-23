@@ -27,7 +27,7 @@
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
-        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step--</button>
+        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/><br><br>
@@ -164,18 +164,30 @@
     };
 
 
-    var is_valid_new_point = function(pts, new_pt, idx) {
+    var is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
         var a1 = pts[(idx - step_size + pts.length) % pts.length];
-        var a2 = new_pt;
+        var old_a2 = pts[idx];
+        var new_a2 = new_pt;
         var a3 = pts[(idx + step_size) % pts.length];
+
+
+        var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
         for (var i = 0; i < pts.length; i+=step_size) {
             var b1 = pts[i];
             var b2 = pts[(i+step_size)%pts.length];
 
+            if(check_proximity === true) {
+                if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
+                    if (b1.sub(new_a2).R() < tolerance) {
+                        return false;
+                    }
+                }
+            }
+
             // edge intersection
-            if (b1 !== a1 && b1 !== pts[idx]) {
-                if (edge_intersects_edge(a1, a2, b1, b2) || edge_intersects_edge(a2, a3, b1, b2)) {
+            if (b1 !== a1 && b1 !== old_a2) {
+                if (edge_intersects_edge(a1, new_a2, b1, b2) || edge_intersects_edge(new_a2, a3, b1, b2)) {
                     return false;
                 }
             }
@@ -217,7 +229,7 @@
 
                 var new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
-                if (is_valid_new_point(tour, new_pt, idx)) {
+                if (is_valid_new_point(tour, new_pt, idx, true)) {
                     new_tour[idx] = new_pt;
                 } else {
                     new_tour[idx] = tour[idx];
