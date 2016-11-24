@@ -12,7 +12,9 @@
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
-        <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button><br>
+        <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button>
+        <button id='ground_mode' onclick='ground_mode=!ground_mode;updateLine();'>toggle ground</button>
+        <br>
 
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
@@ -28,13 +30,15 @@
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/> <br>
+        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
+        <br>
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
-        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;</button>
+        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;1</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
+        <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse();go("Animate")' value='ɘƚɒminA'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
         <br><br>
     </div>
@@ -60,8 +64,8 @@
         sa_temp = 3,
         pps = 100,
         step_size=1,
+        ground_mode=false,
         target = {width:1280, height:720, pixel: function() {return 0;} };
-
 
 
     ///////////////////// D3 focused display routines.
@@ -90,10 +94,16 @@
             // .interpolate('cardinal');
 
     var updateLine = function(frame_time, easing) {
-        var first_line_pts = tour.slice(0,first_color_segments)
-                                 .concat(tour[first_color_segments%tour.length]);
-        var second_line_pts = tour.slice(first_color_segments,tour.length)
-                                  .concat(tour[0]);
+        var all_pts = tour.slice()
+
+        if(ground_mode) {
+            all_pts.unshift(new DMSLib.Point2D(-1, tour[0].y));
+            all_pts.push( new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) );
+        } else {
+            all_pts.push(tour[0]);
+        }
+        var first_line_pts = all_pts.slice(0,first_color_segments+1);
+        var second_line_pts = all_pts.slice(first_color_segments,all_pts.length);
 
         if (frame_time===undefined) {
             first_line.attr('d', lineFunction(first_line_pts));
@@ -101,18 +111,18 @@
         } else {
             if(easing===undefined) {easing = 'linear';}
             first_line
-                    .transition()
-                    .duration(frame_time)
-                    .ease(easing)
-                    .attr('d', lineFunction(first_line_pts));
+                .transition()
+                .duration(frame_time)
+                .ease(easing)
+                .attr('d', lineFunction(first_line_pts));
             second_line
-                    .transition()
-                    .duration(frame_time)
-                    .ease(easing)
-                    .attr('d', lineFunction(second_line_pts));
+                .transition()
+                .duration(frame_time)
+                .ease(easing)
+                .attr('d', lineFunction(second_line_pts));
         }
 
-        dotSelection = line_space.selectAll('.dot').data(tour);
+        var dotSelection = line_space.selectAll('.dot').data(tour);
         if(do_dots) {
             dotSelection
                 .attr('r', line_thickness/2+1 )
@@ -170,15 +180,19 @@
     };
 
     var import_tour = function() {
+        tour = [];
         var tour_json = document.getElementById('tour_json');
-        tour = copy_pts(JSON.parse(tour_json.value));
+        JSON.parse(tour_json.value).forEach(function(pt) {
+            tour.push(new DMSLib.Point2D(pt.x, pt.y));
+        });
+
         updateLine();
-    }
+    };
 
     var export_tour = function() {
         var tour_json = document.getElementById('tour_json');
         tour_json.value = JSON.stringify(tour);
-    }
+    };
 
 
     //////////////////////////////// Workhorse routines.
@@ -225,13 +239,14 @@
 
             animation2 = animation;
             animation = [];
-            var frame = copy_pts(tour);
+            var frame = tour.slice();
             animation.push(frame);
         }
 
-        var saved_tour = copy_pts(tour);
+        var saved_tour = tour.slice();
 
-        if( tour.length/step_size > 360 &&
+        if( !ground_mode &&
+            tour.length/step_size > 360 &&
             (tour.length % (step_size*2) === 0) &&
             avg_bend(tour, step_size) < 0.8) { // ~5 degrees
             step_size *= 2;
@@ -241,9 +256,10 @@
         for (num_iter = 0; num_iter < 2000; num_iter++) {
             var new_tour = [];
             for (idx = 0; idx < tour.length; idx+=step_size) {
+                if(ground_mode && (idx === 0 || idx === tour.length-1)) { new_tour[idx] = tour[idx]; continue; }
+
                 prev = (idx - step_size + tour.length) % tour.length;
                 next = (idx + step_size) % tour.length;
-
                 var new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
                 if (is_valid_new_point(tour, new_pt, idx, true)) {
@@ -262,11 +278,12 @@
         }
 
         // if this is first time through, we use this amount of movement as the step amount.
-        animation.push(copy_pts(tour));
+        animation.push(tour.slice());
 
         updateLine();
 
         if (mvmt < max_mvmt) {
+            clearTimeout(timer);
             timer = null;
             d3.select('#Smooth').property('value', 'Smooth');
         } else {
@@ -343,13 +360,41 @@
         if(iter!=0) {
             timer = setTimeout(function() {stipple(iter-1); }, 21);
         } else {
+            clearTimeout(timer);
             timer = null;
             d3.select('#Stipple').property('value', 'Stipple');
         }
     };
 
+    var find_direction_most_pt = function(pts, x, y) {
+        var result = 0;
+        var best_value = x*pts[0].x + y*pts[0].y;
+        for(var i=1; i<pts.length; i++) {
+            var value = x*pts[i].x + y*pts[i].y;
+            if(value > best_value) {
+                best_value = value;
+                result = i;
+            }
+        }
+        return result;
+    }
+
     var tsp = function () {
         var changed = false;
+        var tmp, idx;
+
+        if(ground_mode) {
+            // find closest in & out points set to start and finish
+            idx = find_direction_most_pt(tour, -1, 5);
+            tmp = new DMSLib.Point2D(tour[idx]);
+            tour[idx] = new DMSLib.Point2D(tour[0]);
+            tour[0] = new DMSLib.Point2D(tmp);
+
+            idx = find_direction_most_pt(tour, 1, 5);
+            tmp = new DMSLib.Point2D(tour[idx]);
+            tour[idx] = new DMSLib.Point2D(tour[tour.length-1]);
+            tour[tour.length-1] = new DMSLib.Point2D(tmp);
+        }
 
         var a1, b1, a2, b2,
             a1toa2, b1tob2, a1tob1, a2tob2;
@@ -357,6 +402,7 @@
             for (b1 = a1 + 2; b1 < tour.length; b1++) {
                 a2 = (a1 + 1) % tour.length;
                 b2 = (b1 + 1) % tour.length;
+                if(ground_mode && (b1>=tour.length-1)) { continue;}
 
                 a1toa2 = tour[a2].sub(tour[a1]).R();
                 b1tob2 = tour[b2].sub(tour[b1]).R();
@@ -365,7 +411,7 @@
 
                 if (a1tob1 + a2tob2 < a1toa2 + b1tob2) {
                     // swap [a2 ... b1]
-                    var idx, from, to, tmp;
+                    var from, to;
                     for (idx = 0; a2 + idx < b1 - idx; idx++) {
                         from = (a2 + idx) % tour.length;
                         to = (b1 - idx) % tour.length;
@@ -379,6 +425,7 @@
         }
 
         if (!changed) {
+            clearTimeout(timer);
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
             if(animation.length) { tour = match_other(tour, animation[0]);}
@@ -395,10 +442,11 @@
         d3.select('#first_color_segments').property('value', first_color_segments);
         updateLine();
 
-        if(first_color_segments < tour.length) {
-            var frame_time = tour[first_color_segments].sub(tour[first_color_segments-1]).R() / pps * 1000;
+        if(first_color_segments <= tour.length) {
+            var frame_time = 1000 / pps;
             timer = setTimeout(function() {take_tour(); }, frame_time);
         } else {
+            clearTimeout(timer);
             timer = null;
             d3.select('#TakeTour').property('value', 'Take Tour');
         }
@@ -412,6 +460,7 @@
             frame_time = undefined;
             delay = 1000;
         } else if (frame === animation.length) {
+            clearTimeout(timer);
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
             return;
@@ -484,5 +533,9 @@
 
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
+    // TODO - ground mode:
+    //      - for smooth, fix endpoints, for optimize_animation fix y of endpoints
+    //      - draw horizontal lines to the sides, don't draw last edge
+
 
 </script>

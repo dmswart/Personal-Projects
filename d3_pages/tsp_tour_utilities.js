@@ -74,16 +74,6 @@ var is_cw = function(pts) {
         b.x * c.y - c.x * b.y) > 0.0;
 };
 
-var copy_pts = function(pts) {
-    var result = [];
-
-    pts.forEach(function(pt) {
-        result.push(new DMSLib.Point2D(pt.x, pt.y));
-    });
-
-    return result;
-};
-
 var movement = function(pts, saved_pts) {
     var result = 0;
     for (var i = 0; i < pts.length; i++) {
