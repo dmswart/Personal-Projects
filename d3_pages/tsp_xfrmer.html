@@ -38,7 +38,7 @@
         <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;1</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse();go("Animate")' value='ɘƚɒminA'/>
+        <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse()' value='ɘƚɒminA'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
         <br><br>
     </div>
@@ -202,14 +202,14 @@
         var new_a2 = new_pt;
         var a3 = pts[(idx + step_size) % pts.length];
 
-
         var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
         for (var i = 0; i < pts.length; i+=step_size) {
+            if(ground_mode && i===pts.length-1) { continue;}
             var b1 = pts[i];
             var b2 = pts[(i+step_size)%pts.length];
 
-            if(check_proximity === true) {
+            if(check_proximity) {
                 if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
                     if (b1.sub(new_a2).R() < tolerance) {
                         return false;
@@ -245,22 +245,21 @@
 
         var saved_tour = tour.slice();
 
-        if( !ground_mode &&
-            tour.length/step_size > 360 &&
+        if( tour.length/step_size > 360 &&
             (tour.length % (step_size*2) === 0) &&
             avg_bend(tour, step_size) < 0.8) { // ~5 degrees
             step_size *= 2;
         }
 
-        var num_iter, idx, prev, next;
+        var num_iter, idx, prev, next, new_pt;
         for (num_iter = 0; num_iter < 2000; num_iter++) {
             var new_tour = [];
             for (idx = 0; idx < tour.length; idx+=step_size) {
-                if(ground_mode && (idx === 0 || idx === tour.length-1)) { new_tour[idx] = tour[idx]; continue; }
 
                 prev = (idx - step_size + tour.length) % tour.length;
                 next = (idx + step_size) % tour.length;
-                var new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
+
+                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
                 if (is_valid_new_point(tour, new_pt, idx, true)) {
                     new_tour[idx] = new_pt;
@@ -270,7 +269,7 @@
             }
             fill_in_tour(new_tour, step_size);
             tour = new_tour;
-            set_pointspread(tour, pointspread);
+            if(!ground_mode) {set_pointspread(tour, pointspread);}
 
             var mvmt = movement(tour, saved_tour);
             if (max_mvmt === undefined || max_mvmt === 0) { max_mvmt = mvmt; }
@@ -428,7 +427,7 @@
             clearTimeout(timer);
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(animation.length) { tour = match_other(tour, animation[0]);}
+            if(animation.length && !ground_mode) { tour = match_other(tour, animation[0]);}
             updateLine();
         } else {
             updateLine();
