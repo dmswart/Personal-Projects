@@ -205,7 +205,6 @@
         var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
         for (var i = 0; i < pts.length; i+=step_size) {
-            if(ground_mode && i===pts.length-1) { continue;}
             var b1 = pts[i];
             var b2 = pts[(i+step_size)%pts.length];
 
@@ -218,6 +217,7 @@
             }
 
             // edge intersection
+            if(ground_mode && i===pts.length-step_size) {continue;} // don't check the edge between endpts
             if (b1 !== a1 && b1 !== old_a2) {
                 if (edge_intersects_edge(a1, new_a2, b1, b2) || edge_intersects_edge(new_a2, a3, b1, b2)) {
                     return false;
@@ -246,7 +246,6 @@
         var saved_tour = tour.slice();
 
         if( tour.length/step_size > 360 &&
-            (tour.length % (step_size*2) === 0) &&
             avg_bend(tour, step_size) < 0.8) { // ~5 degrees
             step_size *= 2;
         }
@@ -258,6 +257,7 @@
 
                 prev = (idx - step_size + tour.length) % tour.length;
                 next = (idx + step_size) % tour.length;
+                if(ground_mode && (idx + step_size >= tour.length)) {next = tour.length-1;}
 
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
 
@@ -267,7 +267,13 @@
                     new_tour[idx] = tour[idx];
                 }
             }
-            fill_in_tour(new_tour, step_size);
+
+            if(ground_mode) {
+                // pin endpoints
+                new_tour[0] = tour[0];
+                new_tour[tour.length-1] = tour[tour.length-1];
+            }
+            fill_in_tour(new_tour, tour.length);
             tour = new_tour;
             if(!ground_mode) {set_pointspread(tour, pointspread);}
 
@@ -364,19 +370,6 @@
             d3.select('#Stipple').property('value', 'Stipple');
         }
     };
-
-    var find_direction_most_pt = function(pts, x, y) {
-        var result = 0;
-        var best_value = x*pts[0].x + y*pts[0].y;
-        for(var i=1; i<pts.length; i++) {
-            var value = x*pts[i].x + y*pts[i].y;
-            if(value > best_value) {
-                best_value = value;
-                result = i;
-            }
-        }
-        return result;
-    }
 
     var tsp = function () {
         var changed = false;
@@ -494,9 +487,9 @@
             var new_frame = [];
             var avg_edge_size = avg_edge(tour);
             for(var p = 0; p < animation[f].length; p+=step_size) {
-
                 var prev = (p + animation[f].length - step_size) % animation[f].length;
                 var next = (p + step_size) % animation[f].length;
+                if(ground_mode && (p + step_size >= animation[f].length)) {next = animation[f].length-1;}
 
                 var newpt = animation[f][p]
                         .add(animation[f+1][p])
@@ -513,7 +506,14 @@
                     new_frame[p] = animation[f][p];
                 }
             }
-            fill_in_tour(new_frame,step_size);
+
+            if(ground_mode) {
+                //pin endpoints
+                new_frame[0] = animation[f][0];
+                new_frame[animation[f].length-1] = animation[f][animation[f].length-1];
+            }
+
+            fill_in_tour(new_frame, animation[f].length);
             animation[f] = new_frame;
         }
 
@@ -532,9 +532,11 @@
 
     // TODO - move animation, stippling to new file
     // TODO - 3d version: on a sphere.
+    // TODO - fix bug where optimized animation crosses >:( !
     // TODO - ground mode:
-    //      - for smooth, fix endpoints, for optimize_animation fix y of endpoints
-    //      - draw horizontal lines to the sides, don't draw last edge
+    //      - fix bug where last segment is stuck
+    //      - handle when different images have different y, different x's.
+    // TODO - add long edge removal for TSP
 
 
 </script>

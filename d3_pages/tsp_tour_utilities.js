@@ -141,16 +141,33 @@ var avg_bend = function(pts, step_size) {
     }
     
     return result / count;
-}
+};
 
-var fill_in_tour = function(pts, step_size) {
-    var num_pts = Math.ceil(pts.length/step_size) * step_size;
+var fill_in_tour = function(pts, num_pts) {
+    //assumes pts[0] is filled in
+    var from, to, from_pt, to_pt;
     
-    for(idx=0; idx<num_pts; idx+=step_size) {
-        var from = pts[idx];
-        var to = pts[(idx+step_size)%num_pts];
-        for(i=1; i<step_size; i++) {
-           pts[idx+i] = from.mul(step_size-i).add(to.mul(i)).div(step_size);
+    for(from = 0; from < num_pts-1; from=to) {
+        to = from+1;
+        while(pts[to%num_pts] === undefined) {to++;}
+    
+        from_pt = pts[from];
+        to_pt = pts[to%num_pts];
+        for(var i=1; from+i<to; i++) {
+            pts[from+i] = from_pt.mul(to-from-i).add(to_pt.mul(i)).div(to-from);
         }
     }
-}
+};
+
+var find_direction_most_pt = function(pts, x, y) {
+    var result = 0;
+    var best_value = x*pts[0].x + y*pts[0].y;
+    for(var i=1; i<pts.length; i++) {
+        var value = x*pts[i].x + y*pts[i].y;
+        if(value > best_value) {
+            best_value = value;
+            result = i;
+        }
+    }
+    return result;
+};
