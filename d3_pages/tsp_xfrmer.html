@@ -202,6 +202,8 @@
         var new_a2 = new_pt;
         var a3 = pts[(idx + step_size) % pts.length];
 
+        if(ground_mode && (idx + step_size >= pts.length)) { a3 = pts[pts.length-1]; }
+
         var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
         for (var i = 0; i < pts.length; i+=step_size) {
@@ -534,7 +536,6 @@
     // TODO - 3d version: on a sphere.
     // TODO - fix bug where optimized animation crosses >:( !
     // TODO - ground mode:
-    //      - fix bug where last segment is stuck
     //      - handle when different images have different y, different x's.
     // TODO - add long edge removal for TSP
 
