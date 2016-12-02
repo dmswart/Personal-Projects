@@ -6,6 +6,7 @@
     <script type='text/javascript' src='./dmslib_point2d.js'></script>
     <script type='text/javascript' src='./tsp_tour_generation.js'></script>
     <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
+    <script type='text/javascript' src='./tsp_solver.js'></script>
 </head>
 <body>
     <div id='controls'>
@@ -53,7 +54,8 @@
 
 
 <script>
-    var size = new DMSLib.Point2D(1280, 720),
+    var 
+        size = new DMSLib.Point2D(1280, 720),
         first_color_segments = 0,
         first_color = 'red',
         second_color = 'black',
@@ -241,8 +243,8 @@
 
             animation2 = animation;
             animation = [];
-            var frame = tour.slice();
-            animation.push(frame);
+            if(animation2.length) {increase_number(tour,animation2[0].length);}
+            animation.push(tour.slice());
         }
 
         var saved_tour = tour.slice();
@@ -373,52 +375,63 @@
         }
     };
 
-    var tsp = function () {
-        var changed = false;
-        var tmp, idx;
+    var find_ground = function(y) {
+        var target_in = -1, 
+            target_out = -1;
+        var in_idx, out_idx, tmp;
 
-        if(ground_mode) {
-            // find closest in & out points set to start and finish
-            idx = find_direction_most_pt(tour, -1, 5);
-            tmp = new DMSLib.Point2D(tour[idx]);
-            tour[idx] = new DMSLib.Point2D(tour[0]);
-            tour[0] = new DMSLib.Point2D(tmp);
-
-            idx = find_direction_most_pt(tour, 1, 5);
-            tmp = new DMSLib.Point2D(tour[idx]);
-            tour[idx] = new DMSLib.Point2D(tour[tour.length-1]);
-            tour[tour.length-1] = new DMSLib.Point2D(tmp);
-        }
-
-        var a1, b1, a2, b2,
-            a1toa2, b1tob2, a1tob1, a2tob2;
-        for (a1 = 0; a1 < tour.length; a1++) {
-            for (b1 = a1 + 2; b1 < tour.length; b1++) {
-                a2 = (a1 + 1) % tour.length;
-                b2 = (b1 + 1) % tour.length;
-                if(ground_mode && (b1>=tour.length-1)) { continue;}
-
-                a1toa2 = tour[a2].sub(tour[a1]).R();
-                b1tob2 = tour[b2].sub(tour[b1]).R();
-                a1tob1 = tour[b1].sub(tour[a1]).R();
-                a2tob2 = tour[b2].sub(tour[a2]).R();
-
-                if (a1tob1 + a2tob2 < a1toa2 + b1tob2) {
-                    // swap [a2 ... b1]
-                    var from, to;
-                    for (idx = 0; a2 + idx < b1 - idx; idx++) {
-                        from = (a2 + idx) % tour.length;
-                        to = (b1 - idx) % tour.length;
-                        tmp = new DMSLib.Point2D(tour[from]);
-                        tour[from] = new DMSLib.Point2D(tour[to]);
-                        tour[to] = new DMSLib.Point2D(tmp);
-                    }
-                    changed = true;
+        for(var x=0; x<size.x; x++) {
+            if(target.pixel(x,y) < 255) {
+                if(target_in === -1) {
+                    target_in = x;
                 }
+                target_out = x;
             }
         }
 
-        if (!changed) {
+        if(target_in >= 0) {
+            in_idx = find_closest_pt(tour, new DMSLib.Point2D(target_in, y));
+            out_idx = find_closest_pt(tour, new DMSLib.Point2D(target_out, y));
+        } else {
+            in_idx = find_direction_most_pt(tour, -1, 5);
+            out_idx = find_direction_most_pt(tour, 1, 5);
+        }
+
+        tmp = new DMSLib.Point2D(tour[in_idx]);
+        tour[in_idx] = new DMSLib.Point2D(tour[0]);
+        tour[0] = new DMSLib.Point2D(tmp);
+        tour[0].y = y;
+
+        tmp = new DMSLib.Point2D(tour[out_idx]);
+        tour[out_idx] = new DMSLib.Point2D(tour[tour.length-1]);
+        tour[tour.length-1] = new DMSLib.Point2D(tmp);
+        tour[tour.length-1].y = y;
+    };
+
+
+
+    var tsp = function (stage) {
+        if(stage === undefined) {stage = 0;}
+
+        var tmp, idx;
+
+        if(stage === 0) {
+            if(ground_mode) { find_ground(467); } 
+        } else if(stage === 1) {
+            randomize_pts(tour, ground_mode);
+        } else if(stage === 2) {
+		    do_insertion_heuristic(tour, ground_mode);
+        } else if(stage === 3) {
+            if(do_two_opt(tour, false, ground_mode) ) { stage--; }
+        } else if(stage === 4) {
+            if(do_two_opt(tour, true, ground_mode) ) { stage--; }
+        } else if(stage === 5) {
+            if(do_two_opt(tour, false, ground_mode) ) { stage--; }
+        }
+
+        stage++;
+
+        if (stage === 6) {
             clearTimeout(timer);
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
@@ -426,7 +439,7 @@
             updateLine();
         } else {
             updateLine();
-            timer = setTimeout(function() {tsp(); }, 21);
+            timer = setTimeout(function() {tsp(stage); }, 21);
         }
     };
 
@@ -484,8 +497,11 @@
             animation = animation.concat(animation2.reverse());
             animation2 = [];
         }
+ 
+        var num_frames = animation.length;
+        var num_pts = animation[0].length;
 
-        for(var f = 1; f < animation.length-1; f++) {
+        for(var f = 1; f < num_frames-1; f++) {
             var new_frame = [];
             var avg_edge_size = avg_edge(tour);
             for(var p = 0; p < animation[f].length; p+=step_size) {
@@ -509,17 +525,22 @@
                 }
             }
 
-            if(ground_mode) {
-                //pin endpoints
-                new_frame[0] = animation[f][0];
-                new_frame[animation[f].length-1] = animation[f][animation[f].length-1];
+            if(new_frame[num_pts-1] === undefined) {
+               // write in the last point so we can fill things in if nec.
+               new_frame[num_pts-1] = animation[f][num_pts-1];
             }
 
-            fill_in_tour(new_frame, animation[f].length);
+            
+            if(ground_mode) {
+                new_frame[0].y = 467;
+                new_frame[num_pts-1].y = 467;
+            }
+
+            fill_in_tour(new_frame, num_pts);
             animation[f] = new_frame;
         }
 
-        tour = animation[Math.floor(animation.length/2)];
+        tour = animation[Math.floor(num_frames/2)];
         updateLine();
 
         timer = setTimeout(function() {optimize_animation();}, 11);

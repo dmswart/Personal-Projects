@@ -171,3 +171,36 @@ var find_direction_most_pt = function(pts, x, y) {
     }
     return result;
 };
+
+var find_closest_pt = function(pts, pt) {
+    var result = 0;
+    var min_dist = pt.sub(pts[0]).R(); 
+
+    for(var i=1; i<pts.length; i++) {
+        var dist = pt.sub(pts[i]).R(); 
+        if(dist < min_dist) {
+            min_dist = dist;
+            result = i;
+        }
+    }
+    return result;
+};
+
+var increase_number = function(pts, num) {
+    while(pts.length < num) {
+        // find idx of longest edge
+        var idx = 0;
+        var max_edge = pts[0].sub(pts[1]).R();
+        for(var i=1; i<pts.length-1; i++) {
+            var dist = pts[i].sub(pts[i+1]).R();
+            if(dist > max_edge) {
+                max_edge = dist;
+                idx = i;
+            }
+        }
+
+        // insert a vertex half way in between
+        var new_pt = pts[idx].add(pts[idx+1]).mul(0.5);
+        pts.splice(idx+1, 0, new_pt);
+    }
+}
