@@ -22,7 +22,7 @@
         <button onclick='get_tour("spiral");'>spiral</button>
         <button id='import_tour' onclick='import_tour();'>import</button>
         <button id='export_tour' onclick='export_tour();'>export</button>
-        <label for='tour_json'>json:</label><input id='tour_json' type='text' value=''>
+        <label for='tour_svg_text'>svg:</label><input id='tour_svg_text' type='text' value=''>
         <br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
@@ -180,18 +180,12 @@
     };
 
     var import_tour = function() {
-        tour = [];
-        var tour_json = document.getElementById('tour_json');
-        JSON.parse(tour_json.value).forEach(function(pt) {
-            tour.push(new DMSLib.Point2D(pt.x, pt.y));
-        });
-
+        tour = get_pts_from_svg( document.getElementById('tour_svg_text').value );
         updateLine();
     };
 
     var export_tour = function() {
-        var tour_json = document.getElementById('tour_json');
-        tour_json.value = JSON.stringify(tour);
+        document.getElementById('tour_svg_text').value = get_svg_from_pts(tour);
     };
 
 
