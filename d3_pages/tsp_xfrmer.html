@@ -36,7 +36,9 @@
 
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
-        <button id='reduce_stepsize' onclick='if(step_size>1) {step_size>>=1;}'>step&gt;&gt;1</button>
+        Step: <button id='increase_stepsize' onclick='{scale_stepsize(2);;}'>&lt;&lt;</button>
+        <span id='stepsize'>1</span>
+        <button id='reduce_stepsize' onclick='if(step_size>1) {scale_stepsize(0.5);}'>&gt;&gt;</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse()' value='ɘƚɒminA'/>
@@ -59,7 +61,7 @@
         first_color_segments = 0,
         first_color = 'red',
         second_color = 'black',
-        line_thickness = 4,
+        line_thickness = 3,
         requested_size = 1024,
         timer,
         do_dots = false,
@@ -188,6 +190,7 @@
             tour.push(new DMSLib.Point2D(pt.x, pt.y));
         });
 
+        increase_number(tour, requested_size);
         updateLine();
     };
 
@@ -196,6 +199,15 @@
         tour_json.value = JSON.stringify(tour);
     };
 
+
+    var scale_stepsize = function(scale) {
+        step_size *=scale;
+        if(step_size < 1) {
+            step_size = 1;
+        }
+
+        document.getElementById('stepsize').innerHTML = step_size.toString();
+    }
 
     //////////////////////////////// Workhorse routines.
     var is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
@@ -239,19 +251,17 @@
         if (max_mvmt === undefined) {
             max_mvmt = 0;
 
-            step_size=1;
+            scale_stepsize(0);
 
             animation2 = animation;
             animation = [];
-            if(animation2.length) {increase_number(tour,animation2[0].length);}
             animation.push(tour.slice());
         }
 
         var saved_tour = tour.slice();
 
-        if( tour.length/step_size > 360 &&
-            avg_bend(tour, step_size) < 0.8) { // ~5 degrees
-            step_size *= 2;
+        if( avg_bend(tour, step_size) < 0.08) { // ~5 degrees
+            scale_stepsize(2);
         }
 
         var num_iter, idx, prev, next, new_pt;
@@ -504,10 +514,14 @@
         for(var f = 1; f < num_frames-1; f++) {
             var new_frame = [];
             var avg_edge_size = avg_edge(tour);
-            for(var p = 0; p < animation[f].length; p+=step_size) {
-                var prev = (p + animation[f].length - step_size) % animation[f].length;
-                var next = (p + step_size) % animation[f].length;
-                if(ground_mode && (p + step_size >= animation[f].length)) {next = animation[f].length-1;}
+            for(var p = 0; p < num_pts; p+=step_size) {
+                var prev = (p + num_pts - step_size) % num_pts;
+                var next = (p + step_size) % num_pts;
+
+                if(ground_mode) {
+                    if(p===0) {prev = 0;} 
+                    if(p + step_size >= num_pts) {next = num_pts-1;}
+                }
 
                 var newpt = animation[f][p]
                         .add(animation[f+1][p])
