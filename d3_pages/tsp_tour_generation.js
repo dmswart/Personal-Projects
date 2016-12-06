@@ -57,6 +57,60 @@ var get_house_pts = function() {
     return result;
 };
 
+
+var get_pts_from_svg = function(svg_string) {
+    var result = [];
+    var parse_point = function(point_string) {
+        var coord_strings = point_string.split(',');
+        if(coord_strings.length !== 2) { return false;}
+
+        var x = parseFloat(coord_strings[0]);
+        var y = parseFloat(coord_strings[1]);
+        if(x === NaN || y===NaN) { return false;}
+
+        result.push(new DMSLib.Point2D(x,y));
+        return true;
+    };
+
+    var tour_svg_tokens = svg_string.split(' ').filter(function(s){return s!=="";});
+
+    var idx = 0;
+    //burn through initial header
+    while(tour_svg_tokens[idx]!=='d="M') {idx++;}
+    idx++;
+
+    // first point
+    parse_point(tour_svg_tokens[idx]);
+
+    // skip "C, and two points of first line"
+    idx+=3;
+
+    while(idx < tour_svg_tokens.length && parse_point(tour_svg_tokens[idx])) { idx+=3; }
+    return result;
+};
+
+var get_svg_from_pts = function(pts) {
+    var result = '<?xml version="1.0" encoding="UTF-8" standalone="no"?> \
+                  <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN" \
+                  "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd"> \
+                  <svg xmlns="http://www.w3.org/2000/svg" \
+                  width="1280px" height="720px" \
+                  viewBox="0 0 1280 720"> \
+                  <path id="Unnamed" \
+                  fill="none" stroke="black" stroke-width="1" \
+                  d="M ';
+    result += pts[0].x.toString() + ',' + pts[0].y.toString() +' ';
+    result += 'C ';
+    for(var i = 1; i<pts.length; i++) {
+        result += pts[i-1].x.toString() + ',' + pts[i-1].y.toString() + ' ';
+        result += pts[i].x.toString() + ',' + pts[i].y.toString() + ' ';
+        result += pts[i].x.toString() + ',' + pts[i].y.toString() + ' '; 
+    }
+    
+    result += '" /> </svg>';
+    return result;
+};
+
 /////////////////////////// data
 var house_pts = [ {x:10,y:1}, {x:9,y:2}, {x:11,y:2}, {x:8,y:3}, {x:12,y:3}, {x:7,y:4}, {x:13,y:4}, {x:6,y:4.95}, {x:7,y:5}, {x:13,y:5}, {x:14,y:4.95}, {x:7,y:6}, {x:13,y:6},
                   {x:7,y:7}, {x:13,y:7}, {x:7,y:8}, {x:13,y:8}, {x:7,y:9}, {x:13,y:9}, {x:7,y:10}, {x:13,y:10}, {x:7,y:11}, {x:13,y:11}, {x:13,y:12}, {x:13,y:13},
