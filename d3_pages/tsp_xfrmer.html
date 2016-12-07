@@ -42,7 +42,8 @@
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse()' value='ɘƚɒminA'/>
-        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
+        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
+        <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
         <br><br>
     </div>
 
@@ -90,6 +91,11 @@
             .attr('stroke', second_color)
             .attr('stroke-width', line_thickness)
             .attr('fill', 'none');
+    var start_line = line_space.append('path')
+            .attr('id', 'start_line')
+            .attr('stroke', second_color)
+            .attr('stroke-width', line_thickness)
+            .attr('fill', 'none');
 
     var lineFunction = d3.svg.line()
             .x(function(d) { return d.x;})
@@ -101,10 +107,12 @@
         var all_pts = tour.slice()
 
         if(ground_mode) {
-            all_pts.unshift(new DMSLib.Point2D(-1, tour[0].y));
+            //all_pts.unshift(new DMSLib.Point2D(-1, tour[0].y));
+            start_line.attr('d', lineFunction([{x:-1, y:tour[0].y}, tour[0]]));
             all_pts.push( new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) );
         } else {
             all_pts.push(tour[0]);
+            start_line.attr('d', lineFunction([]));
         }
         var first_line_pts = all_pts.slice(0,first_color_segments+1);
         var second_line_pts = all_pts.slice(first_color_segments,all_pts.length);
@@ -158,7 +166,8 @@
                            'TSP' : tsp,
                            'Animate' : animate,
                            'TakeTour' : take_tour,
-                           'OptimizeAnimation' : optimize_animation };
+                           'OptimizeAnimation' : optimize_animation,
+                           'Misc' : misc_animation };
         var method_fn = method_fns[method];
 
         if (!timer) {
@@ -185,6 +194,7 @@
 
     var import_tour = function() {
         tour = get_pts_from_svg( document.getElementById('tour_svg_text').value );
+        increase_number(tour, requested_size);
         updateLine();
     };
 
@@ -446,14 +456,17 @@
         }
     };
 
-
     var take_tour = function() {
         first_color_segments++;
         d3.select('#first_color_segments').property('value', first_color_segments);
         updateLine();
 
-        if(first_color_segments <= tour.length) {
+        if(first_color_segments < tour.length) {
             var frame_time = 1000 / pps;
+            var t = (first_color_segments+1) / (tour.length+1);
+            if(t < 0.1) {frame_time /= (t*10); }
+            if(t > 0.9) {frame_time /= ((1-t)*10);}
+
             timer = setTimeout(function() {take_tour(); }, frame_time);
         } else {
             clearTimeout(timer);
@@ -461,6 +474,52 @@
             d3.select('#TakeTour').property('value', 'Take Tour');
         }
     };
+
+    var misc_animation = function(step) {
+        if(step===undefined) {step=5;}
+
+        if(step===0) {
+            first_line.attr('d', lineFunction([]));
+            second_line.attr('d', lineFunction([{x:0,y:467}, {x:756.31,y:467}]));
+            timer = setTimeout(function() {misc_animation(step+1);}, 1000);
+        } else if(step===1) {
+            second_line
+                .transition()
+                .duration(3000)
+                .ease('sin-in-out')
+                .attr('d', lineFunction([{x:640,y:467},{x:3000,y:467}]));
+            timer = setTimeout(function() {misc_animation(step+1);}, 3000);
+        } else if(step===2) {
+            first_line
+                .attr('d', lineFunction([{x:-640,y:467},{x:-1,y:467}]));
+            timer = setTimeout(function() {misc_animation(step+1);}, 12000);
+        } else if(step===3) {
+            first_line
+                .transition()
+                .duration(3000)
+                .ease('sin-out')
+                .attr('d', lineFunction([{x:-640,y:467},{x:640,y:467}]));
+            timer = setTimeout(function() {misc_animation(step+1);}, 3000);
+        } else if(step==5) {
+            line_space.append('circle')
+                .attr('r', 200)
+                .attr('cx', tour[first_color_segments].x)
+                .attr('cy', tour[first_color_segments].y)
+                .attr('stroke', 'none')
+                .attr('fill', first_color)
+                .attr('opacity', 0)
+                .transition()
+                    .duration(2000)
+                    .ease('bounce-in')
+                    .attr('opacity', 1)
+                    .attr('r', line_thickness/2);
+            timer = setTimeout(function() {take_tour();}, 2000);
+        } else {
+            clearTimeout(timer);
+            timer = null;
+            d3.select('#Misc').property('value', 'Misc');
+        }
+    }
 
     var animate = function(frame) {
         var frame_time, delay, easing;
