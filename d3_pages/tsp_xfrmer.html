@@ -7,13 +7,13 @@
     <script type='text/javascript' src='./tsp_tour_generation.js'></script>
     <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
     <script type='text/javascript' src='./tsp_solver.js'></script>
+    <script type='text/javascript' src='./tsp_smoothing.js'></script>
 </head>
 <body>
     <div id='controls'>
         <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
         <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
         <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
-        <button id='do_dots' onclick='do_dots=!do_dots;updateLine();'>toggle dots</button>
         <button id='ground_mode' onclick='ground_mode=!ground_mode;updateLine();'>toggle ground</button>
         <br>
 
@@ -34,14 +34,14 @@
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
         <br>
 
-        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='sa_temp=this.value;'/>
+        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='set_sa_temp(this.value);'/>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
-        Step: <button id='increase_stepsize' onclick='{scale_stepsize(2);;}'>&lt;&lt;</button>
+        Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
         <span id='stepsize'>1</span>
-        <button id='reduce_stepsize' onclick='if(step_size>1) {scale_stepsize(0.5);}'>&gt;&gt;</button>
+        <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
         <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='ReverseAnimate' onclick='animation=animation.reverse()' value='ɘƚɒminA'/>
+        <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='ɘƚɒminA'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
         <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
         <br><br>
@@ -57,7 +57,7 @@
 
 
 <script>
-    var 
+    var tour = [],
         size = new DMSLib.Point2D(1280, 720),
         first_color_segments = 0,
         first_color = 'red',
@@ -65,12 +65,9 @@
         line_thickness = 3,
         requested_size = 1024,
         timer,
-        do_dots = false,
-        sa_temp = 3,
         pps = 100,
-        step_size=1,
         ground_mode=false,
-        target = {width:1280, height:720, pixel: function() {return 0;} };
+        target = {width:size.x, height:size.y, pixel: function() {return 0;} };
 
 
     ///////////////////// D3 focused display routines.
@@ -104,10 +101,9 @@
             // .interpolate('cardinal');
 
     var updateLine = function(frame_time, easing) {
-        var all_pts = tour.slice()
+        var all_pts = tour.slice();
 
         if(ground_mode) {
-            //all_pts.unshift(new DMSLib.Point2D(-1, tour[0].y));
             start_line.attr('d', lineFunction([{x:-1, y:tour[0].y}, tour[0]]));
             all_pts.push( new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) );
         } else {
@@ -133,31 +129,12 @@
                 .ease(easing)
                 .attr('d', lineFunction(second_line_pts));
         }
-
-        var dotSelection = line_space.selectAll('.dot').data(tour);
-        if(do_dots) {
-            dotSelection
-                .attr('r', line_thickness/2+1 )
-                .attr('cx', function(d) { return d.x; })
-                .attr('cy', function(d) { return d.y; });
-            dotSelection
-              .enter().append('circle')
-                .attr('class', 'dot')
-                .attr('r', line_thickness/2+1 )
-                .attr('cx', function(d) { return d.x; })
-                .attr('cy', function(d) { return d.y; });
-            dotSelection
-              .exit().remove();
-        } else {
-            dotSelection.remove();
-        }
     };
 
     var onColorChange = function() {
         d3.select('#first_line').attr('stroke', first_color);
         d3.select('#second_line').attr('stroke', second_color);
     };
-
 
     ////////////////////////////////// Launching framework
     var go = function (method) {
@@ -203,143 +180,27 @@
     };
 
 
-    var scale_stepsize = function(scale) {
-        step_size *=scale;
-        if(step_size < 1) {
-            step_size = 1;
-        }
-
-        document.getElementById('stepsize').innerHTML = step_size.toString();
-    }
-
     //////////////////////////////// Workhorse routines.
-    var is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
-        var a1 = pts[(idx - step_size + pts.length) % pts.length];
-        var old_a2 = pts[idx];
-        var new_a2 = new_pt;
-        var a3 = pts[(idx + step_size) % pts.length];
-
-        if(ground_mode && (idx + step_size >= pts.length)) { a3 = pts[pts.length-1]; }
-
-        var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
-
-        for (var i = 0; i < pts.length; i+=step_size) {
-            var b1 = pts[i];
-            var b2 = pts[(i+step_size)%pts.length];
-
-            if(check_proximity) {
-                if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
-                    if (b1.sub(new_a2).R() < tolerance) {
-                        return false;
-                    }
-                }
-            }
-
-            // edge intersection
-            if(ground_mode && i===pts.length-step_size) {continue;} // don't check the edge between endpts
-            if (b1 !== a1 && b1 !== old_a2) {
-                if (edge_intersects_edge(a1, new_a2, b1, b2) || edge_intersects_edge(new_a2, a3, b1, b2)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    };
-
-
-    var smooth = function(max_mvmt) {
-        var pointspread = get_pointspread(tour);
-
-        // if max_mvt = undefined, it's first frame: start animation
-        if (max_mvmt === undefined) {
-            max_mvmt = 0;
-
-            scale_stepsize(0);
-
-            animation2 = animation;
-            animation = [];
-            animation.push(tour.slice());
-        }
-
-        var saved_tour = tour.slice();
-
-        if( avg_bend(tour, step_size) < 0.08) { // ~5 degrees
-            scale_stepsize(2);
-        }
-
-        var num_iter, idx, prev, next, new_pt;
-        for (num_iter = 0; num_iter < 2000; num_iter++) {
-            var new_tour = [];
-            for (idx = 0; idx < tour.length; idx+=step_size) {
-
-                prev = (idx - step_size + tour.length) % tour.length;
-                next = (idx + step_size) % tour.length;
-                if(ground_mode && (idx + step_size >= tour.length)) {next = tour.length-1;}
-
-                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
-
-                if (is_valid_new_point(tour, new_pt, idx, true)) {
-                    new_tour[idx] = new_pt;
-                } else {
-                    new_tour[idx] = tour[idx];
-                }
-            }
-
-            if(ground_mode) {
-                // pin endpoints
-                new_tour[0] = tour[0];
-                new_tour[tour.length-1] = tour[tour.length-1];
-            }
-            fill_in_tour(new_tour, tour.length);
-            tour = new_tour;
-            if(!ground_mode) {set_pointspread(tour, pointspread);}
-
-            var mvmt = movement(tour, saved_tour);
-            if (max_mvmt === undefined || max_mvmt === 0) { max_mvmt = mvmt; }
-            if(mvmt >= max_mvmt) { break; }
-        }
-
-        // if this is first time through, we use this amount of movement as the step amount.
-        animation.push(tour.slice());
-
-        updateLine();
-
-        if (mvmt < max_mvmt) {
-            clearTimeout(timer);
-            timer = null;
-            d3.select('#Smooth').property('value', 'Smooth');
-        } else {
-            timer = setTimeout(function() {smooth(max_mvmt); }, 21);
-        }
-    };
-
     var onTargetSelected = function(event) {
-        // d3.select('#target_picture').attr('src', event.target.files[0].name);
         var img = document.getElementById('target_picture');
 
         var selectedFile = event.target.files[0];
         var reader = new FileReader();
-        img.title = selectedFile.name;
 
         reader.onload = function(event) {
-            img.onload = getTargetFromImage;
+            img.onload = function() {
+                var img = document.getElementById('target_picture');
+                var c = document.createElement('canvas');
+                c.width = img.width;
+                c.height = img.height;
+                c.getContext('2d').drawImage(img, 0, 0);
+
+                target = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+                target.pixel = function(x,y) { x=Math.floor(x); y=Math.floor(y); return this.data[y*this.width*4+x*4]; };
+            };
             img.src = event.target.result;
         };
         reader.readAsDataURL(selectedFile);
-    };
-
-    var getTargetFromImage = function() {
-        var img = document.getElementById('target_picture');
-
-        var c = document.createElement('canvas');
-        c.width = img.width;
-        c.height = img.height;
-
-        var ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-
-        target = ctx.getImageData(0, 0, c.width, c.height);
-        target.pixel = function(x,y) { x=Math.floor(x); y=Math.floor(y); return this.data[y*this.width*4+x*4]; };
     };
 
     var stipple = function (iter) {
@@ -421,12 +282,8 @@
         tour[tour.length-1].y = y;
     };
 
-
-
     var tsp = function (stage) {
         if(stage === undefined) {stage = 0;}
-
-        var tmp, idx;
 
         if(stage === 0) {
             if(ground_mode) { find_ground(467); } 
@@ -448,7 +305,7 @@
             clearTimeout(timer);
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(animation.length && !ground_mode) { tour = match_other(tour, animation[0]);}
+            if(num_frames() && !ground_mode) { tour = match_other(tour, get_frame(0));}
             updateLine();
         } else {
             updateLine();
@@ -519,7 +376,7 @@
             timer = null;
             d3.select('#Misc').property('value', 'Misc');
         }
-    }
+    };
 
     var animate = function(frame) {
         var frame_time, delay, easing;
@@ -528,13 +385,13 @@
             frame = 0;
             frame_time = undefined;
             delay = 1000;
-        } else if (frame === animation.length) {
+        } else if (frame === num_frames()) {
             clearTimeout(timer);
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
             return;
         } else {
-            frame_time = movement(animation[frame], animation[frame-1]) / pps * 1000;
+            frame_time = movement(get_frame(frame), get_frame(frame-1)) / pps * 1000;
             delay = frame_time;
             easing = 'linear';
         }
@@ -543,88 +400,17 @@
             easing = 'cubic-in';
             frame_time *= 3;
             delay *= 3;
-        } else if(frame === animation.length-1) {
+        } else if(frame === num_frames()-1) {
             easing = 'cubic-out';
             frame_time *= 3;
             delay *= 3;
         }
 
-        tour = animation[frame];
+        tour = get_frame(frame);
         updateLine(frame_time, easing);
         timer = setTimeout(function () { animate(frame + 1); }, delay);
     };
 
-    var optimize_animation = function() {
-        if(animation2.length) {
-            animation = animation.concat(animation2.reverse());
-            animation2 = [];
-        }
- 
-        var num_frames = animation.length;
-        var num_pts = animation[0].length;
-
-        for(var f = 1; f < num_frames-1; f++) {
-            var new_frame = [];
-            var avg_edge_size = avg_edge(tour);
-            for(var p = 0; p < num_pts; p+=step_size) {
-                var prev = (p + num_pts - step_size) % num_pts;
-                var next = (p + step_size) % num_pts;
-
-                if(ground_mode) {
-                    if(p===0) {prev = 0;} 
-                    if(p + step_size >= num_pts) {next = num_pts-1;}
-                }
-
-                var newpt = animation[f][p]
-                        .add(animation[f+1][p])
-                        .add(animation[f-1][p])
-                        .add(animation[f][prev].mul(0.05))
-                        .add(animation[f][next].mul(0.05))
-                        .div(3.1)
-                        .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (sa_temp / 10),
-                                                      Math.random() * DMSLib.TAU));
-
-                if( is_valid_new_point(animation[f], newpt, p)) {
-                    new_frame[p] = newpt;
-                } else {
-                    new_frame[p] = animation[f][p];
-                }
-            }
-
-            if(new_frame[num_pts-1] === undefined) {
-               // write in the last point so we can fill things in if nec.
-               new_frame[num_pts-1] = animation[f][num_pts-1];
-            }
-
-            
-            if(ground_mode) {
-                new_frame[0].y = 467;
-                new_frame[num_pts-1].y = 467;
-            }
-
-            fill_in_tour(new_frame, num_pts);
-            animation[f] = new_frame;
-        }
-
-        tour = animation[Math.floor(num_frames/2)];
-        updateLine();
-
-        timer = setTimeout(function() {optimize_animation();}, 11);
-    };
-
-    /////////////////////////////// kick it off!
-    var tour = [],
-        animation = [],
-        animation2 = [];
-
-    get_tour('random');
-
-    // TODO - move animation, stippling to new file
+    // TODO - move stippling to new file
     // TODO - 3d version: on a sphere.
-    // TODO - fix bug where optimized animation crosses >:( !
-    // TODO - ground mode:
-    //      - handle when different images have different y, different x's.
-    // TODO - add long edge removal for TSP
-
-
 </script>
