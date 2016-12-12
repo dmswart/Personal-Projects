@@ -76,7 +76,7 @@ var get_pts_from_svg = function(svg_string) {
 
     var idx = 0;
     //burn through initial header
-    while(tour_svg_tokens[idx]!=='d="M') {idx++;}
+    while(idx < tour_svg_tokens.length && tour_svg_tokens[idx]!=='d="M') {idx++;}
     idx++;
 
     // first point

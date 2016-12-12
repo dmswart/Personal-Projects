@@ -12,12 +12,7 @@ var start_new_animation = function(pts) {
     __animation = [];
     __animation.push(pts.slice());
 };
-var splice_animations = function() {
-    if(__animation2.length) {
-        __animation = __animation.concat(__animation2.reverse());
-        __animation2 = [];
-    }
-};
+
 
 //sa_temp accessor
 set_sa_temp = function(val) { __sa_temp = val; }
@@ -36,9 +31,28 @@ var scale_stepsize = function(scale) {
 };
 
 
-
 // utility functions 
-var __is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
+var glue_animations = function(glue_frames) {
+    if(!__animation2.length) { return; }
+    
+    if(glue_frames === undefined) {glue_frames = 5;}
+    
+    var new_frame, pt1, pt2;
+    for(var i=1; i<glue_frames-1; i++) {
+        new_frame = [];
+        for(var p=0; p<__animation[0].length; p++) {
+            pt1 = __animation[__animation.length-1][p];
+            pt2 = __animation2[__animation2.length-1][p];
+            new_frame[p] = pt1.mul(glue_frames-1-i).add(pt2.mul(i)).div(glue_frames-1);
+        }
+        __animation.push(new_frame);
+    }
+    __animation = __animation.concat(__animation2.reverse());
+    __animation2 = [];
+};
+
+
+var __is_valid_new_point = function(pts, new_pt, idx) {
     var a1 = pts[(idx - __step_size + pts.length) % pts.length];
     var old_a2 = pts[idx];
     var new_a2 = new_pt;
@@ -52,11 +66,10 @@ var __is_valid_new_point = function(pts, new_pt, idx, check_proximity) {
         var b1 = pts[i];
         var b2 = pts[(i+__step_size)%pts.length];
 
-        if(check_proximity) {
-            if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
-                if (b1.sub(new_a2).R() < tolerance) {
-                    return false;
-                }
+        // check proximity
+        if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
+            if (b1.sub(new_a2).R() < tolerance) {
+                return false;
             }
         }
 
@@ -92,30 +105,39 @@ var smooth = function(max_mvmt) {
 
     var num_iter, idx, prev, next, new_pt;
     for (num_iter = 0; num_iter < 2000; num_iter++) {
-        var new_tour = [];
-        for (idx = 0; idx < tour.length; idx+=__step_size) {
-
-            prev = (idx - __step_size + tour.length) % tour.length;
-            next = (idx + __step_size) % tour.length;
-            if(ground_mode && (idx + __step_size >= tour.length)) {next = tour.length-1;}
-
-            new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
-
-            if (__is_valid_new_point(tour, new_pt, idx, true)) {
-                new_tour[idx] = new_pt;
-            } else {
-                new_tour[idx] = tour[idx];
+        
+        if(ground_mode && xs_are_strictly_increasing(tour)) {
+            //totally gonna cheat
+            for (idx = 1; idx < tour.length-1; idx++) {
+                var final_pt = tour[0].mul(tour.length-1-idx).add(tour[tour.length-1].mul(idx)).div(tour.length-1);
+                tour[idx] = tour[idx].mul(0.75).add(final_pt.mul(0.25));
             }
+        } else {
+            var new_tour = [];
+            for (idx = 0; idx < tour.length; idx+=__step_size) {
+    
+                prev = (idx - __step_size + tour.length) % tour.length;
+                next = (idx + __step_size) % tour.length;
+                if(ground_mode && (idx + __step_size >= tour.length)) {next = tour.length-1;}
+    
+                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
+    
+                if (__is_valid_new_point(tour, new_pt, idx)) {
+                    new_tour[idx] = new_pt;
+                } else {
+                    new_tour[idx] = tour[idx];
+                }
+            }
+    
+            if(ground_mode) {
+                // pin endpoints
+                new_tour[0] = tour[0];
+                new_tour[tour.length-1] = tour[tour.length-1];
+            }
+            fill_in_tour(new_tour, tour.length);
+            tour = new_tour;
+            if(!ground_mode) {set_pointspread(tour, pointspread);}
         }
-
-        if(ground_mode) {
-            // pin endpoints
-            new_tour[0] = tour[0];
-            new_tour[tour.length-1] = tour[tour.length-1];
-        }
-        fill_in_tour(new_tour, tour.length);
-        tour = new_tour;
-        if(!ground_mode) {set_pointspread(tour, pointspread);}
 
         var mvmt = movement(tour, saved_tour);
         if (max_mvmt === undefined || max_mvmt === 0) { max_mvmt = mvmt; }
@@ -138,7 +160,7 @@ var smooth = function(max_mvmt) {
 
 
 var optimize_animation = function() {
-    splice_animations();
+    glue_animations();
  
     var num_pts = get_frame(0).length;
 
@@ -170,13 +192,11 @@ var optimize_animation = function() {
             }
         }
 
-        if(new_frame[num_pts-1] === undefined) {
-           // write in the last point so we can fill things in if nec.
-           new_frame[num_pts-1] = __animation[f][num_pts-1];
-        }
-
-        
         if(ground_mode) {
+            if(new_frame[num_pts-1] === undefined) {
+                // write in the last point so we can fill things in if nec.
+                new_frame[num_pts - 1] = __animation[f][num_pts - 1];
+            }
             new_frame[0].y = 467;
             new_frame[num_pts-1].y = 467;
         }

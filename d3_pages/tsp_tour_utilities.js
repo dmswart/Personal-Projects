@@ -84,7 +84,7 @@ var movement = function(pts, saved_pts) {
 
 var match_other = function(pts, other) {
     if(other.length !== pts.length) {
-        return;
+        return pts;
     }
 
     // fix winding
@@ -203,4 +203,13 @@ var increase_number = function(pts, num) {
         var new_pt = pts[idx].add(pts[idx+1]).mul(0.5);
         pts.splice(idx+1, 0, new_pt);
     }
-}
+};
+
+var xs_are_strictly_increasing = function(pts) {
+    for(var i=0; i<pts.length-2; i++) {
+        if(pts[i].x >= pts[i+1].x) {
+            return false;
+        }
+    }
+    return true;
+};
