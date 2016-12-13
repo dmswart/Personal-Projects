@@ -147,7 +147,7 @@ var smooth = function(max_mvmt) {
     // if this is first time through, we use this amount of movement as the step amount.
     __animation.push(tour.slice());
 
-    updateLine();
+    update_line();
 
     if (mvmt < max_mvmt) {
         clearTimeout(timer);
@@ -206,7 +206,7 @@ var optimize_animation = function() {
     }
 
     tour = __animation[Math.floor(num_frames()/2)];
-    updateLine();
+    update_line();
 
     timer = setTimeout(function() {optimize_animation();}, 11);
 };

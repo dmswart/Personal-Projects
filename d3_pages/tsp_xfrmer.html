@@ -11,10 +11,12 @@
 </head>
 <body>
     <div id='controls'>
-        <label for='first_color'>1st Colour:</label> <input id='first_color' type='text' value='red' onchange='first_color=this.value;onColorChange();'>
-        <label for='first_color_segments'>#:</label> <input id='first_color_segments' type='number' min='0' value='0' onchange='first_color_segments=this.value;updateLine();'>
-        <label for='second_color'>2nd Colour:</label> <input id='second_color' type='text' value='black' onchange='second_color=this.value;onColorChange();'>
-        <button id='ground_mode' onclick='ground_mode=!ground_mode;updateLine();'>toggle ground</button>
+        <input id='start_color' type='text' value='black' onchange='start_color=this.value;onColorChange();'> - 
+        <input id='start_idx' type='number' min='0' value='0' onchange='start_idx=this.valueAsNumber;update_line();'> - 
+        <input id='inside_color' type='text' value='red' onchange='inside_color=this.value;onColorChange();'> - 
+        <input id='end_idx' type='number' min='0' value='0' onchange='end_idx=this.valueAsNumber;update_line();'> - 
+        <input id='end_color' type='text' value='black' onchange='end_color=this.value;onColorChange();'>
+        <button id='ground_mode' onclick='ground_mode=!ground_mode;update_line();'>toggle ground</button>
         <br>
 
         <button onclick='get_tour("random");'>random</button>
@@ -27,7 +29,7 @@
         <br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.value;'>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.valueAsNumber;'>
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
@@ -39,7 +41,7 @@
         Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
         <span id='stepsize'>1</span>
         <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
-        <label for='pps'>Pixels per second:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
+        <label for='pps'>Pixels per inside:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
         <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='ɘƚɒminA'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
@@ -59,9 +61,11 @@
 <script>
     var tour = [],
         size = new DMSLib.Point2D(1280, 720),
-        first_color_segments = 0,
-        first_color = 'red',
-        second_color = 'black',
+        start_color = 'black',
+        inside_color = 'red',
+        end_color = 'black',
+        start_idx = 0,
+        end_idx = 0,
         line_thickness = 3,
         requested_size = 1024,
         timer,
@@ -78,19 +82,19 @@
 
     var line_space = svg.append('g');
 
-    var first_line = line_space.append('path')
-            .attr('id', 'first_line')
-            .attr('stroke', first_color)
-            .attr('stroke-width', line_thickness)
-            .attr('fill', 'none');
-    var second_line = line_space.append('path')
-            .attr('id', 'second_line')
-            .attr('stroke', second_color)
-            .attr('stroke-width', line_thickness)
-            .attr('fill', 'none');
     var start_line = line_space.append('path')
             .attr('id', 'start_line')
-            .attr('stroke', second_color)
+            .attr('stroke', start_color)
+            .attr('stroke-width', line_thickness)
+            .attr('fill', 'none');
+    var inside_line = line_space.append('path')
+            .attr('id', 'inside_line')
+            .attr('stroke', inside_color)
+            .attr('stroke-width', line_thickness)
+            .attr('fill', 'none');
+    var end_line = line_space.append('path')
+            .attr('id', 'end_line')
+            .attr('stroke', end_color)
             .attr('stroke-width', line_thickness)
             .attr('fill', 'none');
 
@@ -100,40 +104,42 @@
             .interpolate('linear');
             // .interpolate('cardinal');
 
-    var updateLine = function(frame_time, easing) {
-        var all_pts = tour.slice();
+    var update_line = function(frame_time, easing) {
+        var start_line_pts, inside_line_pts, end_line_pts;
 
-        if(ground_mode) {
-            start_line.attr('d', lineFunction([{x:-1, y:tour[0].y}, tour[0]]));
-            all_pts.push( new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) );
+        start_line_pts = (ground_mode ? [{x:-1, y:tour[0].y}] : []).concat(tour.slice(0,start_idx+1));
+        inside_line_pts = tour.slice(start_idx, end_idx+1);
+        end_line_pts = tour.slice(end_idx, tour.length);
+
+        var last_pt = ground_mode ? new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) : tour[0];
+        if (start_idx >= tour.length) {
+            start_line_pts.push(last_pt);
+        } else if (end_idx >= tour.length) {
+            inside_line_pts.push(last_pt);
         } else {
-            all_pts.push(tour[0]);
-            start_line.attr('d', lineFunction([]));
+            end_line_pts.push(last_pt);
         }
-        var first_line_pts = all_pts.slice(0,first_color_segments+1);
-        var second_line_pts = all_pts.slice(first_color_segments,all_pts.length);
+        
 
         if (frame_time===undefined) {
-            first_line.attr('d', lineFunction(first_line_pts));
-            second_line.attr('d', lineFunction(second_line_pts));
+            start_line.attr('d', lineFunction(start_line_pts));
+            inside_line.attr('d', lineFunction(inside_line_pts));
+            end_line.attr('d', lineFunction(end_line_pts));
         } else {
             if(easing===undefined) {easing = 'linear';}
-            first_line
-                .transition()
-                .duration(frame_time)
-                .ease(easing)
-                .attr('d', lineFunction(first_line_pts));
-            second_line
-                .transition()
-                .duration(frame_time)
-                .ease(easing)
-                .attr('d', lineFunction(second_line_pts));
+            start_line.transition().duration(frame_time).ease(easing)
+                .attr('d', lineFunction(start_line_pts));
+            inside_line.transition().duration(frame_time).ease(easing)
+                .attr('d', lineFunction(inside_line_pts));
+            end_line.transition().duration(frame_time).ease(easing)
+                .attr('d', lineFunction(end_line_pts));
         }
     };
 
     var onColorChange = function() {
-        d3.select('#first_line').attr('stroke', first_color);
-        d3.select('#second_line').attr('stroke', second_color);
+        d3.select('#start_line').attr('stroke', start_color);
+        d3.select('#inside_line').attr('stroke', inside_color);
+        d3.select('#end_line').attr('stroke', end_color);
     };
 
     ////////////////////////////////// Launching framework
@@ -166,13 +172,13 @@
         var method_fn = method_fns[method];
 
         tour = method_fn(requested_size, target);
-        updateLine();
+        update_line();
     };
 
     var import_tour = function() {
         tour = get_pts_from_svg( document.getElementById('tour_svg_text').value );
         increase_number(tour, requested_size);
-        updateLine();
+        update_line();
     };
 
     var export_tour = function() {
@@ -237,7 +243,7 @@
                 tour[i] = newpos[i].div(sumofweights[i]);
             }
         }
-        updateLine();
+        update_line();
 
         if(iter=== undefined) iter=20;
         if(iter!=0) {
@@ -306,23 +312,23 @@
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
             if(num_frames() && !ground_mode) { tour = match_other(tour, get_frame(0));}
-            updateLine();
+            update_line();
         } else {
-            updateLine();
+            update_line();
             timer = setTimeout(function() {tsp(stage); }, 21);
         }
     };
 
     var take_tour = function() {
-        first_color_segments++;
-        d3.select('#first_color_segments').property('value', first_color_segments);
-        updateLine();
+        end_idx++;
+        d3.select('#end_idx').property('value', end_idx);
+        update_line();
 
-        if(first_color_segments < tour.length) {
+        if(end_idx < tour.length) {
             var frame_time = 1000 / pps;
-            var t = (first_color_segments+1) / (tour.length+1);
-            if(t < 0.1) {frame_time /= (t*10); }
-            if(t > 0.9) {frame_time /= ((1-t)*10);}
+            var t = (end_idx+1) / (tour.length+1);
+            if(t < 0.2) {frame_time /= (t*5); }
+            if(t > 0.8) {frame_time /= ((1-t)*5);}
 
             timer = setTimeout(function() {take_tour(); }, frame_time);
         } else {
@@ -336,22 +342,22 @@
         if(step===undefined) {step=5;}
 
         if(step===0) {
-            first_line.attr('d', lineFunction([]));
-            second_line.attr('d', lineFunction([{x:0,y:467}, {x:756.31,y:467}]));
+            start_line.attr('d', lineFunction([]));
+            inside_line.attr('d', lineFunction([{x:0,y:467}, {x:756.31,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 1000);
         } else if(step===1) {
-            second_line
+            inside_line
                 .transition()
                 .duration(3000)
                 .ease('sin-in-out')
                 .attr('d', lineFunction([{x:640,y:467},{x:3000,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 3000);
         } else if(step===2) {
-            first_line
+            start_line
                 .attr('d', lineFunction([{x:-640,y:467},{x:-1,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 12000);
         } else if(step===3) {
-            first_line
+            start_line
                 .transition()
                 .duration(3000)
                 .ease('sin-out')
@@ -360,10 +366,10 @@
         } else if(step==5) {
             line_space.append('circle')
                 .attr('r', 200)
-                .attr('cx', tour[first_color_segments].x)
-                .attr('cy', tour[first_color_segments].y)
+                .attr('cx', tour[end_idx].x)
+                .attr('cy', tour[end_idx].y)
                 .attr('stroke', 'none')
-                .attr('fill', first_color)
+                .attr('fill', inside_color)
                 .attr('opacity', 0)
                 .transition()
                     .duration(2000)
@@ -407,7 +413,7 @@
         }
 
         tour = get_frame(frame);
-        updateLine(frame_time, easing);
+        update_line(frame_time, easing);
         timer = setTimeout(function () { animate(frame + 1); }, delay);
     };
 
