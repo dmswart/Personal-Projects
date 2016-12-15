@@ -58,11 +58,11 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
     var new_a2 = new_pt;
     var a3 = pts[(idx + __step_size) % pts.length];
 
-    if(ground_mode && (idx + __step_size >= pts.length)) { a3 = pts[pts.length-1]; }
+    if(!ends_joined && (idx + __step_size >= pts.length)) { a3 = pts[pts.length-1]; }
 
     var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
-    for (var i = 0; i < pts.length; i+=__step_size) {
+    for (var i = (idx%__step_size); i < pts.length; i+=__step_size) {
         var b1 = pts[i];
         var b2 = pts[(i+__step_size)%pts.length];
 
@@ -74,7 +74,7 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
         }
 
         // edge intersection
-        if(ground_mode && i===pts.length-__step_size) {continue;} // don't check the edge between endpts
+        if(!ends_joined && i + __step_size >= pts.length) {continue;} // don't check the edge between endpts
         if (b1 !== a1 && b1 !== old_a2) {
             if (edge_intersects_edge(a1, new_a2, b1, b2) || edge_intersects_edge(new_a2, a3, b1, b2)) {
                 return false;
@@ -91,9 +91,7 @@ var smooth = function(max_mvmt) {
     // if max_mvt = undefined, it's first frame: start animation
     if (max_mvmt === undefined) {
         max_mvmt = 0;
-
         set_stepsize(1);
-
         start_new_animation(tour);
     }
 
@@ -104,21 +102,23 @@ var smooth = function(max_mvmt) {
     }
 
     var num_iter, idx, prev, next, new_pt;
-    for (num_iter = 0; num_iter < 2000; num_iter++) {
+    for (num_iter = 0; num_iter < 1000; num_iter++) {
+
+        var new_tour = [];
+        for(idx=0; idx<=start_idx; idx++) {new_tour[idx] = tour[idx];}
+        for(idx=end_idx; idx<tour.length; idx++) {new_tour[idx] = tour[idx];}
         
-        if(ground_mode && xs_are_strictly_increasing(tour)) {
+        if(!ends_joined && xs_are_strictly_increasing(tour)) {
             //totally gonna cheat
-            for (idx = 1; idx < tour.length-1; idx++) {
-                var final_pt = tour[0].mul(tour.length-1-idx).add(tour[tour.length-1].mul(idx)).div(tour.length-1);
-                tour[idx] = tour[idx].mul(0.75).add(final_pt.mul(0.25));
+            for (idx = start_idx+1; idx < end_idx; idx++) {
+                var final_pt = tour[start_idx].mul(end_idx-1-idx).add(tour[end_idx].mul(idx-start_idx)).div(end_idx-start_idx-1);
+                new_tour[idx] = tour[idx].mul(0.75).add(final_pt.mul(0.25));
             }
         } else {
-            var new_tour = [];
-            for (idx = 0; idx < tour.length; idx+=__step_size) {
-    
+            for (idx = start_idx+1; idx < end_idx; idx+=__step_size) {
                 prev = (idx - __step_size + tour.length) % tour.length;
                 next = (idx + __step_size) % tour.length;
-                if(ground_mode && (idx + __step_size >= tour.length)) {next = tour.length-1;}
+                if(!ends_joined && (idx + __step_size >= tour.length)) {next = tour.length-1;}
     
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
     
@@ -129,19 +129,14 @@ var smooth = function(max_mvmt) {
                 }
             }
     
-            if(ground_mode) {
-                // pin endpoints
-                new_tour[0] = tour[0];
-                new_tour[tour.length-1] = tour[tour.length-1];
-            }
             fill_in_tour(new_tour, tour.length);
-            tour = new_tour;
-            if(!ground_mode) {set_pointspread(tour, pointspread);}
+            if(start_idx < 0) {set_pointspread(new_tour, pointspread);}
         }
+        tour = new_tour;
 
         var mvmt = movement(tour, saved_tour);
-        if (max_mvmt === undefined || max_mvmt === 0) { max_mvmt = mvmt; }
-        if(mvmt >= max_mvmt) { break; }
+        if (max_mvmt === 0) { max_mvmt = mvmt; }
+        if (mvmt >= max_mvmt) { break; }
     }
 
     // if this is first time through, we use this amount of movement as the step amount.
@@ -165,13 +160,18 @@ var optimize_animation = function() {
     var num_pts = get_frame(0).length;
 
     for(var f = 1; f < num_frames()-1; f++) {
+        var p;
         var new_frame = [];
         var avg_edge_size = avg_edge(tour);
-        for(var p = 0; p < num_pts; p+=__step_size) {
+        
+        for(p=0; p<=start_idx; p++) {new_frame[p] = __animation[f][p];}
+        for(p=end_idx; p<num_pts; p++) {new_frame[p] = __animation[f][p];}
+        
+        for(p = start_idx+1; p < end_idx; p+=__step_size) {
             var prev = (p + num_pts - __step_size) % num_pts;
             var next = (p + __step_size) % num_pts;
 
-            if(ground_mode) {
+            if(!ends_joined) {
                 if(p===0) {prev = 0;} 
                 if(p + __step_size >= num_pts) {next = num_pts-1;}
             }
@@ -192,7 +192,7 @@ var optimize_animation = function() {
             }
         }
 
-        if(ground_mode) {
+        if(!ends_joined) {
             if(new_frame[num_pts-1] === undefined) {
                 // write in the last point so we can fill things in if nec.
                 new_frame[num_pts - 1] = __animation[f][num_pts - 1];
@@ -211,5 +211,5 @@ var optimize_animation = function() {
     timer = setTimeout(function() {optimize_animation();}, 11);
 };
 
-//TODO - remove external globals? (ground_mode, timer, tour)
+//TODO - remove external globals? (start_idx, end_idx, timer, tour)
 // TODO - fix bug where gluing two animations causes line to go through itself

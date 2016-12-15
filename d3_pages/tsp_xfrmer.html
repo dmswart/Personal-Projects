@@ -11,12 +11,12 @@
 </head>
 <body>
     <div id='controls'>
-        <input id='start_color' type='text' value='black' onchange='start_color=this.value;onColorChange();'> - 
-        <input id='start_idx' type='number' min='0' value='0' onchange='start_idx=this.valueAsNumber;update_line();'> - 
-        <input id='inside_color' type='text' value='red' onchange='inside_color=this.value;onColorChange();'> - 
-        <input id='end_idx' type='number' min='0' value='0' onchange='end_idx=this.valueAsNumber;update_line();'> - 
-        <input id='end_color' type='text' value='black' onchange='end_color=this.value;onColorChange();'>
-        <button id='ground_mode' onclick='ground_mode=!ground_mode;update_line();'>toggle ground</button>
+        <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
+        <input id='start_idx' type='number' min='-1' value='-1' onchange='start_idx=this.valueAsNumber;update_line();'> -
+        <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
+        <input id='end_idx' type='number' min='0' value='1024' onchange='end_idx=this.valueAsNumber;update_line();'> -
+        <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
+        <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
         <br>
 
         <button onclick='get_tour("random");'>random</button>
@@ -61,16 +61,16 @@
 <script>
     var tour = [],
         size = new DMSLib.Point2D(1280, 720),
-        start_color = 'black',
-        inside_color = 'red',
-        end_color = 'black',
+        start_color = 'red',
+        inside_color = 'black',
+        end_color = 'red',
         start_idx = 0,
-        end_idx = 0,
+        end_idx = 1024,
         line_thickness = 3,
         requested_size = 1024,
         timer,
         pps = 100,
-        ground_mode=false,
+        ends_joined = true,
         target = {width:size.x, height:size.y, pixel: function() {return 0;} };
 
 
@@ -107,11 +107,11 @@
     var update_line = function(frame_time, easing) {
         var start_line_pts, inside_line_pts, end_line_pts;
 
-        start_line_pts = (ground_mode ? [{x:-1, y:tour[0].y}] : []).concat(tour.slice(0,start_idx+1));
-        inside_line_pts = tour.slice(start_idx, end_idx+1);
+        start_line_pts = (ends_joined ? [] : [{x:-1, y:tour[0].y}]).concat(tour.slice(0,start_idx+1));
+        inside_line_pts = tour.slice(start_idx < 0 ? 0 : start_idx, end_idx+1);
         end_line_pts = tour.slice(end_idx, tour.length);
 
-        var last_pt = ground_mode ? new DMSLib.Point2D(size.x+1, tour[tour.length-1].y) : tour[0];
+        var last_pt = ends_joined ? tour[0] : new DMSLib.Point2D(size.x+1, tour[tour.length-1].y);
         if (start_idx >= tour.length) {
             start_line_pts.push(last_pt);
         } else if (end_idx >= tour.length) {
@@ -142,6 +142,20 @@
         d3.select('#end_line').attr('stroke', end_color);
     };
 
+    ////////////////////////////////// Ground mode
+    var join_ends = function(val) {
+        ends_joined = val;
+        if(!val) {
+            start_idx = 0;
+            end_idx = tour.length-1;
+        } else {
+            start_idx = -1;
+            end_idx = tour.length;
+        }
+        __on_tour_changed();
+    }
+
+
     ////////////////////////////////// Launching framework
     var go = function (method) {
         var method_fns = { 'Smooth' : smooth,
@@ -163,6 +177,12 @@
         }
     };
 
+    var __on_tour_changed = function() {
+        end_idx = Math.min(end_idx, tour.length);
+        d3.select('#start_idx').property('value', start_idx);
+        d3.select('#end_idx').property('value', end_idx);
+        update_line();
+    }
     var get_tour = function(method) {
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
@@ -172,13 +192,16 @@
         var method_fn = method_fns[method];
 
         tour = method_fn(requested_size, target);
-        update_line();
+        start_idx = ends_joined ? -1 : 0;
+        end_idx = ends_joined ? tour.length : tour.length-1;
+        __on_tour_changed();
     };
 
     var import_tour = function() {
         tour = get_pts_from_svg( document.getElementById('tour_svg_text').value );
         increase_number(tour, requested_size);
-        update_line();
+
+        __on_tour_changed();
     };
 
     var export_tour = function() {
@@ -256,53 +279,64 @@
     };
 
     var find_ground = function(y) {
-        var target_in = -1, 
-            target_out = -1;
-        var in_idx, out_idx, tmp;
-
-        for(var x=0; x<size.x; x++) {
-            if(target.pixel(x,y) < 255) {
-                if(target_in === -1) {
-                    target_in = x;
+        var tmp, x, new_idx, target_x;
+        if(start_idx === 0) {
+            //find the rightmost non-blank point of our target
+            target_x = -1;
+            for(x=0; x<size.x; x++) {
+                if (target.pixel(x, y) < 255) {
+                    target_x = x;
+                    break;
                 }
-                target_out = x;
             }
+
+            new_idx = target_x >= 0 ?
+                      find_closest_pt(tour, new DMSLib.Point2D(target_x, y)) :
+                      find_direction_most_pt(tour, -1, 5);
+
+            // swap
+            tmp = new DMSLib.Point2D(tour[new_idx]);
+            tour[new_idx] = new DMSLib.Point2D(tour[0]);
+            tour[0] = new DMSLib.Point2D(tmp);
+            tour[0].y = y;
         }
 
-        if(target_in >= 0) {
-            in_idx = find_closest_pt(tour, new DMSLib.Point2D(target_in, y));
-            out_idx = find_closest_pt(tour, new DMSLib.Point2D(target_out, y));
-        } else {
-            in_idx = find_direction_most_pt(tour, -1, 5);
-            out_idx = find_direction_most_pt(tour, 1, 5);
+        if(end_idx === tour.length-1) {
+            //find the leftmost non-blank point of our target
+            for(x=size.x-1; x>=0; x--) {
+                if(target.pixel(x,y) < 255) {
+                    target_x = x;
+                    break;
+                }
+            }
+
+            new_idx = target_x >= 0 ?
+                      find_closest_pt(tour, new DMSLib.Point2D(target_x, y)) :
+                      find_direction_most_pt(tour, 1, 5);
+
+            // swap
+            tmp = new DMSLib.Point2D(tour[new_idx]);
+            tour[new_idx] = new DMSLib.Point2D(tour[tour.length-1]);
+            tour[tour.length-1] = new DMSLib.Point2D(tmp);
+            tour[tour.length-1].y = y;
         }
-
-        tmp = new DMSLib.Point2D(tour[in_idx]);
-        tour[in_idx] = new DMSLib.Point2D(tour[0]);
-        tour[0] = new DMSLib.Point2D(tmp);
-        tour[0].y = y;
-
-        tmp = new DMSLib.Point2D(tour[out_idx]);
-        tour[out_idx] = new DMSLib.Point2D(tour[tour.length-1]);
-        tour[tour.length-1] = new DMSLib.Point2D(tmp);
-        tour[tour.length-1].y = y;
     };
 
     var tsp = function (stage) {
         if(stage === undefined) {stage = 0;}
 
         if(stage === 0) {
-            if(ground_mode) { find_ground(467); } 
+            if(!ends_joined) { find_ground(467); }
         } else if(stage === 1) {
-            randomize_pts(tour, ground_mode);
+            randomize_pts(tour, start_idx, end_idx);
         } else if(stage === 2) {
-		    do_insertion_heuristic(tour, ground_mode);
+		    do_insertion_heuristic(tour, start_idx, end_idx);
         } else if(stage === 3) {
-            if(do_two_opt(tour, false, ground_mode) ) { stage--; }
+            if(do_two_opt(tour, start_idx, end_idx, false) ) { stage--; }
         } else if(stage === 4) {
-            if(do_two_opt(tour, true, ground_mode) ) { stage--; }
+            if(do_two_opt(tour, start_idx, end_idx, true) ) { stage--; }
         } else if(stage === 5) {
-            if(do_two_opt(tour, false, ground_mode) ) { stage--; }
+            if(do_two_opt(tour, start_idx, end_idx, false) ) { stage--; }
         }
 
         stage++;
@@ -311,7 +345,7 @@
             clearTimeout(timer);
             timer = null;
             d3.select('#TSP').property('value', 'TSP');
-            if(num_frames() && !ground_mode) { tour = match_other(tour, get_frame(0));}
+            if(num_frames() && start_idx < 0) { tour = match_other(tour, get_frame(0));}
             update_line();
         } else {
             update_line();
@@ -364,6 +398,10 @@
                 .attr('d', lineFunction([{x:-640,y:467},{x:640,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 3000);
         } else if(step==5) {
+            end_idx = start_idx;
+            update_line();
+            timer = setTimeout(function () { misc_animation(step + 1); }, 1000);
+        } else if(step==6) {
             line_space.append('circle')
                 .attr('r', 200)
                 .attr('cx', tour[end_idx].x)
@@ -376,6 +414,8 @@
                     .ease('bounce-in')
                     .attr('opacity', 1)
                     .attr('r', line_thickness/2);
+            d3.select('#TakeTour').property('value', 'Stop');
+            d3.select('#Misc').property('value', 'Misc');
             timer = setTimeout(function() {take_tour();}, 2000);
         } else {
             clearTimeout(timer);
