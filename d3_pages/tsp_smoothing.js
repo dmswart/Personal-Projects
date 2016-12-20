@@ -58,7 +58,10 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
     var new_a2 = new_pt;
     var a3 = pts[(idx + __step_size) % pts.length];
 
-    if(!ends_joined && (idx + __step_size >= pts.length)) { a3 = pts[pts.length-1]; }
+    if(!ends_joined) {
+        if(idx + __step_size >= pts.length) { a3 = pts[pts.length-1]; }
+        if(idx - __step_size < 0) { a1 = pts[0]; }
+    } 
 
     var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
 
@@ -74,9 +77,11 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
         }
 
         // edge intersection
-        if(!ends_joined && i + __step_size >= pts.length) {continue;} // don't check the edge between endpts
+        if(!ends_joined && (i + __step_size >= pts.length || i - __step_size < 0)) {continue;} // don't check the edge between endpts
         if (b1 !== a1 && b1 !== old_a2) {
-            if (edge_intersects_edge(a1, new_a2, b1, b2) || edge_intersects_edge(new_a2, a3, b1, b2)) {
+            if (edge_intersects_edge(a1, new_a2, b1, b2) || 
+                edge_intersects_edge(new_a2, a3, b1, b2) ||
+                edge_intersects_edge(old_a2, new_a2, b1, b2)) {
                 return false;
             }
         }
@@ -118,7 +123,10 @@ var smooth = function(max_mvmt) {
             for (idx = start_idx+1; idx < end_idx; idx+=__step_size) {
                 prev = (idx - __step_size + tour.length) % tour.length;
                 next = (idx + __step_size) % tour.length;
-                if(!ends_joined && (idx + __step_size >= tour.length)) {next = tour.length-1;}
+                if(!ends_joined) {
+                    if (idx + __step_size >= tour.length) {next = tour.length-1;}
+                    if (idx - __step_size < 0) {prev = 0;}
+                }
     
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
     
@@ -154,7 +162,8 @@ var smooth = function(max_mvmt) {
 };
 
 
-var optimize_animation = function() {
+var optimize_animation = function(smoothness) {
+    if(smoothness === undefined) { smoothness = 0.00; }
     glue_animations();
  
     var num_pts = get_frame(0).length;
@@ -172,16 +181,16 @@ var optimize_animation = function() {
             var next = (p + __step_size) % num_pts;
 
             if(!ends_joined) {
-                if(p===0) {prev = 0;} 
+                if(p - __step_size < 0) {prev = 0;} 
                 if(p + __step_size >= num_pts) {next = num_pts-1;}
             }
 
             var newpt = __animation[f][p]
                     .add(__animation[f+1][p])
                     .add(__animation[f-1][p])
-                    .add(__animation[f][prev].mul(0.05))
-                    .add(__animation[f][next].mul(0.05))
-                    .div(3.1)
+                    .add(__animation[f][prev].mul(smoothness))
+                    .add(__animation[f][next].mul(smoothness))
+                    .div(3.0 + 2 * smoothness)
                     .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (__sa_temp / 10),
                                                   Math.random() * DMSLib.TAU));
 
