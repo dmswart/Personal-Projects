@@ -12,9 +12,9 @@
 <body>
     <div id='controls'>
         <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
-        <input id='start_idx' type='number' min='-1' value='-1' onchange='start_idx=this.valueAsNumber;update_line();'> -
+        <input id='start_idx' type='number' min='-1' value='-1' onchange='set_start_end_idx(this.valueAsNumber, end_idx);update_line();'> -
         <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
-        <input id='end_idx' type='number' min='0' value='1024' onchange='end_idx=this.valueAsNumber;update_line();'> -
+        <input id='end_idx' type='number' min='0' value='1024' onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
         <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
         <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
         <br>
@@ -30,7 +30,7 @@
         <br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='requested_size=this.valueAsNumber;'>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='request_size(this.valueAsNumber);'>
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
@@ -105,6 +105,25 @@
             .interpolate('linear');
             // .interpolate('cardinal');
 
+    var set_start_end_idx = function(start,end) {
+        start_idx = start;
+        end_idx = end;
+
+        d3.select('#start_idx').property('value', start_idx);
+        d3.select('#end_idx').property('value', end_idx);
+
+        requested_size = end_idx - start_idx - 1;
+        d3.select('#requested_size').property('value', requested_size);
+        update_line();
+    } 
+
+    var request_size = function(num) {
+        requested_size = num;
+
+        increase_number(tour, requested_size, start_idx, end_idx);
+        set_start_end_idx(start_idx, start_idx+requested_size+1);
+    }
+
     var update_line = function(frame_time, easing) {
         var start_line_pts, inside_line_pts, end_line_pts;
 
@@ -146,14 +165,8 @@
     ////////////////////////////////// Ground mode
     var join_ends = function(val) {
         ends_joined = val;
-        if(!val) {
-            start_idx = 0;
-            end_idx = tour.length-1;
-        } else {
-            start_idx = -1;
-            end_idx = tour.length;
-        }
-        __on_tour_changed();
+        set_start_end_idx(ends_joined ? -1 : 0,
+                          ends_joined ? tour.length : tour.length-1);
     }
 
 
@@ -178,12 +191,6 @@
         }
     };
 
-    var __on_tour_changed = function() {
-        end_idx = Math.min(end_idx, tour.length);
-        d3.select('#start_idx').property('value', start_idx);
-        d3.select('#end_idx').property('value', end_idx);
-        update_line();
-    }
     var get_tour = function(method) {
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
@@ -192,17 +199,18 @@
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
 
-        tour = method_fn(requested_size, target);
-        start_idx = ends_joined ? -1 : 0;
-        end_idx = ends_joined ? tour.length : tour.length-1;
-        __on_tour_changed();
+        var start_pts = tour.slice(0,start_idx);
+        var new_pts = method_fn(requested_size, target);
+        var end_pts = tour.slice(end_idx);
+
+        tour = start_pts.concat(new_pts).concat(end_pts);
+        update_line();
     };
 
     var import_tour = function() {
         tour = get_pts_from_svg( document.getElementById('tour_svg_text').value );
-        increase_number(tour, requested_size);
-
-        __on_tour_changed();
+        set_start_end_idx(ends_joined ? -1 : 0,
+                          ends_joined ? tour.length : tour.length-1);
     };
 
     var export_tour = function() {
@@ -359,7 +367,7 @@
         d3.select('#end_idx').property('value', end_idx);
         update_line();
 
-        if(end_idx < tour.length) {
+        if(end_idx < tour.length - 1) {
             var frame_time = 1000 / pps;
             var t = (end_idx+1) / (tour.length+1);
             if(t < 0.2) {frame_time /= (t*5); }
@@ -378,7 +386,7 @@
 
         if(step===0) {
             start_line.attr('d', lineFunction([]));
-            inside_line.attr('d', lineFunction([{x:0,y:467}, {x:756.31,y:467}]));
+            inside_line.attr('d', lineFunction([{x:0,y:467}, {x:861.88,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 1000);
         } else if(step===1) {
             inside_line
@@ -390,7 +398,7 @@
         } else if(step===2) {
             start_line
                 .attr('d', lineFunction([{x:-640,y:467},{x:-1,y:467}]));
-            timer = setTimeout(function() {misc_animation(step+1);}, 12000);
+            timer = setTimeout(function() {misc_animation(step+1);}, 6000);
         } else if(step===3) {
             start_line
                 .transition()

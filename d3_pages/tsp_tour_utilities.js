@@ -186,12 +186,16 @@ var find_closest_pt = function(pts, pt) {
     return result;
 };
 
-var increase_number = function(pts, num) {
-    while(pts.length < num) {
+var increase_number = function(pts, num, start_idx, end_idx) {
+    if(start_idx===undefined) {start_idx=-1;}
+    if(end_idx===undefined) {end_idx=pts.length;}
+
+    // increase as necessary
+    while(end_idx-start_idx-1 < num) {
         // find idx of longest edge
-        var idx = 0;
-        var max_edge = pts[0].sub(pts[1]).R();
-        for(var i=1; i<pts.length-1; i++) {
+        var idx = -1;
+        var max_edge = 0;
+        for(var i=start_idx+1; i<end_idx-1; i++) {
             var dist = pts[i].sub(pts[i+1]).R();
             if(dist > max_edge) {
                 max_edge = dist;
@@ -202,6 +206,25 @@ var increase_number = function(pts, num) {
         // insert a vertex half way in between
         var new_pt = pts[idx].add(pts[idx+1]).mul(0.5);
         pts.splice(idx+1, 0, new_pt);
+        end_idx++;
+    }
+
+    // or decrease as necessary
+    while(end_idx-start_idx-1 > num) {
+        // find idx of straightest edge
+        var idx = -1;
+        var min_angle = DMSLib.TAU;
+        for(var i=start_idx+1; i<end_idx-2; i++) {
+            var angle = Math.abs( DMSLib.Point2D.angle( pts[i], pts[i+1], pts[i+2] ) - 
+                                  DMSLib.HALFTAU );
+            if(angle < min_angle) {
+                min_angle = angle;
+                idx = i;
+            }
+        }
+
+        pts.splice(idx+1,1); 
+        end_idx--;
     }
 };
 
