@@ -187,6 +187,7 @@
         } else {
             clearTimeout(timer);
             timer = null;
+            tour = tour.slice();
             d3.select('#' + method).property('value', method);
         }
     };
@@ -199,12 +200,12 @@
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
 
-        var start_pts = tour.slice(0,start_idx);
+        var start_pts = tour.slice(0,start_idx+1);
         var new_pts = method_fn(requested_size, target);
         var end_pts = tour.slice(end_idx);
 
         tour = start_pts.concat(new_pts).concat(end_pts);
-        update_line();
+        set_start_end_idx(start_pts.length-1, start_pts.length+new_pts.length);
     };
 
     var import_tour = function() {
@@ -444,6 +445,7 @@
             clearTimeout(timer);
             timer = null;
             d3.select('#Animate').property('value', 'Animate');
+            tour = tour.slice();
             return;
         } else {
             frame_time = movement(get_frame(frame), get_frame(frame-1)) / pps * 1000;
