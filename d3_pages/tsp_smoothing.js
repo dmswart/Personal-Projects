@@ -1,4 +1,5 @@
-var __sa_temp = 3,
+var __sa_temp = 0,
+    __smoothness = 1,
     __step_size=1;
 var __animation = [],
     __animation2 = [];
@@ -14,7 +15,8 @@ var start_new_animation = function(pts) {
 };
 
 
-//sa_temp accessor
+//accessors
+set_smoothness = function(val) { __smoothness = val; }
 set_sa_temp = function(val) { __sa_temp = val; }
 
 // step_size accessor 
@@ -64,6 +66,23 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
     } 
 
     var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
+    
+    //check local angles
+    var switched_angles = function(old_a, old_b, old_c, new_a, new_b, new_c) {
+        var old_dir_1 = old_b.sub(old_a).theta(),
+            old_dir_2 = old_b.sub(old_c).theta(),
+            new_dir_1 = new_b.sub(new_a).theta(),
+            new_dir_2 = new_b.sub(new_c).theta(),
+            old_turn = DMSLib.fixAngle(old_dir_2 - old_dir_1),
+            new_turn = DMSLib.fixAngle(new_dir_2 - new_dir_1);
+        return Math.abs(new_turn) < 1.0 && Math.abs(old_turn) < 1.0 && new_turn * old_turn < 0;
+    };
+    var a0 = pts[(idx- __step_size - __step_size + pts.length) % pts.length];
+    var a4 = pts[(idx+ __step_size + __step_size) % pts.length];
+    if( switched_angles(a0, a1, old_a2, a0, a1, new_a2) ||
+        switched_angles(old_a2, a3, a4, new_a2, a3, a4) ) {
+        return false;
+    }
 
     for (var i = (idx%__step_size); i < pts.length; i+=__step_size) {
         var b1 = pts[i];
@@ -162,8 +181,7 @@ var smooth = function(max_mvmt) {
 };
 
 
-var optimize_animation = function(smoothness) {
-    if(smoothness === undefined) { smoothness = 0.00; }
+var optimize_animation = function() {
     glue_animations();
  
     var num_pts = get_frame(0).length;
@@ -188,9 +206,9 @@ var optimize_animation = function(smoothness) {
             var newpt = __animation[f][p]
                     .add(__animation[f+1][p])
                     .add(__animation[f-1][p])
-                    .add(__animation[f][prev].mul(smoothness))
-                    .add(__animation[f][next].mul(smoothness))
-                    .div(3.0 + 2 * smoothness)
+                    .add(__animation[f][prev].mul(__smoothness*0.05))
+                    .add(__animation[f][next].mul(__smoothness*0.05))
+                    .div(3.0 + 0.1 * __smoothness)
                     .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (__sa_temp / 10),
                                                   Math.random() * DMSLib.TAU));
 
@@ -211,7 +229,9 @@ var optimize_animation = function(smoothness) {
         }
 
         fill_in_tour(new_frame, num_pts);
-        __animation[f] = new_frame;
+        if(!does_tour_cross(new_frame, ends_joined)) {
+            __animation[f] = new_frame;
+        }
     }
 
     tour = __animation[Math.floor(num_frames()/2)];

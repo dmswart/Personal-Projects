@@ -236,3 +236,23 @@ var xs_are_strictly_increasing = function(pts) {
     }
     return true;
 };
+
+var does_tour_cross = function(pts, closed) {
+    var i, j, i_next, j_next, 
+        end_idx = closed ? pts.length : pts.length - 1;
+    
+    for(i=0; i<end_idx; i++) {
+        i_next = (i+1)%pts.length;
+        for(j=i+1; j<end_idx; j++) {
+            j_next = (j+1)%pts.length;
+            if(i===j_next || j===i_next) {
+                continue;
+            } else if (edge_intersects_edge(pts[i], pts[i_next], pts[j], pts[j_next])) {
+                return true;
+            }
+        } 
+    }
+    
+    return false;
+}
+
