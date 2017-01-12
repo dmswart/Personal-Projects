@@ -228,9 +228,16 @@ var increase_number = function(pts, num, start_idx, end_idx) {
     }
 };
 
-var xs_are_strictly_increasing = function(pts) {
-    for(var i=0; i<pts.length-2; i++) {
-        if(pts[i].x >= pts[i+1].x) {
+var xs_are_monotonic = function(pts, start_idx, end_idx) {
+    if(start_idx===-1 && end_idx===pts.length) {
+        return false;
+    }
+
+    var increasing = pts[start_idx+1].x > pts[start_idx+2].x;
+     
+    for(var i=start_idx+1; i<end_idx-1; i++) {
+        if(increasing && pts[i].x <= pts[i+1].x ||
+           !increasing && pts[i].x >= pts[i+1].x) {
             return false;
         }
     }

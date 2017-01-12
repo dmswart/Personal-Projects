@@ -14,7 +14,7 @@
         <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
         <input id='start_idx' type='number' min='-1' value='-1' onchange='set_start_end_idx(this.valueAsNumber, end_idx);update_line();'> -
         <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
-        <input id='end_idx' type='number' min='0' value='1024' onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
+        <input id='end_idx' type='number' min='0' value='256' onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
         <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
         <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
         <br>
@@ -30,14 +30,16 @@
         <br><br>
 
         <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=1024 onchange='request_size(this.valueAsNumber);'>
+        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' value=256 onchange='request_size(this.valueAsNumber);'>
         <button onclick='get_tour("target");'>target</button>
         <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
         <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
         <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
         <br>
 
-        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='3' onchange='set_sa_temp(this.value);'/>
+        <div hidden>
+            <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' min='0' max='10' value='0' onchange='set_sa_temp(this.value);'/> 
+        </div>
         <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
         Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
         <span id='stepsize'>1</span>
@@ -66,9 +68,9 @@
         inside_color = 'black',
         end_color = 'red',
         start_idx = 0,
-        end_idx = 1024,
+        end_idx = 256,
         line_thickness = 3,
-        requested_size = 1024,
+        requested_size = 256,
         timer,
         pps = 100,
         ends_joined = true,
@@ -271,7 +273,7 @@
         }
 
         // calculate weighted average and show
-        for(i=0; i<tour.length; i++) {
+        for(i=start_idx+1; i<end_idx; i++) {
             if(sumofweights[i]) {
                 tour[i] = newpos[i].div(sumofweights[i]);
             }
