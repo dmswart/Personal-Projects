@@ -21,7 +21,7 @@
 
         <button onclick='get_tour("random");'>random</button>
         <button onclick='get_tour("house");'>house</button>
-        <button onclick='get_tour("circle");'>circle</button>
+        <button onclick='get_tour("head");'>head</button>
         <button onclick='get_tour("spiral");'>spiral</button>
         <button id='import_tour' onclick='import_tour();'>import</button>
         <button id='export_tour' onclick='export_tour();'>export</button>
@@ -198,12 +198,14 @@
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
                           'house' : get_house_pts,
+                          'head' : get_head_pts,
                           'target': get_target_pts,
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
+        var offset = method === 'head' ? tour[start_idx].add(tour[end_idx]).div(2) : undefined;
 
         var start_pts = tour.slice(0,start_idx+1);
-        var new_pts = method_fn(requested_size, target);
+        var new_pts = method_fn(requested_size, target, offset);
         var end_pts = tour.slice(end_idx);
 
         tour = start_pts.concat(new_pts).concat(end_pts);

@@ -1,5 +1,5 @@
 var __sa_temp = 0,
-    __smoothness = 1,
+    __smoothness = 0,
     __step_size=1;
 var __animation = [],
     __animation2 = [];
