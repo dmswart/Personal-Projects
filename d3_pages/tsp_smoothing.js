@@ -1,5 +1,5 @@
 var __sa_temp = 0,
-    __smoothness = 1,
+    __smoothness = 0,
     __step_size=1;
 var __animation = [],
     __animation2 = [];
@@ -132,7 +132,7 @@ var smooth = function(max_mvmt) {
         for(idx=0; idx<=start_idx; idx++) {new_tour[idx] = tour[idx];}
         for(idx=end_idx; idx<tour.length; idx++) {new_tour[idx] = tour[idx];}
         
-        if(!ends_joined && xs_are_strictly_increasing(tour)) {
+        if(xs_are_monotonic(tour, start_idx, end_idx)) {
             //totally gonna cheat
             for (idx = start_idx+1; idx < end_idx; idx++) {
                 var final_pt = tour[start_idx].mul(end_idx-1-idx).add(tour[end_idx].mul(idx-start_idx)).div(end_idx-start_idx-1);
@@ -206,8 +206,8 @@ var optimize_animation = function() {
             var newpt = __animation[f][p]
                     .add(__animation[f+1][p])
                     .add(__animation[f-1][p])
-                    .add(__animation[f][prev].mul(__smoothness*0.05))
-                    .add(__animation[f][next].mul(__smoothness*0.05))
+                    .add(__animation[f][prev].mul(__smoothness * 0.05))
+                    .add(__animation[f][next].mul(__smoothness * 0.05))
                     .div(3.0 + 0.1 * __smoothness)
                     .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (__sa_temp / 10),
                                                   Math.random() * DMSLib.TAU));
