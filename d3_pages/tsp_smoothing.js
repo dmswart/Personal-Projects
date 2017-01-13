@@ -14,6 +14,25 @@ var start_new_animation = function(pts) {
     __animation.push(pts.slice());
 };
 
+get_animation_pts = function(pts, target, offset) {
+    var i, j,
+        result = [],
+        frame,
+        pt;
+
+    for(i=0; i<6; i++ ) {
+        frame = get_frame(Math.floor(i/5*(num_frames()-1)));
+        for(var j=0; j<frame.length; j++) {
+            pt = frame[j];
+            result.push(new DMSLib.Point2D(pt.x+(i*1280),pt.y).div(6));
+        }
+        pt = frame[0];
+        result.push(new DMSLib.Point2D(pt.x+(i*1280),pt.y).div(6));
+        result.push(null);
+    }
+
+    return result;
+};
 
 //accessors
 set_smoothness = function(val) { __smoothness = val; }

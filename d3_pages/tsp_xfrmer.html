@@ -20,7 +20,7 @@
         <br>
 
         <button onclick='get_tour("random");'>random</button>
-        <button onclick='get_tour("house");'>house</button>
+        <button onclick='get_tour("animation");'>animation</button>
         <button onclick='get_tour("head");'>head</button>
         <button onclick='get_tour("spiral");'>spiral</button>
         <button id='import_tour' onclick='import_tour();'>import</button>
@@ -43,10 +43,8 @@
         Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
         <span id='stepsize'>1</span>
         <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
-        <br>
         <label for='pps'>Pixels per step:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
         <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='Show_Animation' onclick='show_animation();' value = 'show' />
         <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='ɘƚɒminA'/>
         <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
         <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
@@ -160,32 +158,6 @@
         }
     };
 
-    get_animation_path = function() {
-        var i, j,
-            result = [],
-            frame,
-            pt,
-            x_offset = 0;
-
-        for(i=0; i<num_frames(); i++ ) {
-            frame = get_frame(i);
-            for(var j=0; j<frame.length; j++) {
-                pt = frame[j];
-                result.push(new DMSLib.Point2D(pt.x+x_offset,pt.y));
-            }
-            result.push(null);
-            x_offset += target.width;
-        }
-        // TODO scale
-
-        return result;
-    };
-    var show_animation = function() {
-        start_line.attr('d', lineFunction([]));
-        end_line.attr('d', lineFunction([]));
-        inside_line.attr('d', lineFunction(get_animation_path()));
-    };
-
     var onColorChange = function() {
         d3.select('#start_line').attr('stroke', start_color);
         d3.select('#inside_line').attr('stroke', inside_color);
@@ -222,12 +194,15 @@
         }
     };
 
+
     var get_tour = function(method) {
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
                           'house' : get_house_pts,
+                          'animation' : get_animation_pts,
                           'head' : get_head_pts,
                           'target': get_target_pts,
+                          'animation': get_animation_pts,
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
         var offset = method === 'head' ? tour[start_idx].add(tour[end_idx]).div(2) : undefined;
