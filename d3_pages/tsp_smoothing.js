@@ -17,18 +17,29 @@ var start_new_animation = function(pts) {
 get_animation_pts = function(pts, target, offset) {
     var i, j,
         result = [],
-        frame,
-        pt;
+        frame, pt,
+        min_x = 1028 
+        max_x = 0,
+        offset_x = 0;
 
     for(i=0; i<6; i++ ) {
         frame = get_frame(Math.floor(i/5*(num_frames()-1)));
-        for(var j=0; j<frame.length; j++) {
-            pt = frame[j];
-            result.push(new DMSLib.Point2D(pt.x+(i*1280),pt.y).div(6));
+        for(var j=0; j<=frame.length; j++) {
+            pt = frame[j%frame.length];
+            result.push(new DMSLib.Point2D(pt.x+offset_x, pt.y));
+            min_x = Math.min(min_x, pt.x+offset_x);
+            max_x = Math.max(max_x, pt.x+offset_x);
         }
-        pt = frame[0];
-        result.push(new DMSLib.Point2D(pt.x+(i*1280),pt.y).div(6));
         result.push(null);
+        offset_x = max_x + 20;
+    }
+
+    var scale = 1240 / (max_x - min_x);
+    for(i=0; i<result.length; i++) {
+        if(result[i]) {
+            result[i] = new DMSLib.Point2D((result[i].x - min_x) * scale + 20,
+                                           result[i].y * scale);
+        }
     }
 
     return result;
