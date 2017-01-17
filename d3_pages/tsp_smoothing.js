@@ -177,7 +177,9 @@ var smooth = function(max_mvmt) {
                     if (idx - __step_size < 0) {prev = 0;}
                 }
     
+                // Chow Glickstein with a parameter of delta = 1/3
                 new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
+                
     
                 if (__is_valid_new_point(tour, new_pt, idx)) {
                     new_tour[idx] = new_pt;
