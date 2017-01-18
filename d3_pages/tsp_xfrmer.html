@@ -2,12 +2,16 @@
 <head>
     <script type='text/javascript' src='./d3.v3.min.js'></script>
     <script type='text/javascript' src='./d3-voronoi.v1.min.js'></script>
+
     <script type='text/javascript' src='./dmslib_core.js'></script>
     <script type='text/javascript' src='./dmslib_point2d.js'></script>
+    <script type='text/javascript' src='./dmslib_point3d.js'></script>
+
     <script type='text/javascript' src='./tsp_tour_generation.js'></script>
     <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
     <script type='text/javascript' src='./tsp_solver.js'></script>
     <script type='text/javascript' src='./tsp_smoothing.js'></script>
+    <script type='text/javascript' src='./tsp_3D.js'></script>
 </head>
 <body>
     <div id='controls'>
@@ -17,6 +21,7 @@
         <input id='end_idx' type='number' style='width:60px' min='0' value='256' onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
         <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
         <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
+        <button id='sphere)mode' onclick='go_3D();'>3D</button>
         <br>
 
         <button onclick='get_tour("random");'>random</button>
@@ -84,6 +89,8 @@
             .attr('width', size.x)
             .attr('height', size.y)
             .attr("style", "outline: thin solid red;");
+
+    var background_image = svg.append("image");
 
     var line_space = svg.append('g');
 
@@ -167,12 +174,18 @@
         d3.select('#end_line').attr('stroke', end_color);
     };
 
-    ////////////////////////////////// Ground mode
+    ////////////////////////////////// Ground mode, 3D mode
     var join_ends = function(val) {
         ends_joined = val;
         set_start_end_idx(ends_joined ? -1 : 0,
                           ends_joined ? tour.length : tour.length-1);
-    }
+    };
+
+    var go_3D = function() {
+        svg.attr("style", "outline: thin solid lightgreen;");
+
+        convert_to_3D_app();
+    };
 
 
     ////////////////////////////////// Launching framework

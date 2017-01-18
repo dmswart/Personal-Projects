@@ -46,15 +46,16 @@ var get_random_pts = function(num_pts, target) {
     return result;
 };
 
+
+var __to_beat = function(x,y,target) { return target.pixel(x, y) / 255.0; };
 var get_target_pts = function(num_pts, target) {
     result=[];
     while(result.length < num_pts)
     {
         var x = Math.random() * target.width;
         var y = Math.random() * target.height;
-        var dice = Math.random()*255;
-        var tobeat = target.pixel(x, y);
-        if( dice > tobeat) {
+        var dice = Math.random();
+        if( dice > __to_beat(x,y,target)) {
             result.push( new DMSLib.Point2D(x, y) );
         }
     }
