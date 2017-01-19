@@ -221,7 +221,9 @@
                           'animation': get_animation_pts,
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
-        var offset = method === 'head' ? tour[start_idx].add(tour[end_idx]).div(2) : undefined;
+        var offset = method === 'head' ?
+                     tour[start_idx].add(tour[end_idx]).div(2) :
+                     undefined;
 
         var start_pts = tour.slice(0,start_idx+1);
         var new_pts = method_fn(requested_size, target, offset);
@@ -284,9 +286,9 @@
         // add weighted images pixels to nearest cities
         for(var x=0; x<target.width; x++) {
             for (var y = 0; y < target.height; y++) {
-                var idx = diagram.find(x,y).index;
                 var weight = 255-target.pixel(x,y);
                 if(weight) {
+                    var idx = diagram.find(x,y).index;
                     newpos[idx] = newpos[idx].add(new DMSLib.Point2D(x,y).mul(weight));
                     sumofweights[idx] += weight;
                 }
@@ -493,4 +495,11 @@
 
     // TODO - move stippling to new file
     // TODO - 3d version: on a sphere.
+    //      - stippling is slow (kdtree?)
+    //      - save and load 3D tour.
+    //      - smoothing works except: auto step size needs to use apparent angle
+    //                                is_valid, needs to be updated
+    //                                animation looks bouncy, animation speed is too low.
+    //                                smoothing stops before it's ready.
+    //      - need to do tightening
 </script>

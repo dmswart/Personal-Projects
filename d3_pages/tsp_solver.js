@@ -1,16 +1,12 @@
-var __tsp_dist = function(a,b) {
-    return a.sub(b).R();
-}
-
 var randomize_pts = function(pts, start_idx, end_idx) {
     var i, x, tmp;
 
     for(i=start_idx+1; i<end_idx; i++) {
         x = Math.floor(Math.random() * (end_idx-i)) + i;
 
-        tmp = new DMSLib.Point2D(pts[x]);
-        pts[x] = new DMSLib.Point2D(pts[i]);
-        pts[i] = new DMSLib.Point2D(tmp);
+        tmp = pts[x].copy();
+        pts[x] = pts[i].copy();
+        pts[i] = tmp.copy();
     }
 };
 
@@ -19,7 +15,7 @@ var do_insertion_heuristic = function(pts, start_idx, end_idx) {
 
     for (i = start_idx+2; i<end_idx; i++) {
         // find j such that Sum( [j,i] [i,j+1] -[j,j+1] )  is minimized
-        var newpt = new DMSLib.Point2D(pts[i]),
+        var newpt = pts[i].copy(),
             minidx = -1,
             mindist = 10000;
 
@@ -27,7 +23,7 @@ var do_insertion_heuristic = function(pts, start_idx, end_idx) {
             var a = pts[j];
             var b = pts[(j+1)%i];
 
-            var dist = __tsp_dist(a,newpt) + __tsp_dist(newpt,b) - __tsp_dist(a,b);
+            var dist = a.sub(newpt).R() + newpt.sub(b).R() - a.sub(b).R();
             if (dist < mindist) {
                 mindist = dist;
                 minidx = j;
@@ -52,10 +48,10 @@ var do_two_opt = function(pts, start_idx, end_idx, use_maxes) {
             a2 = (a1 + 1) % pts.length;
             b2 = (b1 + 1) % pts.length;
 
-            a1toa2 = __tsp_dist(pts[a2],pts[a1]);
-            b1tob2 = __tsp_dist(pts[b2],pts[b1]);
-            a1tob1 = __tsp_dist(pts[b1],pts[a1]);
-            a2tob2 = __tsp_dist(pts[b2],pts[a2]);
+            a1toa2 = pts[a2].sub(pts[a1]).R();
+            b1tob2 = pts[b2].sub(pts[b1]).R();
+            a1tob1 = pts[b1].sub(pts[a1]).R();
+            a2tob2 = pts[b2].sub(pts[a2]).R();
 
             if (!use_maxes && a1tob1 + a2tob2 < a1toa2 + b1tob2 ||
                 use_maxes && Math.max(a1tob1,a2tob2) < Math.max(a1toa2, b1tob2)) {
@@ -64,9 +60,9 @@ var do_two_opt = function(pts, start_idx, end_idx, use_maxes) {
                 for (idx = 0; a2 + idx < b1 - idx; idx++) {
                     from = (a2 + idx) % pts.length;
                     to = (b1 - idx) % pts.length;
-                    tmp = new DMSLib.Point2D(pts[from]);
-                    pts[from] = new DMSLib.Point2D(pts[to]);
-                    pts[to] = new DMSLib.Point2D(tmp);
+                    tmp = pts[from].copy();
+                    pts[from] = pts[to].copy();
+                    pts[to] = tmp.copy();
                 }
                 changed = true;
             }

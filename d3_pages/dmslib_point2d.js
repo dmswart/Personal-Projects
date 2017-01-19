@@ -18,6 +18,8 @@ var DMSLib = DMSLib || {};
     };
 
     $.Point2D.prototype = {
+        copy : function() {return new $.Point2D(this);},
+        
         // chained arithmetic
         equals : function(other) {return this.x == other.x && this.y == other.y;},
         nequal : function(other) {return this.x != other.x || this.y !== other.y;},
@@ -59,7 +61,8 @@ var DMSLib = DMSLib || {};
             this.x = r * Math.cos(val);
             this.y = r * Math.sin(val);
         },
-        R : function() { return Math.sqrt(this.x * this.x + this.y * this.y); },
+        R2 : function() { return this.x * this.x + this.y * this.y; },
+        R : function() { return Math.sqrt(this.R2()); },
         setR : function(val) {
             var r = this.R();
             if (r != 0) { this.scale(val/r); }
@@ -96,6 +99,9 @@ var DMSLib = DMSLib || {};
             return new $.Point3D( 2.0 * this.x, 
                                   2.0 * this.y,
                                   -1 + this.x * this.x + this.y * this.y ).normalized();
+        },
+        jitter : function(radius) {
+            return this.add($.Point2D.random(radius));
         }
     };
 
@@ -105,6 +111,13 @@ var DMSLib = DMSLib || {};
     $.Point2D.y_axis = function() { return new $.Point2D(0.0, 1.0); };
 
     $.Point2D.fromPolar = function(r, theta) {return new $.Point2D(r * Math.cos(theta), r * Math.sin(theta));};
+    $.Point2D.random = function(max_radius) {
+        var result = new $.Point2D(Math.random()*2-1, Math.random()*2-1);
+        while (result.R() > 1.0) {
+            result = new $.Point2D(Math.random()*2-1, Math.random()*2-1);
+        }
+        return result.mul(max_radius);
+    };
     $.Point2D.dot = function(a, b) { return a.x * b.x + a.y * b.y; }
     $.Point2D.angle = function(a, b, c) {
         if (a.sub(b).r == 0 || c.sub(b).r == 0) {

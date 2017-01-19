@@ -1,3 +1,5 @@
+var final_result = function(result) { return result; }
+
 var get_spiral_pts = function(num_pts, target) {
     var result = [], i;
 
@@ -11,7 +13,7 @@ var get_spiral_pts = function(num_pts, target) {
     }
 
     set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
-    return result;
+    return final_result(result);
 };
 
 var get_head_pts = function(num_pts, target, offset) {
@@ -24,7 +26,7 @@ var get_head_pts = function(num_pts, target, offset) {
     for(var i=0; i<head_pts.length; i++) {
         result.push(new DMSLib.Point2D(head_pts[i].x, head_pts[i].y).add(offset));
     }
-    return result;
+    return final_result(result);
 }
 
 var get_circle_pts = function(num_pts, target) {
@@ -33,7 +35,7 @@ var get_circle_pts = function(num_pts, target) {
         result.push(new DMSLib.Point2D.fromPolar(1, i * DMSLib.TAU / num_pts));
     }
     set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
-    return result;
+    return final_result(result);
 };
 
 var get_random_pts = function(num_pts, target) {
@@ -43,7 +45,7 @@ var get_random_pts = function(num_pts, target) {
         var y = Math.random() * target.height;
         result.push(new DMSLib.Point2D(x, y));
     }
-    return result;
+    return final_result(result);
 };
 
 
@@ -59,7 +61,7 @@ var get_target_pts = function(num_pts, target) {
             result.push( new DMSLib.Point2D(x, y) );
         }
     }
-    return result;
+    return final_result(result);
 };
 
 var get_house_pts = function() {
@@ -68,7 +70,7 @@ var get_house_pts = function() {
         result.push( new DMSLib.Point2D(pt.x, pt.y));
     });
     set_pointspread(result, {center:new DMSLib.Point2D(target.width/2, target.height/2), avgR: target.height/3});
-    return result;
+    return final_result(result);
 };
 
 
@@ -100,7 +102,7 @@ var get_pts_from_svg = function(svg_string) {
     idx+=3;
 
     while(idx < tour_svg_tokens.length && parse_point(tour_svg_tokens[idx])) { idx+=3; }
-    return result;
+    return final_result(result);
 };
 
 var get_svg_from_pts = function(pts) {
@@ -122,7 +124,7 @@ var get_svg_from_pts = function(pts) {
     }
     
     result += '" /> </svg>';
-    return result;
+    return final_result(result);
 };
 
 /////////////////////////// data

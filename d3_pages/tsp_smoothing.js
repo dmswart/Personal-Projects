@@ -178,7 +178,7 @@ var smooth = function(max_mvmt) {
                 }
     
                 // Chow Glickstein with a parameter of delta = 1/3
-                new_pt = tour[idx].add(tour[prev]).add(tour[next]).div(3);
+                new_pt = calc_centroid([tour[prev], tour[idx], tour[next]]);
                 
     
                 if (__is_valid_new_point(tour, new_pt, idx)) {
@@ -235,14 +235,13 @@ var optimize_animation = function() {
                 if(p + __step_size >= num_pts) {next = num_pts-1;}
             }
 
-            var newpt = __animation[f][p]
-                    .add(__animation[f+1][p])
-                    .add(__animation[f-1][p])
-                    .add(__animation[f][prev].mul(__smoothness * 0.05))
-                    .add(__animation[f][next].mul(__smoothness * 0.05))
-                    .div(3.0 + 0.1 * __smoothness)
-                    .add(DMSLib.Point2D.fromPolar(Math.random() * avg_edge_size * (__sa_temp / 10),
-                                                  Math.random() * DMSLib.TAU));
+            var newpt = calc_centroid([__animation[f][p],
+                                       __animation[f+1][p],
+                                       __animation[f-1][p],
+                                       __animation[f][prev],
+                                       __animation[f][next]],
+                                      [1, 1, 1, 0.05 * __smoothness, 0.05 * __smoothness])
+                        .jitter(avg_edge_size * (__sa_temp / 10));
 
             if( __is_valid_new_point(__animation[f], newpt, p)) {
                 new_frame[p] = newpt;

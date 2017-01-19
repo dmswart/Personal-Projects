@@ -30,12 +30,16 @@ var set_pointspread = function(pts, target) {
     }
 };
 
-var calc_centroid = function(pts) {
-    var result = new DMSLib.Point2D();
-    pts.forEach( function(pt) {
-        result = result.add(pt);
-    });
-    return result.div(pts.length);
+var calc_centroid = function(pts, weights) {
+    var result = pts[0].mul(0);
+    var sum = 0;
+
+    for(var i=0; i<pts.length; i++) {
+        var weight = weights===undefined ? 1 : weights[i];
+        result = result.add(pts[i].mul(weight));
+        sum += weight;
+    }
+    return result.div(sum);
 };
 
 var avgR = function(pts) {
@@ -261,5 +265,19 @@ var does_tour_cross = function(pts, closed) {
     }
     
     return false;
-}
+};
 
+var find_nearest_neighbor_idx = function(pt, pts) {
+    var result = 0;
+    var min_dist2 = pts[0].sub(pt).R2();
+    
+    for(i=1; i<pts.length; i++) {
+        var dist2 = pts[i].sub(pt).R2();
+        if(dist2 < min_dist2) {
+            result = i;
+            min_dist2 = dist2;
+        } 
+    }
+
+    return result;
+};

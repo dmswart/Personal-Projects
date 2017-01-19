@@ -19,6 +19,8 @@
     };
 
     $.Point3D.prototype = {
+        copy : function() {return new $.Point3D(this);},
+        
         // chained arithmetic
         equals : function(other) {
 			return Math.abs(this.x - other.x) < DMSLib.EPSILON && 
@@ -57,8 +59,9 @@
             this.y = old_r * Math.sin(val) * Math.sin(old_theta);
             this.z = old_r * Math.cos(val);
         },
-
-        R : function() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); },
+        
+        R2 : function() { return this.x * this.x + this.y * this.y + this.z * this.z; },
+        R : function() { return Math.sqrt(this.R2()); },
         setR : function(val) {
             var r = this.R();
             if (r != 0) { this.scale(val/r); }
@@ -105,7 +108,10 @@
         mercator : function() {
             var latitude = $.QUARTERTAU - this.phi();
             return new $.Point2D(this.theta(), Math.log((Math.sin(latitude) + 1.0) / Math.cos(latitude)));
-        }  
+        },
+        jitter : function(radius) {
+            return this.add($.Point3D.random(radius));
+        }
     };
 
 
@@ -132,7 +138,15 @@
     $.Point3D.fromMercator = function(pos) {
         var latitude = Math.atan(Math.sinh(pos.y));
         return $.Point3D.fromSphericalCoords(1.0, $.QUARTERTAU - latitude, pos.x);
-    }
+    };
+    $.Point3D.random = function(max_radius) {
+        var result = new $.Point3D(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1);
+        while (result.R() > 1.0) {
+            result = new $.Point3D(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1);
+        }
+        return result.mul(max_radius); 
+    };
+    
 
     $.Point3D.dot = function(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
     $.Point3D.cross = function(a, b) {
