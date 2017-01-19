@@ -47,36 +47,53 @@ var line_function_3D = d3.svg.line()
         .interpolate('linear');
 
 
+var set_pointspread_3D = function(pts, target) {
+    var offset = target.sub(calc_centroid(pts));
+
+    for(var i=0; i<pts.length; i++) {
+       pts[i] = pts[i].add(offset).normalized();
+    }
+};
 
 var stipple_3D = function (iter) {
     // initialize accumulator variables
-    var newpos = [];
-    var i;
+    var newpos = [],
+        x, y, weight, pt, idx;
+
+    // initialize weights and sums, mark up index
+    for(idx=0; idx<tour.length; idx++) {
+        tour[idx].idx=idx;
+        newpos.push(new DMSLib.Point3D());
+    }
+
+    var search_radius = Math.pow(avg_edge(tour), 2) * 5;
+    var tree = new kdTree(tour.slice(), function(a,b){return b.sub(a).R2();}, ["x","y","z"]);
 
     // add weighted images pixels to nearest cities
-    for(var x=0; x<target.width; x++) {
-        for(var y = 0; y < target.height; y++) {
-            var weight = 255-target.pixel(x,y);
-            
-            if(weight > 0) {
-                weight *= Math.sin(y / target.height * DMSLib.HALFTAU);
-                
-                var pt = __to3D_int[y*1280+x];
-                var idx = find_nearest_neighbor_idx(pt, tour);
-                newpos[idx] = newpos[idx] ? newpos[idx].add(pt.mul(weight)) : pt.mul(weight);
+    for(x=0; x<target.width; x++) {
+        for(y = 0; y < target.height; y++) {
+            if(target.pixel(x,y) === 255) continue;
+
+            weight = 1 - (target.pixel(x,y)/255) * Math.sin(y / 720 * DMSLib.HALFTAU);
+            pt = __to3D_int[y*1280+x];
+
+            var result = tree.nearest(pt, 1, search_radius);
+            if(result && result[0]) {
+                idx = result[0][0].idx;
+                newpos[idx] = newpos[idx].add(pt.mul(weight));
             }
         }
     }
 
-    // calculate weighted average and show
-    for(i=start_idx+1; i<end_idx; i++) {
-        if(newpos[i]) {
-            tour[i] = newpos[i].scaledTo(1);
+    // calculate weighted average
+    for(idx=start_idx+1; idx<end_idx; idx++) {
+        if(newpos[idx].R()) {
+            tour[idx] = newpos[idx].scaledTo(1);
         }
     }
     update_line();
 
-    if(iter===undefined) iter=20;
+    if(iter===undefined) iter=10;
     if(iter!=0) {
         timer = setTimeout(function() {stipple(iter-1); }, 21);
     } else {
@@ -86,22 +103,14 @@ var stipple_3D = function (iter) {
     }
 };
 
-var set_pointspread_3D = function(pts, target) {
-    var offset = target.sub(calc_centroid(pts));
-
-    for(var i=0; i<pts.length; i++) {
-       pts[i] = pts[i].add(offset).normalized();
-    }
-};
-
 var convert_to_3D_app = function() {
     __to_beat = to_beat_3D;
     __tsp_dist = tsp_dist_3D;
     lineFunction = line_function_3D;
     final_result = function(result) { return __to3D(result);}
-    stipple = stipple_3D;
     get_pointspread = calc_centroid;
     set_pointspread = set_pointspread_3D;
+    stipple = stipple_3D;
 
     __to3D(__animation);
     __to3D(__animation2);
