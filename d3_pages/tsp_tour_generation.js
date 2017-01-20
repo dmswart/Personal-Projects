@@ -105,7 +105,9 @@ var get_pts_from_svg = function(svg_string) {
     return final_result(result);
 };
 
-var get_svg_from_pts = function(pts) {
+var get_svg_from_pts = function(pts_in) {
+    var pts = __to2D(pts_in.slice());
+
     var result = '<?xml version="1.0" encoding="UTF-8" standalone="no"?> \
                   <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN" \
                   "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd"> \
@@ -124,7 +126,7 @@ var get_svg_from_pts = function(pts) {
     }
     
     result += '" /> </svg>';
-    return final_result(result);
+    return result;
 };
 
 /////////////////////////// data

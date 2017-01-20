@@ -44,7 +44,7 @@
 
         <label for='smoothness'>Smoothness:</label> <input id='smoothness' type='number' style='width:60px' min='0' max='10' value='0' onchange='set_smoothness(this.value);'/>
         <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' style='width:60px' min='0' max='10' value='0' onchange='set_sa_temp(this.value);'/>
-        <input type='button' id='OptimizeAnimation' onclick='go("OptimizeAnimation")' value='OptimizeAnimation'/>
+        <input type='button' id='Tighten' onclick='go("Tighten")' value='Tighten'/>
         Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
         <span id='stepsize'>1</span>
         <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
@@ -195,7 +195,7 @@
                            'TSP' : tsp,
                            'Animate' : animate,
                            'TakeTour' : take_tour,
-                           'OptimizeAnimation' : optimize_animation,
+                           'Tighten' : tighten,
                            'Misc' : misc_animation };
         var method_fn = method_fns[method];
 
@@ -499,7 +499,6 @@
 
     // TODO - move stippling to new file
     // TODO - 3d version: on a sphere.
-    //      - save and load 3D tour.
     //      - smoothing works except: auto step size needs to use apparent angle
     //                                is_valid, needs to be updated
     //                                animation looks bouncy, animation speed is too low.

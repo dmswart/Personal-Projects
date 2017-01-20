@@ -20,16 +20,16 @@ var __display = function(pt) {
 };
 
 var __to3D = function(obj) {
+    if (obj instanceof DMSLib.Point2D) {
+        return DMSLib.Point3D.fromSphericalCoords(1.0, obj.y / 720 * DMSLib.HALFTAU, obj.x / 1280 * DMSLib.TAU);
+    }
+    
     if(Array.isArray(obj)) {
         for(i=0; i<obj.length; i++) {
             obj[i] = __to3D(obj[i]);
         }
-        return obj;
-    } else {
-        return DMSLib.Point3D.fromSphericalCoords(1.0,
-                                                  obj.y / 720 * DMSLib.HALFTAU,
-                                                  obj.x / 1280 * DMSLib.TAU);
     }
+    return obj;
 };
 
 var __to3D_int = [];
@@ -37,6 +37,20 @@ for(var x=0; x<1280; x++) {
     for (var y = 0; y<720; y++) {
         __to3D_int[y*1280+x] = __to3D(new DMSLib.Point2D(x, y));
     }
+}
+
+var __to2D = function(obj) {
+    if (obj instanceof DMSLib.Point3D) {
+        return new DMSLib.Point2D(DMSLib.fixAnglePositive(obj.theta()) / DMSLib.TAU * 1280,
+                                  obj.phi() / DMSLib.HALFTAU * 720);
+    }
+    
+    if(Array.isArray(obj)) {
+        for(i=0; i<obj.length; i++) {
+            obj[i] = __to2D(obj[i]);
+        }
+    }
+    return obj;
 }
 
 

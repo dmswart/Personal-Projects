@@ -213,7 +213,7 @@ var smooth = function(max_mvmt) {
 };
 
 
-var optimize_animation = function() {
+var tighten = function() {
     glue_animations();
  
     var num_pts = get_frame(0).length;
@@ -268,7 +268,7 @@ var optimize_animation = function() {
     tour = __animation[Math.floor(num_frames()/2)];
     update_line();
 
-    timer = setTimeout(function() {optimize_animation();}, 11);
+    timer = setTimeout(function() {tighten();}, 11);
 };
 
 //TODO - remove external globals? (start_idx, end_idx, timer, tour)
