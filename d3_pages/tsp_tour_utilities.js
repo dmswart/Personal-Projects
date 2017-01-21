@@ -1,3 +1,5 @@
+var tour_angle = DMSLib.Point2D.angle;
+
 var get_pointspread = function(pts) {
     var center = calc_centroid(pts);
     
@@ -140,7 +142,7 @@ var avg_bend = function(pts, step_size) {
         a = b;
         b = c;
         c = pts[idx];
-        result += DMSLib.HALFTAU - DMSLib.Point2D.angle(a,b,c);
+        result += DMSLib.HALFTAU - tour_angle(a,b,c);
         count++;
     }
     
@@ -219,7 +221,7 @@ var increase_number = function(pts, num, start_idx, end_idx) {
         var idx = -1;
         var min_angle = DMSLib.TAU;
         for(var i=start_idx+1; i<end_idx-2; i++) {
-            var angle = Math.abs( DMSLib.Point2D.angle( pts[i], pts[i+1], pts[i+2] ) - 
+            var angle = Math.abs( tour_angle( pts[i], pts[i+1], pts[i+2] ) - 
                                   DMSLib.HALFTAU );
             if(angle < min_angle) {
                 min_angle = angle;
@@ -266,3 +268,10 @@ var does_tour_cross = function(pts, closed) {
     
     return false;
 };
+
+var index_points = function(pts) {
+    for(var i=0; i<pts.length; i++) {
+        pts[i].idx = i;
+    }
+}
+

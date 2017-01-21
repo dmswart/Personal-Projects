@@ -97,23 +97,6 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
 
     var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
     
-    //check local angles
-    var switched_angles = function(old_a, old_b, old_c, new_a, new_b, new_c) {
-        var old_dir_1 = old_b.sub(old_a).theta(),
-            old_dir_2 = old_b.sub(old_c).theta(),
-            new_dir_1 = new_b.sub(new_a).theta(),
-            new_dir_2 = new_b.sub(new_c).theta(),
-            old_turn = DMSLib.fixAngle(old_dir_2 - old_dir_1),
-            new_turn = DMSLib.fixAngle(new_dir_2 - new_dir_1);
-        return Math.abs(new_turn) < 1.0 && Math.abs(old_turn) < 1.0 && new_turn * old_turn < 0;
-    };
-    var a0 = pts[(idx- __step_size - __step_size + pts.length) % pts.length];
-    var a4 = pts[(idx+ __step_size + __step_size) % pts.length];
-    if( switched_angles(a0, a1, old_a2, a0, a1, new_a2) ||
-        switched_angles(old_a2, a3, a4, new_a2, a3, a4) ) {
-        return false;
-    }
-
     for (var i = (idx%__step_size); i < pts.length; i+=__step_size) {
         var b1 = pts[i];
         var b2 = pts[(i+__step_size)%pts.length];
@@ -139,19 +122,19 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
 };
 
 
+var __angle_threshold_for_step_size_increment = 0.08; // ~5 degrees
 var smooth = function(max_mvmt) {
-    var pointspread = get_pointspread(tour);
-
     // if max_mvt = undefined, it's first frame: start animation
     if (max_mvmt === undefined) {
         max_mvmt = 0;
         set_stepsize(1);
         start_new_animation(tour);
     }
-
+    
+    var pointspread = get_pointspread(get_frame(0));
     var saved_tour = tour.slice();
 
-    if( avg_bend(tour, __step_size) < 0.08) { // ~5 degrees
+    if( avg_bend(tour, __step_size) < __angle_threshold_for_step_size_increment) {
         scale_stepsize(2);
     }
 
@@ -272,4 +255,4 @@ var tighten = function() {
 };
 
 //TODO - remove external globals? (start_idx, end_idx, timer, tour)
-// TODO - fix bug where gluing two animations causes line to go through itself
+// TODO - fix bug where tightening animations causes line to go through itself

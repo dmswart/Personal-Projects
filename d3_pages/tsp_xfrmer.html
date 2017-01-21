@@ -92,30 +92,7 @@
 
     var background_image = svg.append("image");
 
-    var line_space = svg.append('g');
-
-    var start_line = line_space.append('path')
-            .attr('id', 'start_line')
-            .attr('stroke', start_color)
-            .attr('stroke-width', line_thickness)
-            .attr('fill', 'none');
-    var inside_line = line_space.append('path')
-            .attr('id', 'inside_line')
-            .attr('stroke', inside_color)
-            .attr('stroke-width', line_thickness)
-            .attr('fill', 'none');
-    var end_line = line_space.append('path')
-            .attr('id', 'end_line')
-            .attr('stroke', end_color)
-            .attr('stroke-width', line_thickness)
-            .attr('fill', 'none');
-
-    var lineFunction = d3.svg.line()
-            .defined(function(d) {return d;})
-            .x(function(d) {return d.x;})
-            .y(function(d) {return d.y;})
-            .interpolate('linear');
-            // .interpolate('cardinal');
+    var line_space = svg.append('g').attr('id', 'line_space');
 
     var set_start_end_idx = function(start,end) {
         start_idx = start;
@@ -127,45 +104,81 @@
         requested_size = end_idx - start_idx - 1;
         d3.select('#requested_size').property('value', requested_size);
         update_line();
-    } 
+    };
 
     var request_size = function(num) {
         requested_size = num;
 
         increase_number(tour, requested_size, start_idx, end_idx);
         set_start_end_idx(start_idx, start_idx+requested_size+1);
-    }
+    };
+
+    var build_segment_data = function() {
+        var result = [];
+
+        if(!ends_joined) {
+           result.push( {x1:-1, x2:tour[0].x, y1:tour[0].y, y2:tour[0].y, idx:-1, color:inside_color} );
+        }
+
+        for(var i=0; i<tour.length; i++) {
+            var next = (i+1)%tour.length;
+
+            if(tour[i] === null || tour[next] === null ) { continue; }
+            var entry = {x1: tour[i].x, x2: tour[next].x, y1: tour[i].y, y2: tour[next].y,
+                         idx: i, color: inside_color};
+            result.push(entry);
+        }
+
+        if(!ends_joined) {
+            result.pop();
+            i = tour.length-1;
+            result.push( {x1:tour[i].x, x2:size.x+1, y1:tour[i].y, y2:tour[i].y, idx:i, color:inside_color} );
+        }
+
+        for(i=0; i<result.length; i++) {
+            if(result[i].idx < start_idx) {
+                result[i].color = start_color;
+            } else if (result[i].idx >= end_idx) {
+                result[i].color = end_color;
+            }
+        }
+        return result;
+    };
 
     var update_line = function(frame_time, easing) {
-        var start_line_pts, inside_line_pts, end_line_pts;
+        index_points(tour);
+        if (frame_time===undefined) { frame_time=0; }
+        if (easing===undefined) { easing='linear'; }
 
-        start_line_pts = (ends_joined ? [] : [{x:-1, y:tour[0].y}]).concat(tour.slice(0,start_idx+1));
-        inside_line_pts = tour.slice(start_idx < 0 ? 0 : start_idx, end_idx+1);
-        end_line_pts = tour.slice(end_idx, tour.length);
+        var line_selection = line_space
+            .selectAll('#segment')
+            .data(build_segment_data(), function(d) {return d.idx;});
 
-        var last_pt = ends_joined ? tour[0] : new DMSLib.Point2D(size.x+1, tour[tour.length-1].y);
-        if (start_idx >= tour.length) {
-            start_line_pts.push(last_pt);
-        } else if (end_idx >= tour.length) {
-            inside_line_pts.push(last_pt);
-        } else {
-            end_line_pts.push(last_pt);
-        }
-        
+        line_selection
+                .transition()
+                .duration(frame_time)
+                .ease(easing)
+            .attr('x1', function(d) {return d.x1;})
+            .attr('x2', function(d) {return d.x2;})
+            .attr('y1', function(d) {return d.y1;})
+            .attr('y2', function(d) {return d.y2;})
+            .attr('stroke', function(d) {return d.color;});
 
-        if (frame_time===undefined) {
-            start_line.attr('d', lineFunction(start_line_pts));
-            inside_line.attr('d', lineFunction(inside_line_pts));
-            end_line.attr('d', lineFunction(end_line_pts));
-        } else {
-            if(easing===undefined) {easing = 'linear';}
-            start_line.transition().duration(frame_time).ease(easing)
-                .attr('d', lineFunction(start_line_pts));
-            inside_line.transition().duration(frame_time).ease(easing)
-                .attr('d', lineFunction(inside_line_pts));
-            end_line.transition().duration(frame_time).ease(easing)
-                .attr('d', lineFunction(end_line_pts));
-        }
+        line_selection.enter()
+            .append('line')
+            .attr('id', 'segment')
+            .attr('x1', function(d) {return d.x1;})
+            .attr('x2', function(d) {return d.x2;})
+            .attr('y1', function(d) {return d.y1;})
+            .attr('y2', function(d) {return d.y2;})
+            .attr('stroke-width', line_thickness)
+            .attr('stroke', 'none')
+            .transition(0)
+                .delay(frame_time)
+                .attr('stroke', function(d) {return d.color;});
+
+        line_selection.exit()
+            .remove();
     };
 
     var onColorChange = function() {
@@ -215,7 +228,6 @@
         var method_fns = {'circle' : get_circle_pts,
                           'spiral' : get_spiral_pts,
                           'house' : get_house_pts,
-                          'animation' : get_animation_pts,
                           'head' : get_head_pts,
                           'target': get_target_pts,
                           'animation': get_animation_pts,
@@ -274,10 +286,10 @@
 
         // initialize weights and sums, mark up index
         for(idx=0; idx<tour.length; idx++) {
-            tour[idx].idx=idx;
             newpos.push(new DMSLib.Point2D());
             sumofweights.push(0);
         }
+        index_points(tour);
 
         var search_radius = Math.pow(avg_edge(tour), 2) * 5;
         var tree = new kdTree(tour.slice(), function(a,b){return b.sub(a).R2();}, ["x","y"] );
@@ -437,7 +449,7 @@
                 .attr('d', lineFunction([{x:-640,y:467},{x:640,y:467}]));
             timer = setTimeout(function() {misc_animation(step+1);}, 3000);
         } else if(step==5) {
-            end_idx = start_idx;
+            end_idx = Math.max(start_idx,0);
             update_line();
             timer = setTimeout(function () { misc_animation(step + 1); }, 1000);
         } else if(step==6) {
@@ -478,6 +490,7 @@
             return;
         } else {
             frame_time = movement(get_frame(frame), get_frame(frame-1)) / pps * 1000;
+            if(get_frame(frame)[0] instanceof DMSLib.Point3D) { frame_time *= 1000;}
             delay = frame_time;
             easing = 'linear';
         }
@@ -499,9 +512,6 @@
 
     // TODO - move stippling to new file
     // TODO - 3d version: on a sphere.
-    //      - smoothing works except: auto step size needs to use apparent angle
-    //                                is_valid, needs to be updated
-    //                                animation looks bouncy, animation speed is too low.
-    //                                smoothing stops before it's ready.
-    //      - need to do tightening
+    //      - tightening
+    //      - smoothing works except: is_valid, needs to be updated
 </script>

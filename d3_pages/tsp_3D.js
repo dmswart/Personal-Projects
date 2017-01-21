@@ -54,19 +54,33 @@ var __to2D = function(obj) {
 }
 
 
-var line_function_3D = d3.svg.line() 
-        .defined(function(d) {return __display(d).z > 0;})
-        .x(function(d) {return 1280-__display(d).x;})
-        .y(function(d) {return __display(d).y;})
-        .interpolate('linear');
-
-
 var set_pointspread_3D = function(pts, target) {
-    var offset = target.sub(calc_centroid(pts));
+    var offset = calc_centroid(pts).sub(target);
 
-    for(var i=0; i<pts.length; i++) {
-       pts[i] = pts[i].add(offset).normalized();
+    for (var i = 0; i < pts.length; i++) {
+        pts[i] = pts[i].sub(offset).normalized();
     }
+};
+
+var build_segment_data_3D = function() {
+    var result = [];
+
+    for(var i=0; i<tour.length; i++) {
+        var next = (i+1)%tour.length;
+
+        if(tour[i] === null || tour[next] === null || tour[i].z < 0 || tour[next].z < 0) { continue; }
+        
+        var pt1 = __display(tour[i]);
+        var pt2 = __display(tour[next]);
+        
+        var entry = {x1: 1280-pt1.x, x2: 1280-pt2.x, y1: pt1.y, y2: pt2.y,
+            idx: i, color: inside_color};
+        
+        if(i < start_idx) { entry.color = start_color; }
+        if(i >= end_idx) { entry.color = end_color; }
+        result.push(entry);
+    }
+    return result;
 };
 
 var stipple_3D = function (iter) {
@@ -75,41 +89,45 @@ var stipple_3D = function (iter) {
         x, y, weight, pt, idx;
 
     // initialize weights and sums, mark up index
-    for(idx=0; idx<tour.length; idx++) {
-        tour[idx].idx=idx;
+    for (idx = 0; idx < tour.length; idx++) {
+        tour[idx].idx = idx;
         newpos.push(new DMSLib.Point3D());
     }
 
     var search_radius = Math.pow(avg_edge(tour), 2) * 5;
-    var tree = new kdTree(tour.slice(), function(a,b){return b.sub(a).R2();}, ["x","y","z"]);
+    var tree = new kdTree(tour.slice(), function (a, b) {
+        return b.sub(a).R2();
+    }, ["x", "y", "z"]);
 
     // add weighted images pixels to nearest cities
-    for(x=0; x<target.width; x++) {
-        for(y = 0; y < target.height; y++) {
-            if(target.pixel(x,y) === 255) continue;
+    for (x = 0; x < target.width; x++) {
+        for (y = 0; y < target.height; y++) {
+            if (target.pixel(x, y) === 255) continue;
 
-            weight = 1 - (target.pixel(x,y)/255) * Math.sin(y / 720 * DMSLib.HALFTAU);
-            pt = __to3D_int[y*1280+x];
+            weight = 1 - (target.pixel(x, y) / 255) * Math.sin(y / 720 * DMSLib.HALFTAU);
+            pt = __to3D_int[y * 1280 + x];
 
             var result = tree.nearest(pt, 1, search_radius);
-            if(result && result[0]) {
-                idx = result[0][0].idx;
+            if (result && result[0]) {
+            idx = result[0][0].idx;
                 newpos[idx] = newpos[idx].add(pt.mul(weight));
             }
         }
     }
 
     // calculate weighted average
-    for(idx=start_idx+1; idx<end_idx; idx++) {
-        if(newpos[idx].R()) {
+    for (idx = start_idx + 1; idx < end_idx; idx++) {
+        if (newpos[idx].R()) {
             tour[idx] = newpos[idx].scaledTo(1);
         }
     }
     update_line();
 
-    if(iter===undefined) iter=10;
-    if(iter!=0) {
-        timer = setTimeout(function() {stipple(iter-1); }, 21);
+    if (iter === undefined) iter = 10;
+    if (iter != 0) {
+        timer = setTimeout(function () {
+            stipple(iter - 1);
+        }, 21);
     } else {
         clearTimeout(timer);
         timer = null;
@@ -117,14 +135,32 @@ var stipple_3D = function (iter) {
     }
 };
 
+var edge_intersects_edge_3D = function (a1, a2, b1, b2) {
+    var b_cross = DMSLib.Point3D.cross(b1, b2);
+    if (DMSLib.Point3D.dot(a1, b_cross) * DMSLib.Point3D.dot(a2, b_cross) >= 0) {
+        return false;
+    }
+
+    var a_cross = DMSLib.Point3D.cross(a1, a2);
+    if (DMSLib.Point3D.dot(b1, a_cross) * DMSLib.Point3D.dot(b2, a_cross) >= 0) {
+        return false;
+    }
+
+    return true;
+};
+
 var convert_to_3D_app = function() {
     __to_beat = to_beat_3D;
     __tsp_dist = tsp_dist_3D;
-    lineFunction = line_function_3D;
+    build_segment_data = build_segment_data_3D;
     final_result = function(result) { return __to3D(result);}
     get_pointspread = calc_centroid;
     set_pointspread = set_pointspread_3D;
     stipple = stipple_3D;
+    tour_angle = DMSLib.Point3D.sphereAngle;
+    edge_intersects_edge = edge_intersects_edge_3D; 
+    __is_valid_new_point = function(){ return true;} //TODO fix this!
+    __angle_threshold_for_step_size_increment = 0.02;
 
     __to3D(__animation);
     __to3D(__animation2);

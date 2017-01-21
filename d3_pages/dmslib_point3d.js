@@ -170,6 +170,6 @@
         var normal1 = $.Point3D.cross(a.sub(b), b);
         var normal2 = $.Point3D.cross(c.sub(b), b);
 
-        return $.Point3D.angle(normal1, $.Point3D.origin, normal2);
+        return $.Point3D.angle(normal1, $.Point3D.origin(), normal2);
     };
 })(DMSLib);
