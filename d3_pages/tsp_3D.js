@@ -15,8 +15,8 @@ var tsp_dist_3D = function(a,b) {
 }
 
 var __display = function(pt) {
-    return pt.mul(display_radius_3d)
-             .add(new DMSLib.Point3D(640, 360, 0));
+    return new DMSLib.Point2D(-pt.x * display_radius_3d + 640,
+                              -pt.z * display_radius_3d + 360)
 };
 
 var __to3D = function(obj) {
@@ -54,12 +54,16 @@ var __to2D = function(obj) {
 }
 
 
-var set_pointspread_3D = function(pts, target) {
-    var offset = calc_centroid(pts).sub(target);
-
-    for (var i = 0; i < pts.length; i++) {
-        pts[i] = pts[i].sub(offset).normalized();
-    }
+var set_pointspread_3D = function(pts, target_in) {
+    var target = target_in;
+    if(target === undefined) { target = DMSLib.Point3D.origin(); }
+    
+    for(i=0; i<3; i++) {
+        var offset = calc_centroid(pts).sub(target); 
+        for (var i = 0; i < pts.length; i++) {
+            pts[i] = pts[i].sub(offset).normalized();
+        }
+    } 
 };
 
 var build_segment_data_3D = function() {
@@ -68,12 +72,12 @@ var build_segment_data_3D = function() {
     for(var i=0; i<tour.length; i++) {
         var next = (i+1)%tour.length;
 
-        if(tour[i] === null || tour[next] === null || tour[i].z < 0 || tour[next].z < 0) { continue; }
+        if(tour[i] === null || tour[next] === null || tour[i].y < 0 || tour[next].y < 0) { continue; }
         
         var pt1 = __display(tour[i]);
         var pt2 = __display(tour[next]);
         
-        var entry = {x1: 1280-pt1.x, x2: 1280-pt2.x, y1: pt1.y, y2: pt2.y,
+        var entry = {x1: pt1.x, x2: pt2.x, y1: pt1.y, y2: pt2.y,
             idx: i, color: inside_color};
         
         if(i < start_idx) { entry.color = start_color; }
@@ -136,17 +140,49 @@ var stipple_3D = function (iter) {
 };
 
 var edge_intersects_edge_3D = function (a1, a2, b1, b2) {
-    var b_cross = DMSLib.Point3D.cross(b1, b2);
-    if (DMSLib.Point3D.dot(a1, b_cross) * DMSLib.Point3D.dot(a2, b_cross) >= 0) {
+    // shortcuts
+    if( a1 === b1 || a1 === b2 || a2 === b1 || a2 === b2) {
         return false;
     }
-
-    var a_cross = DMSLib.Point3D.cross(a1, a2);
-    if (DMSLib.Point3D.dot(b1, a_cross) * DMSLib.Point3D.dot(b2, a_cross) >= 0) {
+    if( Math.max(a1.x, a2.x) < Math.min(b1.x, b2.x) ||
+        Math.max(b1.x, b2.x) < Math.min(a1.x, a2.x) ||
+        Math.max(a1.y, a2.y) < Math.min(b1.y, b2.y) ||
+        Math.max(b1.y, b2.y) < Math.min(a1.y, a2.y) ||
+        Math.max(a1.z, a2.z) < Math.min(b1.z, b2.z) ||
+        Math.max(b1.z, b2.z) < Math.min(a1.z, a2.z) ) {
         return false;
     }
+    
+    var a1_x_a2 = DMSLib.Point3D.cross(a1, a2);
+    var b1_x_b2 = DMSLib.Point3D.cross(b1, b2);
+    var u = DMSLib.Point3D.cross(a1_x_a2, b1_x_b2).normalized();
+    
+    //check u
+    var a1_x_u = DMSLib.Point3D.cross(a1, u);
+    var u_x_a2 = DMSLib.Point3D.cross(u, a2);
+    var u_is_between_a = DMSLib.Point3D.dot(a1_x_u, a1_x_a2) > DMSLib.EPSILON &&
+                         DMSLib.Point3D.dot(u_x_a2, a1_x_a2) > DMSLib.EPSILON;
+    var b1_x_u = DMSLib.Point3D.cross(b1, u);
+    var u_x_b2 = DMSLib.Point3D.cross(u, b2);
+    var u_is_between_b = DMSLib.Point3D.dot(b1_x_u, b1_x_b2) > DMSLib.EPSILON &&
+                         DMSLib.Point3D.dot(u_x_b2, b1_x_b2) > DMSLib.EPSILON;
+    
+    if(u_is_between_a && u_is_between_b) { return true; }
+    
+    // check u's antipode v
+    var v = u.negate();
+    var a1_x_v = DMSLib.Point3D.cross(a1, v);
+    var v_x_a2 = DMSLib.Point3D.cross(v, a2);
+    var v_is_between_a = DMSLib.Point3D.dot(a1_x_v, a1_x_a2) > DMSLib.EPSILON &&
+                         DMSLib.Point3D.dot(v_x_a2, a1_x_a2) > DMSLib.EPSILON;
+    var b1_x_v = DMSLib.Point3D.cross(b1, v);
+    var v_x_b2 = DMSLib.Point3D.cross(v, b2);
+    var v_is_between_b = DMSLib.Point3D.dot(b1_x_v, b1_x_b2) > DMSLib.EPSILON &&
+                         DMSLib.Point3D.dot(v_x_b2, b1_x_b2) > DMSLib.EPSILON;
+    
+    if(v_is_between_a && v_is_between_b) { return true; }
 
-    return true;
+    return false;
 };
 
 var convert_to_3D_app = function() {
@@ -159,8 +195,6 @@ var convert_to_3D_app = function() {
     stipple = stipple_3D;
     tour_angle = DMSLib.Point3D.sphereAngle;
     edge_intersects_edge = edge_intersects_edge_3D; 
-    __is_valid_new_point = function(){ return true;} //TODO fix this!
-    __angle_threshold_for_step_size_increment = 0.02;
 
     __to3D(__animation);
     __to3D(__animation2);

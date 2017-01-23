@@ -134,7 +134,7 @@ var smooth = function(max_mvmt) {
     var pointspread = get_pointspread(get_frame(0));
     var saved_tour = tour.slice();
 
-    if( avg_bend(tour, __step_size) < __angle_threshold_for_step_size_increment) {
+    if( tour.length / __step_size > 64 && avg_bend(tour, __step_size) < __angle_threshold_for_step_size_increment) {
         scale_stepsize(2);
     }
 
@@ -200,6 +200,8 @@ var tighten = function() {
     glue_animations();
  
     var num_pts = get_frame(0).length;
+    var first_centroid = calc_centroid(get_frame(0));
+    var last_centroid = calc_centroid(get_frame(num_frames()-1));
 
     for(var f = 1; f < num_frames()-1; f++) {
         var p;
@@ -243,9 +245,13 @@ var tighten = function() {
         }
 
         fill_in_tour(new_frame, num_pts);
-        if(!does_tour_cross(new_frame, ends_joined)) {
-            __animation[f] = new_frame;
+        
+        if(new_frame[0] instanceof DMSLib.Point3D) {
+            var target_centroid = first_centroid.mul(num_frames()-1-f).add(last_centroid.mul(f)).div(num_frames()-1);
+            set_pointspread(new_frame, target_centroid);
         }
+        
+        __animation[f] = new_frame;
     }
 
     tour = __animation[Math.floor(num_frames()/2)];
