@@ -89,27 +89,26 @@ var movement = function(pts, saved_pts) {
 };
 
 var match_other = function(pts, other) {
+    var best_mvmt = movement(pts, other)+1,
+        result, candidate, mvmt;
+    
     if(other.length !== pts.length) {
         return pts;
     }
 
-    // fix winding
-    if(is_cw(other) !== is_cw(pts)) {
-        pts = pts.reverse();
-    }
-
-    var best_mvmt = movement(pts, other);
-    var result = pts;
-
-    for(shift = 0; shift<pts.length; shift++) {
-        var candidate = pts.slice(shift, pts.length).concat(pts.slice(0, shift));
-        var mvmt = movement(candidate, other)
-        if(mvmt < best_mvmt) {
-            best_mvmt = mvmt;
-            result = candidate;
+    for(dir=0; dir<2; dir++) {
+        if(dir===1) pts = pts.reverse();
+        
+        for(shift = 0; shift<pts.length; shift++) {
+            candidate = pts.slice(shift, pts.length).concat(pts.slice(0, shift));
+            mvmt = movement(candidate, other)
+            if(mvmt < best_mvmt) {
+                best_mvmt = mvmt;
+                result = candidate;
+            }
         }
     }
-
+    
     return result;
 };
 
