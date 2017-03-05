@@ -270,7 +270,9 @@ var does_tour_cross = function(pts, closed) {
 
 var index_points = function(pts) {
     for(var i=0; i<pts.length; i++) {
-        pts[i].idx = i;
+        if(pts[i]) {
+            pts[i].idx = i;
+        }
     }
 }
 

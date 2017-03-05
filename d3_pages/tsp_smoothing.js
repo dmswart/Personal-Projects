@@ -24,12 +24,13 @@ get_animation_pts = function(pts, target, offset) {
 
     for(i=0; i<6; i++ ) {
         frame = get_frame(Math.floor(i/5*(num_frames()-1)));
-        for(var j=0; j<=frame.length; j++) {
+        for(var j=0; j<frame.length; j++) {
             pt = frame[j%frame.length];
             result.push(new DMSLib.Point2D(pt.x+offset_x, pt.y));
             min_x = Math.min(min_x, pt.x+offset_x);
             max_x = Math.max(max_x, pt.x+offset_x);
         }
+        if(ends_joined) {result.push(new DMSLib.Point2D(frame[0].x+offset_x, frame[0].y));}
         result.push(null);
         offset_x = max_x + 20;
     }

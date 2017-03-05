@@ -172,6 +172,7 @@
             .attr('y1', function(d) {return d.y1;})
             .attr('y2', function(d) {return d.y2;})
             .attr('stroke-width', line_thickness)
+            .attr('stroke-linecap', 'round')
             .attr('stroke', 'none')
             .transition(0)
                 .delay(frame_time)
