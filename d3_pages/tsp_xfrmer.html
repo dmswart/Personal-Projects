@@ -162,6 +162,7 @@
             .attr('x2', function(d) {return d.x2;})
             .attr('y1', function(d) {return d.y1;})
             .attr('y2', function(d) {return d.y2;})
+            .attr('stroke-width', line_thickness)
             .attr('stroke', function(d) {return d.color;});
 
         line_selection.enter()
@@ -171,6 +172,7 @@
             .attr('x2', function(d) {return d.x2;})
             .attr('y1', function(d) {return d.y1;})
             .attr('y2', function(d) {return d.y2;})
+            .attr('stroke-linecap', 'round')
             .attr('stroke-width', line_thickness)
             .attr('stroke', 'none')
             .transition(0)
