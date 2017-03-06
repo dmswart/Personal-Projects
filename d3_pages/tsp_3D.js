@@ -66,16 +66,29 @@ var set_pointspread_3D = function(pts, target_in) {
     } 
 };
 
-var build_segment_data_3D = function() {
+var build_segment_data_3D = function(pts) {
+    index_points(pts);
     var result = [];
 
-    for(var i=0; i<tour.length; i++) {
-        var next = (i+1)%tour.length;
+    for(var i=0; i<pts.length; i++) {
+        var next = (i+1)%pts.length;
 
-        if(tour[i] === null || tour[next] === null || tour[i].y < 0 || tour[next].y < 0) { continue; }
+        if(pts[i] === null || pts[next] === null) { continue; }  // skip empty points
         
-        var pt1 = __display(tour[i]);
-        var pt2 = __display(tour[next]);
+        if(pts[i].y < -DMSLib.EPSILON && pts[next].y < -DMSLib.EPSILON) { continue; }  // skip points on far side of sphere
+        
+        var pt1 = __display(pts[i]);
+        var pt2 = __display(pts[next]);
+        
+        if (pts[next].y < -DMSLib.EPSILON) {
+            var t = (0 - pts[i].y) / (pts[next].y - pts[i].y);
+            var intercept = pts[i].mul(1-t).add(pts[next].mul(t)).normalized();
+            pt2 = __display(intercept);
+        } else if (pts[i].y < -DMSLib.EPSILON) {
+            var t = (0 - pts[i].y) / (pts[next].y - pts[i].y);
+            var intercept = pts[i].mul(1-t).add(pts[next].mul(t)).normalized();
+            pt1 = __display(intercept);
+        }
         
         var entry = {x1: pt1.x, x2: pt2.x, y1: pt1.y, y2: pt2.y,
             idx: i, color: inside_color};

@@ -11,53 +11,85 @@
     <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
     <script type='text/javascript' src='./tsp_solver.js'></script>
     <script type='text/javascript' src='./tsp_smoothing.js'></script>
+    <script type='text/javascript' src='./tsp_animation.js'></script>
     <script type='text/javascript' src='./tsp_3D.js'></script>
 </head>
 <body>
     <div id='controls'>
-        <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
-        <input id='start_idx' type='number' style='width:60px' min='-1' value='-1' onchange='set_start_end_idx(this.valueAsNumber, end_idx);update_line();'> -
-        <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
-        <input id='end_idx' type='number' style='width:60px' min='0' value='256' onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
-        <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
         <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
         <button id='sphere)mode' onclick='go_3D();'>3D</button>
         <br>
+        
+        <div class="tab">
+            <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'Tour')">Tour</a>
+            <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'Animation')">Animation</a>
+            <a href="javascript:void(0)" class="tablinks" onclick="openTab(event, 'Appearance')">Appearance</a>
+        </div>
 
-        <button onclick='get_tour("random");'>random</button>
-        <button onclick='get_tour("animation");'>animation</button>
-        <button onclick='get_tour("head");'>head</button>
-        <button onclick='get_tour("spiral");'>spiral</button>
-        <button id='import_tour' onclick='import_tour();'>⇑</button>
-        <button id='export_tour' onclick='export_tour();'>⇓</button>
-        <button onclick='tour = tour.reverse();update_line();'>↔</button>
-        <label for='tour_svg_text'>svg:</label><input id='tour_svg_text' type='text' value=''>
-        <br>
+        <div id="Appearance" class="tabcontent" style="display:none">
+            <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
+            <input id='start_idx' type='number' style='width:60px' min='-1' value='-1' 
+                   onchange='set_start_end_idx(this.valueAsNumber, end_idx);update_line();'> -
+            <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
+            <input id='end_idx' type='number' style='width:60px' min='0' value='256' 
+                   onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
+            <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
+            <br>
+            Offset
+            <label for='offset_x'>x:</label>
+            <input id='offset_x' type='number' min='-2000' max=2000 value=0  onchange='offset.x=this.value;update_line()'>
+            <label for='offset_y'>y:</label>
+            <input id='offset_y' type='number' min='-2000' max=2000 value=0  onchange='offset.y=this.value;update_line()'>
+            Pan
+            <label for='pan_x'>x:</label>
+            <input id='pan_x' type='number' min='-2000' max=2000 value=0  onchange='pan.x=this.value;update_line()'>
+            <label for='pan_y'>y:</label>
+            <input id='pan_y' type='number' min='-2000' max=2000 value=0  onchange='pan.y=this.value;update_line()'>
+            <label for='zoom'>Zoom Level:</label>
+            <input id='zoom' type='number' min='-20' max=20 value=0  onchange='zoom_level=this.value;update_line()'>
+        </div>
 
-        <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-        <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' style='width:60px' value=256 onchange='request_size(this.valueAsNumber);'>
-        <button onclick='get_tour("target");'>target</button>
-        <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
-        <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
-        <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
-        <br> <br>
+        <div id="Tour" class="tabcontent">
+            <button onclick='get_tour("random");'>random</button>
+            <button onclick='get_tour("animation");'>animation</button>
+            <button onclick='get_tour("head");'>head</button>
+            <button onclick='get_tour("spiral");'>spiral</button>
+            <button id='import_tour' onclick='import_tour();'>⇑</button>
+            <button id='export_tour' onclick='export_tour();'>⇓</button>
+            <button onclick='tour = tour.reverse();update_line();'>↔</button>
+            <label for='tour_svg_text'>svg:</label><input id='tour_svg_text' type='text' value=''>
+            <br>
 
-        <label for='smoothness'>Smoothness:</label> <input id='smoothness' type='number' style='width:60px' min='0' max='10' value='0' onchange='set_smoothness(this.value);'/>
-        <label for='sa_temp'>SA temp.:</label> <input id='sa_temp' type='number' style='width:60px' min='0' max='10' value='0' onchange='set_sa_temp(this.value);'/>
-        <input type='button' id='Tighten' onclick='go("Tighten")' value='Tighten'/>
-        Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
-        <span id='stepsize'>1</span>
-        <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
-        <button id='import_animation' onclick='import_animation();'>⇑</button>
-        <button id='export_animation' onclick='export_animation();'>⇓</button>
-        <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='↔'/>
-        <br>
-        <label for='pps'>speed:</label> <input id='pps' type='number' min='1' max=1000 value=100 onchange='pps=this.value;'>
-        <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-        <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
-        <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
-        <br><br>
+            <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
+            <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' style='width:60px' value=256 
+                   onchange='request_size(this.valueAsNumber);'>
+            <button onclick='get_tour("target");'>target</button>
+            <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
+            <input type='button' id='TSP' onclick='go("TSP")' value='TSP'/>
+            <input type='button' id='Smooth' onclick='go("Smooth")' value='Smooth'/>
+        </div>
+
+        <div id="Animation" class="tabcontent" style="display:none">
+            <label for='smoothness'>Smoothness:</label> 
+            <input id='smoothness' type='number' style='width:60px' min='0' max='10'  value='0' 
+                   onchange='set_smoothness(this.value);'/>
+            <label for='sa_temp'>SA temp.:</label> 
+            <input id='sa_temp' type='number' style='width:60px' min='0' max='10' value='0' 
+                   onchange='set_sa_temp(this.value);'/>
+            <input type='button' id='Tighten' onclick='go("Tighten")' value='Tighten'/>
+            Step: <button id='increase_stepsize' onclick='scale_stepsize(2);'>&lt;&lt;</button>
+            <span id='stepsize'>1</span>
+            <button id='reduce_stepsize' onclick='scale_stepsize(0.5)'>&gt;&gt;</button>
+            <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='↔'/>
+            <br>
+            <label for='pps'>speed:</label>
+            <input id='pps' type='number' min='1' max=1000 value=100  onchange='pps=this.value;'>
+            <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
+            <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
+            <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
+        </div>
     </div>
+    <br>
 
     <div id='output'></div>
 
@@ -83,7 +115,16 @@
         ends_joined = true,
         target = {width:size.x, height:size.y, pixel: function() {return 0;} };
 
-
+    ///////////////////// page functions
+    var openTab = function(evt, tabName) {
+        // Get all elements with class="tabcontent" and hide them
+        var tabcontent = document.getElementsByClassName("tabcontent");
+        for (var i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        document.getElementById(tabName).style.display = "block";
+    };
+ 
     ///////////////////// D3 focused display routines.
     var svg = d3.select('#output').append('svg')
             .attr('width', size.x)
@@ -113,26 +154,27 @@
         set_start_end_idx(start_idx, start_idx+requested_size+1);
     };
 
-    var build_segment_data = function() {
+    var build_segment_data = function(pts) {
+        index_points(pts);
         var result = [];
 
         if(!ends_joined) {
-           result.push( {x1:-1, x2:tour[0].x, y1:tour[0].y, y2:tour[0].y, idx:-1, color:inside_color} );
+           result.push( {x1:-1, x2:pts[0].x, y1:pts[0].y, y2:pts[0].y, idx:-1, color:inside_color} );
         }
 
-        for(var i=0; i<tour.length; i++) {
-            var next = (i+1)%tour.length;
+        for(var i=0; i<pts.length; i++) {
+            var next = (i+1)%pts.length;
 
-            if(tour[i] === null || tour[next] === null ) { continue; }
-            var entry = {x1: tour[i].x, x2: tour[next].x, y1: tour[i].y, y2: tour[next].y,
+            if(pts[i] === null || pts[next] === null ) { continue; }
+            var entry = {x1: pts[i].x, x2: pts[next].x, y1: pts[i].y, y2: pts[next].y,
                          idx: i, color: inside_color};
             result.push(entry);
         }
 
         if(!ends_joined) {
             result.pop();
-            i = tour.length-1;
-            result.push( {x1:tour[i].x, x2:size.x+1, y1:tour[i].y, y2:tour[i].y, idx:i, color:inside_color} );
+            i = pts.length-1;
+            result.push( {x1:pts[i].x, x2:size.x+1, y1:pts[i].y, y2:pts[i].y, idx:i, color:inside_color} );
         }
 
         for(i=0; i<result.length; i++) {
@@ -145,14 +187,16 @@
         return result;
     };
 
-    var update_line = function(frame_time, easing) {
-        index_points(tour);
+    var update_line = function(frame_time, easing, segment_data) {
         if (frame_time===undefined) { frame_time=0; }
         if (easing===undefined) { easing='linear'; }
+        if (segment_data===undefined) {
+            segment_data = build_segment_data(tour);
+        }
 
         var line_selection = line_space
             .selectAll('#segment')
-            .data(build_segment_data(), function(d) {return d.idx;});
+            .data(segment_data, function(d) {return d.idx;});
 
         line_selection
                 .transition()
@@ -384,7 +428,7 @@
         } else if(stage === 1) {
             randomize_pts(tour, start_idx, end_idx);
         } else if(stage === 2) {
-		    do_insertion_heuristic(tour, start_idx, end_idx);
+            do_insertion_heuristic(tour, start_idx, end_idx);
         } else if(stage === 3) {
             if(do_two_opt(tour, start_idx, end_idx, false) ) { stage--; }
         } else if(stage === 4) {
@@ -407,113 +451,5 @@
         }
     };
 
-    var take_tour = function() {
-        end_idx++;
-        d3.select('#end_idx').property('value', end_idx);
-        update_line();
-
-        if(end_idx < tour.length - 1) {
-            var frame_time = 1000 / pps;
-            var t = (end_idx+1) / (tour.length+1);
-            if(t < 0.2) {frame_time /= (t*5); }
-            if(t > 0.8) {frame_time /= ((1-t)*5);}
-
-            timer = setTimeout(function() {take_tour(); }, frame_time);
-        } else {
-            clearTimeout(timer);
-            timer = null;
-            d3.select('#TakeTour').property('value', 'Take Tour');
-        }
-    };
-
-    var misc_animation = function(step) {
-        if(step===undefined) {step=5;}
-
-        if(step===0) {
-            start_line.attr('d', lineFunction([]));
-            inside_line.attr('d', lineFunction([{x:0,y:467}, {x:861.88,y:467}]));
-            timer = setTimeout(function() {misc_animation(step+1);}, 1000);
-        } else if(step===1) {
-            inside_line
-                .transition()
-                .duration(3000)
-                .ease('sin-in-out')
-                .attr('d', lineFunction([{x:640,y:467},{x:3000,y:467}]));
-            timer = setTimeout(function() {misc_animation(step+1);}, 3000);
-        } else if(step===2) {
-            start_line
-                .attr('d', lineFunction([{x:-640,y:467},{x:-1,y:467}]));
-            timer = setTimeout(function() {misc_animation(step+1);}, 6000);
-        } else if(step===3) {
-            start_line
-                .transition()
-                .duration(3000)
-                .ease('sin-out')
-                .attr('d', lineFunction([{x:-640,y:467},{x:640,y:467}]));
-            timer = setTimeout(function() {misc_animation(step+1);}, 3000);
-        } else if(step==5) {
-            end_idx = Math.max(start_idx,0);
-            update_line();
-            timer = setTimeout(function () { misc_animation(step + 1); }, 1000);
-        } else if(step==6) {
-            line_space.append('circle')
-                .attr('r', 200)
-                .attr('cx', tour[end_idx].x)
-                .attr('cy', tour[end_idx].y)
-                .attr('stroke', 'none')
-                .attr('fill', inside_color)
-                .attr('opacity', 0)
-                .transition()
-                    .duration(2000)
-                    .ease('bounce-in')
-                    .attr('opacity', 1)
-                    .attr('r', line_thickness/2);
-            d3.select('#TakeTour').property('value', 'Stop');
-            d3.select('#Misc').property('value', 'Misc');
-            timer = setTimeout(function() {take_tour();}, 2000);
-        } else {
-            clearTimeout(timer);
-            timer = null;
-            d3.select('#Misc').property('value', 'Misc');
-        }
-    };
-
-    var animate = function(frame) {
-        var frame_time, delay, easing;
-
-        if(frame === undefined) {
-            frame = 0;
-            frame_time = undefined;
-            delay = 1000;
-        } else if (frame === num_frames()) {
-            clearTimeout(timer);
-            timer = null;
-            d3.select('#Animate').property('value', 'Animate');
-            tour = tour.slice();
-            return;
-        } else {
-            frame_time = movement(get_frame(frame), get_frame(frame-1)) / pps * 1000;
-            if(get_frame(frame)[0] instanceof DMSLib.Point3D) { frame_time *= 1000;}
-            delay = frame_time;
-            easing = 'linear';
-        }
-
-        if(frame===1) {
-            easing = 'cubic-in';
-            frame_time *= 3;
-            delay *= 3;
-        } else if(frame === num_frames()-1) {
-            easing = 'cubic-out';
-            frame_time *= 3;
-            delay *= 3;
-        }
-
-        tour = get_frame(frame);
-        update_line(frame_time, easing);
-        timer = setTimeout(function () { animate(frame + 1); }, delay);
-    };
-
     // TODO - move stippling to new file
-    // TODO - pregenerate line segment data for animations - dedicated line update with transitions.
-    // TODO - line segments that cross 0 don't get omitted, but show up half way
 </script>
