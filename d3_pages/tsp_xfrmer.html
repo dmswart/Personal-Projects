@@ -37,21 +37,26 @@
             <br>
             Offset
             <label for='offset_x'>x:</label>
-            <input id='offset_x' type='number' min='-2000' max=2000 value=0  onchange='offset.x=this.value;update_line()'>
+            <input id='offset_x' type='number' min='-2000' max=2000 value=0 
+                   onchange='offset.x=this.valueAsNumber;update_line()'>
             <label for='offset_y'>y:</label>
-            <input id='offset_y' type='number' min='-2000' max=2000 value=0  onchange='offset.y=this.value;update_line()'>
+            <input id='offset_y' type='number' min='-2000' max=2000 value=0 
+                   onchange='offset.y=this.valueAsNumber;update_line()'>
             Pan
             <label for='pan_x'>x:</label>
-            <input id='pan_x' type='number' min='-2000' max=2000 value=0  onchange='pan.x=this.value;update_line()'>
+            <input id='pan_x' type='number' min='-2000' max=2000 value=0 onchange='pan.x=this.valueAsNumber;update_line()'>
             <label for='pan_y'>y:</label>
-            <input id='pan_y' type='number' min='-2000' max=2000 value=0  onchange='pan.y=this.value;update_line()'>
+            <input id='pan_y' type='number' min='-2000' max=2000 value=0 onchange='pan.y=this.valueAsNumber;update_line()'>
             <label for='zoom'>Zoom Level:</label>
-            <input id='zoom' type='number' min='-20' max=20 value=0  onchange='zoom_level=this.value;update_line()'>
+            <input id='zoom' type='number' min='-20' max=20 value=0 onchange='zoom_level=this.valueAsNumber;update_line()'>
+            <label for='roll'>Roll:</label>
+            <input id='roll' type='number' min='-360' max=360 value=0 onchange='roll=this.valueAsNumber;update_line()'>
         </div>
 
         <div id="Tour" class="tabcontent">
             <button onclick='get_tour("random");'>random</button>
             <button onclick='get_tour("animation");'>animation</button>
+            <button onclick='get_tour("circle");'>circle</button>
             <button onclick='get_tour("head");'>head</button>
             <button onclick='get_tour("spiral");'>spiral</button>
             <button id='import_tour' onclick='import_tour();'>⇑</button>
@@ -61,7 +66,8 @@
             <br>
 
             <input type='file' onchange='onTargetSelected(event)' value='chose target'/>
-            <label for='requested_size'>Pts:</label> <input id='requested_size' type='number' style='width:60px' value=256 
+            <label for='requested_size'>Pts:</label> 
+            <input id='requested_size' type='number' style='width:60px' value=256 
                    onchange='request_size(this.valueAsNumber);'>
             <button onclick='get_tour("target");'>target</button>
             <input type='button' id='Stipple' onclick='go("Stipple")' value='Stipple'/>
@@ -113,7 +119,12 @@
         timer,
         pps = 100,
         ends_joined = true,
-        target = {width:size.x, height:size.y, pixel: function() {return 0;} };
+        target = {width:size.x, height:size.y, pixel: function() {return 0;} },
+        offset = new DMSLib.Point2D(),
+        pan = new DMSLib.Point2D(),
+        zoom_level = 0,
+        roll = 0;
+
 
     ///////////////////// page functions
     var openTab = function(evt, tabName) {
@@ -131,9 +142,11 @@
             .attr('height', size.y)
             .attr("style", "outline: thin solid red;");
 
-    var background_image = svg.append("image");
-
-    var line_space = svg.append('g').attr('id', 'line_space');
+    var panner = svg.append('g').attr('id', 'pan');
+    var zoomer = panner.append('g').attr('id', 'zoom');
+    var rotator = zoomer.append('g').attr('id', 'rotate');
+    var background_image = rotator.append("image");
+    var line_space = rotator.append('g').attr('id', 'line_space');
 
     var set_start_end_idx = function(start,end) {
         start_idx = start;
@@ -154,27 +167,41 @@
         set_start_end_idx(start_idx, start_idx+requested_size+1);
     };
 
-    var build_segment_data = function(pts) {
+    var build_segment_data = function(pts, translation) {
         index_points(pts);
         var result = [];
 
         if(!ends_joined) {
-           result.push( {x1:-1, x2:pts[0].x, y1:pts[0].y, y2:pts[0].y, idx:-1, color:inside_color} );
+           result.push( {x1:-1,
+                         y1:pts[0].y + translation.y,
+                         x2:pts[0].x + translation.x,
+                         y2:pts[0].y + translation.y,
+                         idx:-1,
+                         color:inside_color} );
         }
 
         for(var i=0; i<pts.length; i++) {
             var next = (i+1)%pts.length;
 
             if(pts[i] === null || pts[next] === null ) { continue; }
-            var entry = {x1: pts[i].x, x2: pts[next].x, y1: pts[i].y, y2: pts[next].y,
-                         idx: i, color: inside_color};
+            var entry = {x1: pts[i].x + translation.x,
+                         y1: pts[i].y + translation.y,
+                         x2: pts[next].x + translation.x,
+                         y2: pts[next].y + translation.y,
+                         idx: i,
+                         color: inside_color};
             result.push(entry);
         }
 
         if(!ends_joined) {
             result.pop();
             i = pts.length-1;
-            result.push( {x1:pts[i].x, x2:size.x+1, y1:pts[i].y, y2:pts[i].y, idx:i, color:inside_color} );
+            result.push( {x1:pts[i].x + translation.x,
+                          y1:pts[i].y + translation.y,
+                          x2:size.x+1,
+                          y2:pts[i].y + translation.y,
+                          idx:i,
+                          color:inside_color} );
         }
 
         for(i=0; i<result.length; i++) {
@@ -191,8 +218,21 @@
         if (frame_time===undefined) { frame_time=0; }
         if (easing===undefined) { easing='linear'; }
         if (segment_data===undefined) {
-            segment_data = build_segment_data(tour);
+            segment_data = build_segment_data(tour, offset);
         }
+
+        // todo incorporate transition
+        var sx = Math.pow(1.1, zoom_level),
+            sy = Math.pow(1.1, zoom_level),
+            cx = 640 - sx * 640 + pan.x,
+            cy = 360 - sy * 360 + pan.y;
+        panner.attr('transform', 'pan(' + pan.x + ', ' + pan.y + ')');
+        zoomer.attr('transform', 'matrix(' + sx + ', 0, 0, ' + sy + ', ' + cx + ', ' + cy + ')');
+        rotator.attr('transform', 'rotate(' + roll + ', 640, 360)');
+
+        line_thickness = 3 / sx;
+
+
 
         var line_selection = line_space
             .selectAll('#segment')
@@ -280,12 +320,12 @@
                           'animation': get_animation_pts,
                           'random' : get_random_pts};
         var method_fn = method_fns[method];
-        var offset = method === 'head' ?
+        var head_origin = method === 'head' ?
                      tour[start_idx].add(tour[end_idx]).div(2) :
                      undefined;
 
         var start_pts = tour.slice(0,start_idx+1);
-        var new_pts = method_fn(requested_size, target, offset);
+        var new_pts = method_fn(requested_size, target, head_origin);
         var end_pts = tour.slice(end_idx);
 
         tour = start_pts.concat(new_pts).concat(end_pts);

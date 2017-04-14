@@ -5,7 +5,7 @@ var __pregenerate_segment_data = function() {
     for(i=0; i<num_frames(); i++) {
         var pts = get_frame(i);
         index_points(pts);
-        __pregenerated_segment_data[i] = build_segment_data(pts);
+        __pregenerated_segment_data[i] = build_segment_data(pts, offset);
     }
 };
 
