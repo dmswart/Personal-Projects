@@ -28,6 +28,104 @@ var take_tour = function() {
     }
 };
 
+var get_lat_long_tilt = function(idx) {
+    var this_pt = tour[(idx + tour.length) % tour.length];
+    var next_pt = tour[(idx + tour.length + 1) % tour.length];
+    var mid_pt = this_pt.add(next_pt).normalized();
+
+    var result = { lat: -90 + mid_pt.phi() / Math.PI * 180,
+                   long: 90 - mid_pt.theta() / Math.PI * 180,
+                   tilt: 0,
+                   idx: idx};
+
+    var long = DMSLib.Rotation.fromAngleAxis(result.long * Math.PI / 180, DMSLib.Point3D.z_axis() );
+    var lat = DMSLib.Rotation.fromAngleAxis(result.lat * Math.PI / 180, DMSLib.Point3D.x_axis() );
+    var rot = lat.combine(long);
+    var pt1 = rot.apply(this_pt);
+    var pt2 = rot.apply(next_pt);
+    var delta = pt2.sub(pt1);
+
+    result.tilt = Math.atan2(delta.z, -delta.x) * 180 / Math.PI;
+    return result;
+}
+
+
+var __wz_origin;
+var __wz_destination;
+var __wz_start_ms;
+
+// schedule:
+// t=0s start orientation
+// t=1s start zoom out
+// t=3s start tour
+// t=4s end zoom out, begin rotation
+// t=9s end rotation, start zoom in
+// t=10s tour should end about now
+// t=12s end zoom in
+var world_zoom = function(elapsed_ms) {
+   // if we're beginning
+   if(elapsed_ms === undefined) {
+       __wz_origin = get_lat_long_tilt(start_idx);
+       __wz_destination = get_lat_long_tilt(end_idx-1);
+       __wz_start_ms = (new Date()).getTime();
+
+       offset.x = __wz_origin.long;
+       offset.y = __wz_origin.lat;
+       elapsed_ms = 0;
+   }
+
+   prev_elapsed_ms = elapsed_ms;
+   elapsed_ms = ((new Date()).getTime() - __wz_start_ms);
+
+   // if we're done
+   if (elapsed_ms > 10000) {
+       offset.x = __wz_destination.long;
+       offset.y = __wz_destination.lat;
+       update_line();
+
+       clearTimeout(timer);
+       timer = null;
+       d3.select('#WorldZoom').property('value', 'World Zoom');
+       return;
+   }
+
+
+   // handle camera transitions at these special points in time:
+   if(prev_elapsed_ms===0) {
+      // calculate and set original: tilt, offset x, y. (pan = 0) zoom way in
+      tilt = __wz_origin.tilt;
+      zoom_level = 100;
+      update_camera();
+
+   } else if (prev_elapsed_ms < 1000 && elapsed_ms >= 1000) {
+      // begin zoomout, setup zoom back in
+      zoom_level = 0;
+      update_camera(3000, "exp-out");
+
+   } else if (prev_elapsed_ms < 4000 && elapsed_ms >= 4000) {
+      // calculate destination: tilt, offset
+      tilt = __wz_destination.tilt;
+      update_camera(5000, 'quad-in-out');
+
+   } else if (prev_elapsed_ms < 9000 && elapsed_ms >= 9000) {
+      zoom_level = 100;
+      update_camera(3000, "exp-in");
+   }
+
+   // touring mechanism
+   var quadInOut = d3.ease('quad-in-out');
+   if (elapsed_ms >= 3000 && elapsed_ms < 10000) {
+       var t = (elapsed_ms - 3000) / 7000;
+       start_idx =  Math.floor(__wz_origin.idx + quadInOut(t) * (__wz_destination.idx-__wz_origin.idx));
+       offset.x = __wz_origin.long + quadInOut(t) * (__wz_destination.long - __wz_origin.long);
+       offset.y = __wz_origin.lat + quadInOut(t) * (__wz_destination.lat - __wz_origin.lat);
+   }
+
+   update_line();
+
+   timer = setTimeout(function() {world_zoom(elapsed_ms);}, 30);
+}
+
 var misc_animation = function(step) {
     if(step===undefined) {step=5;}
 
@@ -69,7 +167,7 @@ var misc_animation = function(step) {
                 .duration(2000)
                 .ease('bounce-in')
                 .attr('opacity', 1)
-                .attr('r', line_thickness/2);
+                .attr('r', line_hickness/2);
         d3.select('#TakeTour').property('value', 'Stop');
         d3.select('#Misc').property('value', 'Misc');
         timer = setTimeout(function() {take_tour();}, 2000);

@@ -6,6 +6,7 @@
     <script type='text/javascript' src='./dmslib_core.js'></script>
     <script type='text/javascript' src='./dmslib_point2d.js'></script>
     <script type='text/javascript' src='./dmslib_point3d.js'></script>
+    <script type='text/javascript' src='./dmslib_xfrm.js'></script>
 
     <script type='text/javascript' src='./tsp_tour_generation.js'></script>
     <script type='text/javascript' src='./tsp_tour_utilities.js'></script>
@@ -44,13 +45,13 @@
                    onchange='offset.y=this.valueAsNumber;update_line()'>
             Pan
             <label for='pan_x'>x:</label>
-            <input id='pan_x' type='number' min='-2000' max=2000 value=0 onchange='pan.x=this.valueAsNumber;update_line()'>
+            <input id='pan_x' type='number' min='-2000' max=2000 value=0 onchange='pan.x=this.valueAsNumber;update_camera()'>
             <label for='pan_y'>y:</label>
-            <input id='pan_y' type='number' min='-2000' max=2000 value=0 onchange='pan.y=this.valueAsNumber;update_line()'>
+            <input id='pan_y' type='number' min='-2000' max=2000 value=0 onchange='pan.y=this.valueAsNumber;update_camera()'>
             <label for='zoom'>Zoom Level:</label>
-            <input id='zoom' type='number' min='-20' max=20 value=0 onchange='zoom_level=this.valueAsNumber;update_line()'>
-            <label for='roll'>Roll:</label>
-            <input id='roll' type='number' min='-360' max=360 value=0 onchange='roll=this.valueAsNumber;update_line()'>
+            <input id='zoom' type='number' min='-20' max=20 value=0 onchange='zoom_level=this.valueAsNumber;update_camera()'>
+            <label for='tilt'>Tilt:</label>
+            <input id='tilt' type='number' min='-360' max=360 value=0 onchange='tilt=this.valueAsNumber;update_camera()'>
         </div>
 
         <div id="Tour" class="tabcontent">
@@ -91,7 +92,8 @@
             <label for='pps'>speed:</label>
             <input id='pps' type='number' min='1' max=1000 value=100  onchange='pps=this.value;'>
             <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
-            <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>   
+            <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
+            <input type='button' id='WorldZoom' onclick='go("WorldZoom")' value='World Zoom'/>
             <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
         </div>
     </div>
@@ -123,7 +125,7 @@
         offset = new DMSLib.Point2D(),
         pan = new DMSLib.Point2D(),
         zoom_level = 0,
-        roll = 0;
+        tilt = 0;
 
 
     ///////////////////// page functions
@@ -142,7 +144,7 @@
             .attr('height', size.y)
             .attr("style", "outline: thin solid red;");
 
-    var panner = svg.append('g').attr('id', 'pan');
+    var panner = svg.append('g').attr('id', 'panner');
     var zoomer = panner.append('g').attr('id', 'zoom');
     var rotator = zoomer.append('g').attr('id', 'rotate');
     var background_image = rotator.append("image");
@@ -214,25 +216,29 @@
         return result;
     };
 
-    var update_line = function(frame_time, easing, segment_data) {
+    var update_camera = function(frame_time, easing, segment_data) {
         if (frame_time===undefined) { frame_time=0; }
         if (easing===undefined) { easing='linear'; }
         if (segment_data===undefined) {
             segment_data = build_segment_data(tour, offset);
         }
 
-        // todo incorporate transition
-        var sx = Math.pow(1.1, zoom_level),
-            sy = Math.pow(1.1, zoom_level),
-            cx = 640 - sx * 640 + pan.x,
-            cy = 360 - sy * 360 + pan.y;
-        panner.attr('transform', 'pan(' + pan.x + ', ' + pan.y + ')');
-        zoomer.attr('transform', 'matrix(' + sx + ', 0, 0, ' + sy + ', ' + cx + ', ' + cy + ')');
-        rotator.attr('transform', 'rotate(' + roll + ', 640, 360)');
+        var scale = Math.pow(1.05, zoom_level);
 
-        line_thickness = 3 / sx;
+        panner.transition().duration(frame_time).ease(easing)
+              .attr('transform', 'translate(' + pan.x + ', ' + pan.y + ')');
+        zoomer.transition().duration(frame_time).ease(easing)
+              .attr('transform', 'scale(' + scale + ', ' + scale + ')');
+        rotator.transition().duration(frame_time).ease(easing)
+               .attr('transform', 'rotate(' + tilt + ')');
+    };
 
-
+    var update_line = function(frame_time, easing, segment_data) {
+        if (frame_time===undefined) { frame_time=0; }
+        if (easing===undefined) { easing='linear'; }
+        if (segment_data===undefined) {
+            segment_data = build_segment_data(tour, offset);
+        }
 
         var line_selection = line_space
             .selectAll('#segment')
@@ -247,6 +253,7 @@
             .attr('y1', function(d) {return d.y1;})
             .attr('y2', function(d) {return d.y2;})
             .attr('stroke-width', line_thickness)
+            .attr('vector-effect', 'non-scaling-stroke')
             .attr('stroke', function(d) {return d.color;});
 
         line_selection.enter()
@@ -258,6 +265,7 @@
             .attr('y2', function(d) {return d.y2;})
             .attr('stroke-linecap', 'round')
             .attr('stroke-width', line_thickness)
+            .attr('vector-effect', 'non-scaling-stroke')
             .attr('stroke-linecap', 'round')
             .attr('stroke', 'none')
             .transition(0)
@@ -295,6 +303,7 @@
                            'TSP' : tsp,
                            'Animate' : animate,
                            'TakeTour' : take_tour,
+                           'WorldZoom' : world_zoom,
                            'Tighten' : tighten,
                            'Misc' : misc_animation };
         var method_fn = method_fns[method];

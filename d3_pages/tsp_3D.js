@@ -15,8 +15,8 @@ var tsp_dist_3D = function(a,b) {
 }
 
 var __display = function(pt) {
-    return new DMSLib.Point2D(-pt.x * display_radius_3d + 640,
-                              -pt.z * display_radius_3d + 360)
+    return new DMSLib.Point2D(-pt.x * display_radius_3d,
+                              -pt.z * display_radius_3d)
 };
 
 var __to3D = function(obj) {
@@ -66,27 +66,34 @@ var set_pointspread_3D = function(pts, target_in) {
     } 
 };
 
-var build_segment_data_3D = function(pts) {
+var build_segment_data_3D = function(pts, offset) {
     index_points(pts);
     var result = [];
+
+    var lat = DMSLib.Rotation.fromAngleAxis(offset.y * Math.PI / 180, DMSLib.Point3D.x_axis() );
+    var long = DMSLib.Rotation.fromAngleAxis(offset.x * Math.PI / 180, DMSLib.Point3D.z_axis() );
+    var rot = lat.combine(long);
 
     for(var i=0; i<pts.length; i++) {
         var next = (i+1)%pts.length;
 
         if(pts[i] === null || pts[next] === null) { continue; }  // skip empty points
+
+        var this_pt = rot.apply(pts[i]);
+        var next_pt = rot.apply(pts[next]);
+
+        if(this_pt.y < -DMSLib.EPSILON && next_pt.y < -DMSLib.EPSILON) { continue; }  // skip points on far side of sphere
         
-        if(pts[i].y < -DMSLib.EPSILON && pts[next].y < -DMSLib.EPSILON) { continue; }  // skip points on far side of sphere
+        var pt1 = __display(this_pt);
+        var pt2 = __display(next_pt);
         
-        var pt1 = __display(pts[i]);
-        var pt2 = __display(pts[next]);
-        
-        if (pts[next].y < -DMSLib.EPSILON) {
-            var t = (0 - pts[i].y) / (pts[next].y - pts[i].y);
-            var intercept = pts[i].mul(1-t).add(pts[next].mul(t)).normalized();
+        if (next_pt.y < -DMSLib.EPSILON) {
+            var t = (0 - this_pt.y) / (next_pt.y - this_pt.y);
+            var intercept = this_pt.mul(1-t).add(next_pt.mul(t)).normalized();
             pt2 = __display(intercept);
-        } else if (pts[i].y < -DMSLib.EPSILON) {
-            var t = (0 - pts[i].y) / (pts[next].y - pts[i].y);
-            var intercept = pts[i].mul(1-t).add(pts[next].mul(t)).normalized();
+        } else if (this_pt.y < -DMSLib.EPSILON) {
+            var t = (0 - this_pt.y) / (next_pt.y - this_pt.y);
+            var intercept = this_pt.mul(1-t).add(next_pt.mul(t)).normalized();
             pt1 = __display(intercept);
         }
         
@@ -207,19 +214,22 @@ var convert_to_3D_app = function() {
     set_pointspread = set_pointspread_3D;
     stipple = stipple_3D;
     tour_angle = DMSLib.Point3D.sphereAngle;
-    edge_intersects_edge = edge_intersects_edge_3D; 
+    edge_intersects_edge = edge_intersects_edge_3D;
+    pan.x += size.x / 2;
+    pan.y += size.y / 2;
 
     __to3D(__animation);
     __to3D(__animation2);
     __to3D(tour);
     
     background_image
-        .attr("x", 640 - display_radius_3d)
-        .attr("y", 360 - display_radius_3d)
+        .attr("x", -display_radius_3d)
+        .attr("y", -display_radius_3d)
         .attr("width", display_radius_3d * 2)
         .attr("height", display_radius_3d * 2)
         .attr("xlink:href", 'sphere.png');
     
+    update_camera();
     update_line();
 };
 
