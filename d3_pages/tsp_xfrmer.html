@@ -228,7 +228,7 @@
         panner.transition().duration(frame_time).ease(easing)
               .attr('transform', 'translate(' + pan.x + ', ' + pan.y + ')');
         zoomer.transition().duration(frame_time).ease(easing)
-              .attr('transform', 'scale(' + scale + ', ' + scale + ')');
+              .attr('transform', 'scale(' + scale + ')');
         rotator.transition().duration(frame_time).ease(easing)
                .attr('transform', 'rotate(' + tilt + ')');
     };
