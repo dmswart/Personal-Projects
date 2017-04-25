@@ -1,11 +1,22 @@
-// TODO - pregenerate line segment data for animations - dedicated line update with transitions.
-var __pregenerated_segment_data
+// TODO - dedicated line update with transitions.
+
+var __fifo
 var __pregenerate_segment_data = function() {
-    __pregenerated_segment_data = [];
+    __fifo = [];
     for(i=0; i<num_frames(); i++) {
         var pts = get_frame(i);
         index_points(pts);
-        __pregenerated_segment_data[i] = build_segment_data(pts, offset);
+
+        var frame_movement = i ? movement(get_frame(i), get_frame(i-1)) : 0;
+        if( pts[0] instanceof DMSLib.Point3D) { frame_movement *= 1000; }
+
+        __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i]), offset),
+                       movement: frame_movement} );
+
+        if(__step_size_list[i+1] !== undefined && __step_size_list[i+1] !== __step_size_list[i]) {
+            __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i+1]), offset),
+                           movement: 0} );
+        }
     }
 };
 
@@ -134,7 +145,7 @@ var world_zoom = function(elapsed_ms) {
    update_camera();
    update_line();
    timer = setTimeout(function() {world_zoom(elapsed_ms);}, 30);
-}
+};
 
 var misc_animation = function(step) {
     if(step===undefined) {step=5;}
@@ -188,38 +199,46 @@ var misc_animation = function(step) {
     }
 };
 
-var animate = function(frame) {
+var animate = function(stage) {
     var frame_time, delay, easing;
 
-    if(frame === undefined) {
-        frame = 0;
-        frame_time = undefined;
-        delay = 1000;
+    if(stage === undefined) {
+        // one second breather before we start.
         __pregenerate_segment_data();
-    } else if (frame === num_frames()) {
+        update_line(undefined, undefined, __fifo.shift().frame);
+        timer = setTimeout(function () { animate(0); }, 1000);
+        return;
+    } else if (__fifo.length === 0) {
+        // we're done - clean up
         clearTimeout(timer);
         timer = null;
         d3.select('#Animate').property('value', 'Animate');
         tour = tour.slice();
         return;
+    } else if (__fifo[0].movement === 0) {
+        // do an instant switch - no transition
+        frame_time = undefined;
+        easing = undefined;
+        delay=30;
     } else {
-        frame_time = movement(get_frame(frame), get_frame(frame-1)) / pps * 1000;
-        if(get_frame(frame)[0] instanceof DMSLib.Point3D) { frame_time *= 1000;}
+        // standard
+        frame_time = __fifo[0].movement / pps * 1000;
         delay = frame_time;
         easing = 'linear';
     }
 
-    if(frame===1) {
+    // easing in and out
+    if(stage===0) {
         easing = 'cubic-in';
         frame_time *= 3;
         delay *= 3;
-    } else if(frame === num_frames()-1) {
+    } else if(__fifo.length === 1) {
         easing = 'cubic-out';
         frame_time *= 3;
         delay *= 3;
     }
 
     // tour = get_frame(frame);
-    update_line(frame_time, easing, __pregenerated_segment_data[frame]);
-    timer = setTimeout(function () { animate(frame + 1); }, delay);
+    update_line(frame_time, easing, __fifo.shift().frame);
+    timer = setTimeout(function () { animate(1); }, delay);
 };

@@ -274,5 +274,13 @@ var index_points = function(pts) {
             pts[i].idx = i;
         }
     }
-}
+};
+
+var decimate_pts = function(pts, step) {
+    var result = [];
+    for(var i=0; i<pts.length; i+=step) {
+        result.push(pts[i]);
+    }
+    return result;
+};
 

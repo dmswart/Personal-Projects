@@ -67,7 +67,6 @@ var set_pointspread_3D = function(pts, target_in) {
 };
 
 var build_segment_data_3D = function(pts, offset) {
-    index_points(pts);
     var result = [];
 
     var lat = DMSLib.Rotation.fromAngleAxis(offset.y * Math.PI / 180, DMSLib.Point3D.x_axis() );
@@ -98,7 +97,7 @@ var build_segment_data_3D = function(pts, offset) {
         }
         
         var entry = {x1: pt1.x, x2: pt2.x, y1: pt1.y, y2: pt2.y,
-            idx: i, color: inside_color};
+            idx: pts[i].idx, color: inside_color};
         
         if(i < start_idx) { entry.color = start_color; }
         if(i >= end_idx) { entry.color = end_color; }

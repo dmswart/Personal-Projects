@@ -124,12 +124,14 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
 
 
 var __angle_threshold_for_step_size_increment = 0.08; // ~5 degrees
+var __step_size_list;
 var smooth = function(max_mvmt) {
     // if max_mvt = undefined, it's first frame: start animation
     if (max_mvmt === undefined) {
         max_mvmt = 0;
         set_stepsize(1);
         start_new_animation(tour);
+        __step_size_list = [1];
     }
     
     var pointspread = get_pointspread(get_frame(0));
@@ -184,6 +186,7 @@ var smooth = function(max_mvmt) {
 
     // if this is first time through, we use this amount of movement as the step amount.
     __animation.push(tour.slice());
+    __step_size_list.push(__step_size);
 
     update_line();
 
@@ -199,7 +202,8 @@ var smooth = function(max_mvmt) {
 
 var tighten = function() {
     glue_animations();
- 
+    __step_size_list = [];
+
     var num_pts = get_frame(0).length;
     var first_centroid = calc_centroid(get_frame(0));
     var last_centroid = calc_centroid(get_frame(num_frames()-1));
