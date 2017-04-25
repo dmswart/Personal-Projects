@@ -3,6 +3,7 @@
 var __fifo
 var __pregenerate_segment_data = function() {
     __fifo = [];
+    var saved = {start: start_idx, end: end_idx};
     for(i=0; i<num_frames(); i++) {
         var pts = get_frame(i);
         index_points(pts);
@@ -10,14 +11,20 @@ var __pregenerate_segment_data = function() {
         var frame_movement = i ? movement(get_frame(i), get_frame(i-1)) : 0;
         if( pts[0] instanceof DMSLib.Point3D) { frame_movement *= 1000; }
 
+        start_idx = Math.floor(saved.start / __step_size_list[i]);
+        end_idx = Math.floor(saved.end / __step_size_list[i]);
         __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i]), offset),
                        movement: frame_movement} );
 
         if(__step_size_list[i+1] !== undefined && __step_size_list[i+1] !== __step_size_list[i]) {
+            start_idx = Math.floor(saved.start / __step_size_list[i+1]);
+            end_idx = Math.floor(saved.end / __step_size_list[i+1]);
             __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i+1]), offset),
                            movement: 0} );
         }
     }
+    start_idx = saved.start;
+    end_idx = saved.end;
 };
 
 var take_tour = function() {
