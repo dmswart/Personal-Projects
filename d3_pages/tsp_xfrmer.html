@@ -56,7 +56,7 @@
 
         <div id="Tour" class="tabcontent">
             <button onclick='get_tour("random");'>random</button>
-            <button onclick='get_tour("animation");'>animation</button>
+            <button onclick='get_tour("figure");'>figure</button>
             <button onclick='get_tour("circle");'>circle</button>
             <button onclick='get_tour("head");'>head</button>
             <button onclick='get_tour("spiral");'>spiral</button>
@@ -94,6 +94,7 @@
             <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
             <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
             <input type='button' id='WorldZoom' onclick='go("WorldZoom")' value='World Zoom'/>
+            <input type='button' id='DoZoom' onclick='go("DoZoom")' value='DoZoom'/>
             <input type='button' id='Misc' onclick='go("Misc")' value='Misc'/>
         </div>
     </div>
@@ -144,11 +145,21 @@
             .attr('height', size.y)
             .attr("style", "outline: thin solid red;");
 
+    var background_color = svg.append('rect').attr('id', 'background_color')
+                              .attr('width', size.x)
+                              .attr('height', size.y)
+                              .attr('fill', 'white');
     var panner = svg.append('g').attr('id', 'panner');
     var zoomer = panner.append('g').attr('id', 'zoom');
     var rotator = zoomer.append('g').attr('id', 'rotate');
     var background_image = rotator.append("image");
     var line_space = rotator.append('g').attr('id', 'line_space');
+    var foreground = rotator.append("image")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", size.x)
+        .attr("height", size.y)
+        .attr("xlink:href", 'foreground.png');
 
     var set_start_end_idx = function(start,end) {
         start_idx = start;
@@ -173,7 +184,7 @@
         var result = [];
 
         if(!ends_joined) {
-           result.push( {x1:-1,
+           result.push( {x1:-20000000,
                          y1:pts[0].y + translation.y,
                          x2:pts[0].x + translation.x,
                          y2:pts[0].y + translation.y,
@@ -199,7 +210,7 @@
             i = pts.length-1;
             result.push( {x1:pts[i].x + translation.x,
                           y1:pts[i].y + translation.y,
-                          x2:size.x+1,
+                          x2:20000000,
                           y2:pts[i].y + translation.y,
                           idx:i,
                           color:inside_color} );
@@ -301,6 +312,7 @@
                            'Animate' : animate,
                            'TakeTour' : take_tour,
                            'WorldZoom' : world_zoom,
+                           'DoZoom' : do_zoom,
                            'Tighten' : tighten,
                            'Misc' : misc_animation };
         var method_fn = method_fns[method];

@@ -1,13 +1,17 @@
 var __sa_temp = 0,
     __smoothness = 0,
-    __step_size=1;
+    __step_size = 1,
+    __step_size_list = [];
 var __animation = [],
     __animation2 = [];
 
 // animation accessors
 var num_frames = function() { return __animation.length; };
 var get_frame = function(i) { return __animation[i]; };
-var reverse_animation = function() { __animation = __animation.reverse(); };
+var reverse_animation = function() {
+    __animation = __animation.reverse();
+    __step_size_list = __step_size_list.reverse();
+};
 var start_new_animation = function(pts) {
     __animation2 = __animation;
     __animation = [];
@@ -124,7 +128,6 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
 
 
 var __angle_threshold_for_step_size_increment = 0.08; // ~5 degrees
-var __step_size_list;
 var smooth = function(max_mvmt) {
     // if max_mvt = undefined, it's first frame: start animation
     if (max_mvmt === undefined) {

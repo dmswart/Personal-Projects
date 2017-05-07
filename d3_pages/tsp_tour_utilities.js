@@ -277,6 +277,7 @@ var index_points = function(pts) {
 };
 
 var decimate_pts = function(pts, step) {
+    if(step===undefined) {step = 1;}
     var result = [];
     for(var i=0; i<pts.length; i+=step) {
         result.push(pts[i]);

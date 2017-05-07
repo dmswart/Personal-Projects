@@ -46,11 +46,21 @@ var take_tour = function() {
     }
 };
 
-var get_lat_long_tilt = function(idx) {
-    var this_pt = tour[(idx + tour.length) % tour.length];
-    var next_pt = tour[(idx + tour.length + 1) % tour.length];
-    var mid_pt = this_pt.add(next_pt).normalized();
-    tour.splice(idx+1, 0, mid_pt);
+
+var get_lat_long_tilt = function(idx, dont_add_midpoint) {
+
+    var this_pt, next_pt, mid_pt;
+    if(dont_add_midpoint === undefined) {
+        // we insert a midpoint
+        this_pt = tour[(idx + tour.length) % tour.length];
+        next_pt = tour[(idx + tour.length + 1) % tour.length];
+        mid_pt = this_pt.add(next_pt).normalized();
+        tour.splice(idx+1, 0, mid_pt);
+    } else {
+        this_pt = tour[(idx + tour.length) % tour.length];
+        next_pt = tour[(idx + tour.length - 1) % tour.length];
+        mid_pt = tour[idx];
+    }
 
     var result = { lat: -90.0 + mid_pt.phi() / Math.PI * 180.0,
                    long: 90.0 - mid_pt.theta() / Math.PI * 180.0,
@@ -206,6 +216,35 @@ var misc_animation = function(step) {
     }
 };
 
+var do_zoom = function(zoom_out) {
+    if(zoom_out === undefined ) {
+        if (zoom_level === 0) {
+            background_color.attr('fill', 'white');
+            timer = setTimeout(function () { do_zoom(true); }, 500);
+        } else {
+            background_color.attr('fill', '#dfdedf');
+            timer = setTimeout(function () { do_zoom(false); }, 500);
+        }
+        return;
+    } else if ( zoom_out ) {
+        zoom_level = -200;
+        pan.x = 640;
+        pan.y = 360;
+        background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', '#dfdedf');
+    } else {
+        zoom_level = 0;
+        pan.x = 0;
+        pan.y = 0;
+        background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', 'white');
+    }
+
+    update_camera(2500, 'cubic-in-out');
+
+    clearTimeout(timer);
+    timer = null;
+    d3.select('#DoZoom').property('value', 'DoZoom');
+};
+
 var animate = function(stage) {
     var frame_time, delay, easing;
 
@@ -216,11 +255,19 @@ var animate = function(stage) {
         timer = setTimeout(function () { animate(0); }, 1000);
         return;
     } else if (__fifo.length === 0) {
-        // we're done - clean up
-        clearTimeout(timer);
-        timer = null;
-        d3.select('#Animate').property('value', 'Animate');
-        tour = tour.slice();
+        if(true) {
+            // we're done - clean up
+            clearTimeout(timer);
+            timer = null;
+            d3.select('#Animate').property('value', 'Animate');
+            tour = get_frame(num_frames()-1);
+        } else {
+            reverse_animation();
+            __pregenerate_segment_data();
+            update_line(undefined, undefined, __fifo.shift().frame);
+            timer = setTimeout(function () { animate(0); }, 50);
+            return;
+        }
         return;
     } else if (__fifo[0].movement === 0) {
         // do an instant switch - no transition
@@ -245,7 +292,6 @@ var animate = function(stage) {
         delay *= 3;
     }
 
-    // tour = get_frame(frame);
     update_line(frame_time, easing, __fifo.shift().frame);
     timer = setTimeout(function () { animate(1); }, delay);
 };
