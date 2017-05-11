@@ -227,7 +227,9 @@ var convert_to_3D_app = function() {
         .attr("width", display_radius_3d * 2)
         .attr("height", display_radius_3d * 2)
         .attr("xlink:href", 'sphere.png');
-    
+    foreground_image.attr("opacity", 0.0);
+    tour_offset.attr('transform', 'translate(0,0)');
+
     update_camera();
     update_line();
 };

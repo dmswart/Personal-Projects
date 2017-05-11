@@ -39,10 +39,10 @@
             Offset
             <label for='offset_x'>x:</label>
             <input id='offset_x' type='number' min='-2000' max=2000 value=0 
-                   onchange='offset.x=this.valueAsNumber;update_line()'>
+                   onchange='offset.x=this.valueAsNumber;update_camera();update_line();'>
             <label for='offset_y'>y:</label>
             <input id='offset_y' type='number' min='-2000' max=2000 value=0 
-                   onchange='offset.y=this.valueAsNumber;update_line()'>
+                   onchange='offset.y=this.valueAsNumber;update_camera();update_line();'>
             Pan
             <label for='pan_x'>x:</label>
             <input id='pan_x' type='number' min='-2000' max=2000 value=0 onchange='pan.x=this.valueAsNumber;update_camera()'>
@@ -153,8 +153,9 @@
     var zoomer = panner.append('g').attr('id', 'zoom');
     var rotator = zoomer.append('g').attr('id', 'rotate');
     var background_image = rotator.append("image");
-    var line_space = rotator.append('g').attr('id', 'line_space');
-    var foreground = rotator.append("image")
+    var tour_offset = rotator.append('g').attr('id', 'tour_offset');
+    var line_space = tour_offset.append('g').attr('id', 'line_space');
+    var foreground_image = rotator.append("image")
         .attr("x", 0)
         .attr("y", 0)
         .attr("width", size.x)
@@ -180,14 +181,14 @@
         set_start_end_idx(start_idx, start_idx+requested_size+1);
     };
 
-    var build_segment_data = function(pts, translation) {
+    var build_segment_data = function(pts) {
         var result = [];
 
         if(!ends_joined) {
            result.push( {x1:-20000000,
-                         y1:pts[0].y + translation.y,
-                         x2:pts[0].x + translation.x,
-                         y2:pts[0].y + translation.y,
+                         y1:pts[0].y,
+                         x2:pts[0].x,
+                         y2:pts[0].y,
                          idx:-1,
                          color:inside_color} );
         }
@@ -196,10 +197,10 @@
             var next = (i+1)%pts.length;
 
             if(pts[i] === null || pts[next] === null ) { continue; }
-            var entry = {x1: pts[i].x + translation.x,
-                         y1: pts[i].y + translation.y,
-                         x2: pts[next].x + translation.x,
-                         y2: pts[next].y + translation.y,
+            var entry = {x1: pts[i].x,
+                         y1: pts[i].y,
+                         x2: pts[next].x,
+                         y2: pts[next].y,
                          idx: i,
                          color: inside_color};
             result.push(entry);
@@ -208,10 +209,10 @@
         if(!ends_joined) {
             result.pop();
             i = pts.length-1;
-            result.push( {x1:pts[i].x + translation.x,
-                          y1:pts[i].y + translation.y,
+            result.push( {x1:pts[i].x,
+                          y1:pts[i].y,
                           x2:20000000,
-                          y2:pts[i].y + translation.y,
+                          y2:pts[i].y,
                           idx:i,
                           color:inside_color} );
         }
@@ -238,6 +239,10 @@
               .attr('transform', 'scale(' + scale + ')');
         rotator.transition().duration(frame_time).ease(easing)
                .attr('transform', 'rotate(' + tilt + ')');
+        if( tour[0] instanceof DMSLib.Point2D) {
+            tour_offset.transition().duration(frame_time).ease(easing)
+                       .attr('transform', 'translate(' + offset.x + ', ' + offset.y + ')');
+        }
     };
 
     var update_line = function(frame_time, easing, segment_data) {
