@@ -11,15 +11,16 @@ var __pregenerate_segment_data = function() {
         var frame_movement = i ? movement(get_frame(i), get_frame(i-1)) : 0;
         if( pts[0] instanceof DMSLib.Point3D) { frame_movement *= 1000; }
 
-        start_idx = Math.floor(saved.start / __step_size_list[i]);
-        end_idx = Math.floor(saved.end / __step_size_list[i]);
-        __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i]), offset),
+        start_idx = Math.floor(saved.start / get_step_size(i));
+        end_idx = Math.floor(saved.end / get_step_size(i));
+        // speed offset.x += 0.4;
+        __fifo.push( { frame: build_segment_data(decimate_pts(pts, get_step_size(i)), offset),
                        movement: frame_movement} );
 
-        if(__step_size_list[i+1] !== undefined && __step_size_list[i+1] !== __step_size_list[i]) {
-            start_idx = Math.floor(saved.start / __step_size_list[i+1]);
-            end_idx = Math.floor(saved.end / __step_size_list[i+1]);
-            __fifo.push( { frame: build_segment_data(decimate_pts(pts, __step_size_list[i+1]), offset),
+        if(get_step_size(i+1) !== get_step_size(i)) {
+            start_idx = Math.floor(saved.start / get_step_size(i+1));
+            end_idx = Math.floor(saved.end / get_step_size(i+1));
+            __fifo.push( { frame: build_segment_data(decimate_pts(pts, get_step_size(i+1)), offset),
                            movement: 0} );
         }
     }
@@ -28,22 +29,23 @@ var __pregenerate_segment_data = function() {
 };
 
 var take_tour = function() {
-    end_idx++;
-    d3.select('#end_idx').property('value', end_idx);
-    update_line();
-
-    if(end_idx < tour.length - 1) {
-        var frame_time = 1000 / pps;
-        var t = (end_idx+1) / (tour.length+1);
-        if(t < 0.2) {frame_time /= (t*5); }
-        if(t > 0.8) {frame_time /= ((1-t)*5);}
-
-        timer = setTimeout(function() {take_tour(); }, frame_time);
-    } else {
+    if(start_idx >= end_idx) {
         clearTimeout(timer);
         timer = null;
         d3.select('#TakeTour').property('value', 'Take Tour');
+        return;
     }
+
+    var total_frame_time = 0; 
+    while (total_frame_time < 20 && start_idx < end_idx) {
+        start_idx++;
+        var frame_time = 1000 / pps;
+        total_frame_time += frame_time;
+    }
+
+    d3.select('#start_idx').property('value', start_idx);
+    update_line();
+    timer = setTimeout(function() {take_tour(); }, frame_time);
 };
 
 
@@ -255,7 +257,7 @@ var animate = function(stage) {
         timer = setTimeout(function () { animate(0); }, 1000);
         return;
     } else if (__fifo.length === 0) {
-        if(true) {
+        if(false) {
             // we're done - clean up
             clearTimeout(timer);
             timer = null;

@@ -5,6 +5,13 @@ var __sa_temp = 0,
 var __animation = [],
     __animation2 = [];
 
+// stepsize accessor
+var get_step_size = function(idx) {
+    if(idx >= __step_size_list.length) { return 1; }
+    if(__step_size_list[idx] === undefined) { return 1; }
+    return __step_size_list[idx];
+};
+
 // animation accessors
 var num_frames = function() { return __animation.length; };
 var get_frame = function(i) { return __animation[i]; };
