@@ -167,8 +167,11 @@ var world_zoom = function(elapsed_ms) {
 };
 
 var misc_animation = function(step) {
-    if(step===undefined) {step=5;}
+    if(step===undefined) {step=7;}
 
+    // 0 intro line
+    // 5 bounce in and animate
+    // 7 water
     if(step===0) {
         start_line.attr('d', lineFunction([]));
         inside_line.attr('d', lineFunction([{x:0,y:467}, {x:861.88,y:467}]));
@@ -211,6 +214,27 @@ var misc_animation = function(step) {
         d3.select('#TakeTour').property('value', 'Stop');
         d3.select('#Misc').property('value', 'Misc');
         timer = setTimeout(function() {take_tour();}, 2000);
+    } else  if(step==7) {
+        tour = [];
+        for(i=0; i<250; i++) {
+           tour.push(new DMSLib.Point2D(537-5000+40*i, 467 + Math.random()*10 - 5));
+        }
+        update_line();
+        timer = setTimeout(function () { misc_animation(step + 1); }, 1000);
+    } else  if(step==8) {
+        for(i=0; i<250; i++) {
+            if(i==124) {
+                tour[i].y = tour[i+2].y;
+            } else if(i==125) {
+                tour[i].y = 467;
+            } else if (i==249) {
+                tour[249].y = 467 + Math.random()*10 - 5;
+            } else {
+                tour[i].y = tour[i+1].y;
+            }
+        }
+        update_line(200);
+        timer = setTimeout(function () { misc_animation(step); }, 200);
     } else {
         clearTimeout(timer);
         timer = null;
@@ -232,18 +256,17 @@ var do_zoom = function(zoom_out) {
         zoom_level = -200;
         pan.x = 640;
         pan.y = 360;
+        foreground.attr("opacity", 0);
         background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', '#dfdedf');
     } else {
         zoom_level = 0;
         pan.x = 0;
         pan.y = 0;
         background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', 'white');
+        timer = setTimeout(function() { foreground.attr("opacity", 1);}, 2500);
     }
 
     update_camera(2500, 'cubic-in-out');
-
-    clearTimeout(timer);
-    timer = null;
     d3.select('#DoZoom').property('value', 'DoZoom');
 };
 
