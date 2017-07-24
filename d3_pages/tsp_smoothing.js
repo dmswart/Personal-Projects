@@ -93,6 +93,14 @@ var glue_animations = function(glue_frames) {
     }
     __animation = __animation.concat(__animation2.reverse());
     __animation2 = [];
+
+
+    // manage size
+    while (__animation.length > 40) {
+        for(var i=0; i<__animation.length-2; i++) {
+            __animation.splice(i+1, 1);
+        }
+    }
 };
 
 

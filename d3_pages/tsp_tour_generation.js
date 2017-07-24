@@ -17,10 +17,20 @@ var get_spiral_pts = function(num_pts, target) {
 };
 
 var get_head_pts = function(num_pts, target, offset) {
+    var sadness = prompt("enter sadness: 0-100", 0);
     if(offset===undefined) {offset = DMSLib.Point2D()};
     var head_pts = [{x:-4.25, y:-4.75}, {x:-9.31, y:-11.37}, {x:-9.19, y:-17.69}, {x:-19.06, y:-17}, {x:-9.94, y:-20.94}, 
                     {x:-12, y:-25.87}, {x:4.56, y:-33.81}, {x:7.44, y:-28.31}, {x:15.94, y:-32.31}, {x:9.37, y:-24.81}, 
                     {x:15.37, y:-18.75}, {x:12.12, y:-10.25}, {x:5.44, y:-11.37}, {x:11.12, y:-7.19}, {x:4.25, y:-4.25} ];
+
+    var angle = sadness * Math.PI / 200;
+    var sinangle = Math.sin(angle);
+    var cosangle = Math.cos(angle);
+    for(var i=0; i<head_pts.length; i++) {
+        y = head_pts[i].x * sinangle + head_pts[i].y * cosangle;
+        x = head_pts[i].x * cosangle + head_pts[i].y * -sinangle;
+        head_pts[i] = {x:x, y:y};
+    }
 
     var result = [];
     for(var i=0; i<head_pts.length; i++) {
@@ -39,6 +49,7 @@ var get_circle_pts = function(num_pts, target) {
 };
 
 var get_random_pts = function(num_pts, target) {
+    show_points = true;
     var result = [];
     for(var i=0; i<num_pts; i++) {
         var x = Math.random() * target.width;
@@ -51,6 +62,7 @@ var get_random_pts = function(num_pts, target) {
 
 var __to_beat = function(x,y,target) { return target.pixel(x, y) / 255.0; };
 var get_target_pts = function(num_pts, target) {
+    show_points = true;
     result=[];
     while(result.length < num_pts)
     {

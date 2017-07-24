@@ -18,6 +18,7 @@
 <body>
     <div id='controls'>
         <button id='ground_mode' onclick='join_ends(!ends_joined);'>toggle ground</button>
+        <button id='point_mode' onclick='show_points = !show_points; update_line();'>toggle points</button>
         <button id='sphere)mode' onclick='go_3D();'>3D</button>
         <br>
         
@@ -28,13 +29,13 @@
         </div>
 
         <div id="Appearance" class="tabcontent" style="display:none">
-            <input id='start_color' type='text' value='red' onchange='start_color=this.value;onColorChange();'> -
+            <input id='start_color' type='text' value='red' onchange='start_color=this.value;update_line();'> -
             <input id='start_idx' type='number' style='width:60px' min='-1' value='-1' 
                    onchange='set_start_end_idx(this.valueAsNumber, end_idx);update_line();'> -
-            <input id='inside_color' type='text' value='black' onchange='inside_color=this.value;onColorChange();'> -
+            <input id='inside_color' type='text' value='red' onchange='inside_color=this.value;update_line();'> -
             <input id='end_idx' type='number' style='width:60px' min='0' value='256' 
                    onchange='set_start_end_idx(start_idx, this.valueAsNumber);update_line();'> -
-            <input id='end_color' type='text' value='red' onchange='end_color=this.value;onColorChange();'>
+            <input id='end_color' type='text' value='black' onchange='end_color=this.value;update_line();'>
             <br>
             Offset
             <label for='offset_x'>x:</label>
@@ -56,7 +57,7 @@
 
         <div id="Tour" class="tabcontent">
             <button onclick='get_tour("random");'>random</button>
-            <button onclick='get_tour("figure");'>figure</button>
+            <button onclick='get_tour("animation");'>figure</button>
             <button onclick='get_tour("circle");'>circle</button>
             <button onclick='get_tour("head");'>head</button>
             <button onclick='get_tour("spiral");'>spiral</button>
@@ -90,7 +91,7 @@
             <input type='button' id='ReverseAnimate' onclick='reverse_animation()' value='↔'/>
             <br>
             <label for='pps'>speed:</label>
-            <input id='pps' type='number' min='1' max=1000 value=100  onchange='pps=this.value;'>
+            <input id='pps' type='number' min='1' max=1000 value=50  onchange='pps=this.value;'>
             <input type='button' id='Animate' onclick='go("Animate")' value='Animate'/>
             <input type='button' id='TakeTour' onclick='go("TakeTour")' value='Take Tour'/>
             <input type='button' id='WorldZoom' onclick='go("WorldZoom")' value='World Zoom'/>
@@ -112,15 +113,16 @@
 <script>
     var tour = [],
         size = new DMSLib.Point2D(1280, 720),
-        start_color = 'red',
+        show_points = true,
+        start_color = 'black',
         inside_color = 'black',
-        end_color = 'red',
+        end_color = 'black',
         start_idx = 0,
         end_idx = 256,
         line_thickness = 3,
         requested_size = 256,
         timer,
-        pps = 100,
+        pps = 50,
         ends_joined = true,
         target = {width:size.x, height:size.y, pixel: function() {return 0;} },
         offset = new DMSLib.Point2D(),
@@ -253,9 +255,33 @@
             segment_data = build_segment_data(tour, offset);
         }
 
+        // circles
+        var circle_selection = line_space
+            .selectAll('#points')
+            .data(show_points ? segment_data : [], function(d) {return d.idx;});
+
+        circle_selection
+                .transition()
+                .duration(frame_time)
+                .ease(easing)
+            .attr('cx', function(d) {return d.x1;})
+            .attr('cy', function(d) {return d.y1;});
+
+        circle_selection.enter()
+            .append('circle')
+            .attr('id', 'points')
+            .attr('cx', function(d) {return d.x1;})
+            .attr('cy', function(d) {return d.y1;})
+            .attr('r', line_thickness)
+            .attr('color', 'black');
+
+        circle_selection.exit()
+            .remove();
+
+        // lines
         var line_selection = line_space
             .selectAll('#segment')
-            .data(segment_data, function(d) {return d.idx;});
+            .data(show_points ? [] : segment_data, function(d) {return d.idx;});
 
         line_selection
                 .transition()
@@ -287,12 +313,6 @@
 
         line_selection.exit()
             .remove();
-    };
-
-    var onColorChange = function() {
-        d3.select('#start_line').attr('stroke', start_color);
-        d3.select('#inside_line').attr('stroke', inside_color);
-        d3.select('#end_line').attr('stroke', end_color);
     };
 
     ////////////////////////////////// Ground mode, 3D mode
@@ -484,9 +504,10 @@
     };
 
     var tsp = function (stage) {
-        if(stage === undefined) {stage = 0;}
+        if(stage === undefined) { stage = 0; }
 
         if(stage === 0) {
+            show_points = false;
             if(!ends_joined) { find_ground(467); }
         } else if(stage === 1) {
             randomize_pts(tour, start_idx, end_idx);

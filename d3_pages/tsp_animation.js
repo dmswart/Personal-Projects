@@ -242,28 +242,29 @@ var misc_animation = function(step) {
     }
 };
 
+var __do_zoom_timer = null;
 var do_zoom = function(zoom_out) {
     if(zoom_out === undefined ) {
         if (zoom_level === 0) {
             background_color.attr('fill', 'white');
-            timer = setTimeout(function () { do_zoom(true); }, 500);
+            __do_zoom_timer = setTimeout(function () { do_zoom(true); }, 500);
         } else {
             background_color.attr('fill', '#dfdedf');
-            timer = setTimeout(function () { do_zoom(false); }, 500);
+            __do_zoom_timer = setTimeout(function () { do_zoom(false); }, 500);
         }
         return;
     } else if ( zoom_out ) {
         zoom_level = -200;
         pan.x = 640;
         pan.y = 360;
-        foreground.attr("opacity", 0);
+        foreground_image.attr("opacity", 0);
         background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', '#dfdedf');
     } else {
         zoom_level = 0;
         pan.x = 0;
         pan.y = 0;
         background_color.transition().duration(2500).ease('cubic-in-out').attr('fill', 'white');
-        timer = setTimeout(function() { foreground.attr("opacity", 1);}, 2500);
+        __do_zoom_timer = setTimeout(function() { foreground_image.attr("opacity", 1);}, 2500);
     }
 
     update_camera(2500, 'cubic-in-out');
@@ -274,13 +275,19 @@ var animate = function(stage) {
     var frame_time, delay, easing;
 
     if(stage === undefined) {
+        // make sure animation is small enough
+        while (__animation.length > 40) {
+            for(var i=0; i<__animation.length-2; i++) {
+                __animation.splice(i+1, 1);
+            }
+        }
         // one second breather before we start.
         __pregenerate_segment_data();
         update_line(undefined, undefined, __fifo.shift().frame);
         timer = setTimeout(function () { animate(0); }, 1000);
         return;
     } else if (__fifo.length === 0) {
-        if(false) {
+        if(true) {
             // we're done - clean up
             clearTimeout(timer);
             timer = null;
@@ -319,4 +326,30 @@ var animate = function(stage) {
 
     update_line(frame_time, easing, __fifo.shift().frame);
     timer = setTimeout(function () { animate(1); }, delay);
+};
+
+// these two are for touring the rejected scene
+var go_back = function() {
+    join_ends(false);
+    // tour.unshift(new DMSLib.Point2D(677, 467));
+    tour.push(new DMSLib.Point2D(1414, 467));
+    end_idx+=1;
+    start_idx = 0;
+    inside_color = 'black';
+    update_line();
+    offset.x = 0;
+    update_camera();
+};
+
+var shift_scene = function() {
+    pps = 300;
+    offset.x = -700;
+    update_camera(7000, "quad-in-out");
+    go("TakeTour");
+};
+
+var move_on = function() {
+    offset.x = 700;
+    pan.x = -700;
+    update_camera(5000, "quad-in");
 };
