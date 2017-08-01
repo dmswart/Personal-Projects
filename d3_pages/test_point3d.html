@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Refactored date examples</title>
+    <script src='./dmslib_core.js'></script>
+    <script src='./dmslib_point3d.js'></script>
+    <script src='./dmslib_point2d.js'></script>
+    <script>
+        // ==========================================================
+        // TEST HARNESS
+        // ==========================================================
+        var test = function(name, actual, expected) {
+            results.total++;
+            if (actual !== expected) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+
+        var test_near = function(name, actual, expected) {
+            results.total++;
+            if (Math.abs(actual - expected) > DMSLib.EPSILON) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+    
+    
+        var results = {
+            total: 0,
+            bad: 0
+        };
+
+
+        // ==========================================================
+        // TESTS
+        // ==========================================================
+        var Point3D_constructor = function() {
+            var a = new DMSLib.Point3D();
+            test('Point3D_constructor', a.x, 0);
+            test('Point3D_constructor', a.y, 0);
+            test('Point3D_constructor', a.z, 0);
+
+            var b = new DMSLib.Point3D(1, 2, 3);
+            test('Point3D_constructor', b.x, 1);
+            test('Point3D_constructor', b.y, 2);
+            test('Point3D_constructor', b.z, 3);
+
+            var c = new DMSLib.Point3D(b);
+            test('Point3D_constructor', c.x, 1);
+            test('Point3D_constructor', c.y, 2);
+            test('Point3D_constructor', c.z, 3);
+            c.x = 7;
+            test('Point3D_constructor', b.x, 1);
+            test('Point3D_constructor', c.x, 7);
+        }
+
+        var Point3D_accessors = function() {
+            var a = new DMSLib.Point3D();
+            a.x = 3;
+            a.y = 4;
+            a.z = 5;
+            test_near('Point3D_accessors', a.x, 3);
+            test_near('Point3D_accessors', a.y, 4);
+            test_near('Point3D_accessors', a.z, 5);
+            test_near('Point3D_accessors', a.R(), 7.0710678119);
+            test_near('Point3D_accessors', a.phi(), 0.7853981634);
+            test_near('Point3D_accessors', a.theta(), 0.927295218);
+
+            var b = new DMSLib.Point3D(a);
+            b.setR(10);
+            test_near('Point3D_accessors', b.x, 4.2426406871);
+            test_near('Point3D_accessors', b.y, 5.6568542495);
+            test_near('Point3D_accessors', b.z, 7.0710678119);
+            test_near('Point3D_accessors', b.R(), 10);
+            test_near('Point3D_accessors', b.phi(), 0.7853981634);
+            test_near('Point3D_accessors', b.theta(), 0.927295218);
+
+            b = new DMSLib.Point3D(a);
+            b.setTheta(0);
+            test_near('Point3D_accessors', b.x, 5);
+            test_near('Point3D_accessors', b.y, 0);
+            test_near('Point3D_accessors', b.z, 5);
+            test_near('Point3D_accessors', b.R(), 7.0710678119);
+            test_near('Point3D_accessors', b.phi(), 0.7853981634);
+            test_near('Point3D_accessors', b.theta(), 0.0);
+
+            b = new DMSLib.Point3D(a);
+            b.setPhi(DMSLib.QUARTERTAU);
+            test_near('Point3D_accessors', b.x, 4.2426406871);
+            test_near('Point3D_accessors', b.y, 5.6568542495);
+            test_near('Point3D_accessors', b.z, 0);
+            test_near('Point3D_accessors', b.R(), 7.0710678119);
+            test_near('Point3D_accessors', b.phi(),DMSLib.QUARTERTAU);
+            test_near('Point3D_accessors', b.theta(), 0.927295218);
+        };
+
+        var Point3D_arithmetic = function() {
+            var a = new DMSLib.Point3D(3,4,5);
+            var b = new DMSLib.Point3D(5,6,7);
+
+            test('Point3D_arithmetic', a.equals(a), true);
+            test('Point3D_arithmetic', a.equals(b), false);
+            test('Point3D_arithmetic', a.nequal(a), false);
+            test('Point3D_arithmetic', a.nequal(b), true);
+
+            var c = a.negate();
+            test('Point3D_arithmetic', c.x, -3);
+            test('Point3D_arithmetic', c.y, -4);
+            test('Point3D_arithmetic', c.z, -5);
+
+            c = a.add(b);
+            test('Point3D_arithmetic', c.x, 8);
+            test('Point3D_arithmetic', c.y, 10);
+            test('Point3D_arithmetic', c.z, 12);
+
+            c = a.sub(b);
+            test('Point3D_arithmetic', c.x, -2);
+            test('Point3D_arithmetic', c.y, -2);
+            test('Point3D_arithmetic', c.z, -2);
+
+            c = a.mul(2);
+            test('Point3D_arithmetic', c.x, 6);
+            test('Point3D_arithmetic', c.y, 8);
+            test('Point3D_arithmetic', c.z, 10);
+
+            c = a.div(4);
+            test('Point3D_arithmetic', c.x, 0.75);
+            test('Point3D_arithmetic', c.y, 1);
+            test('Point3D_arithmetic', c.z, 1.25);
+        };
+
+        var Point3D_scaling = function() {
+            var a = new DMSLib.Point3D(3,4,5);
+            var b = new DMSLib.Point3D(1,2,3);
+
+            var c = a.normalized();
+            test_near('Point3D_scaling', c.x, 0.4242640687);
+            test_near('Point3D_scaling', c.y, 0.5656854249);
+            test_near('Point3D_scaling', c.z, 0.7071067812);
+            test('Point3D_scaling', a.x, 3);
+            test('Point3D_scaling', a.y, 4);
+            test('Point3D_scaling', a.z, 5);
+
+            a.normalize();
+            test_near('Point3D_scaling', a.x, 0.4242640687);
+            test_near('Point3D_scaling', a.y, 0.5656854249);
+            test_near('Point3D_scaling', a.z, 0.7071067812);
+
+            b.scale(2);
+            test('Point3D_scaling', b.x, 2);
+            test('Point3D_scaling', b.y, 4);
+            test('Point3D_scaling', b.z, 6);
+
+            a = new DMSLib.Point3D(3,4,5);
+            c = a.scaledTo(10);
+            test_near('Point3D_scaling', c.x, 4.2426406871);
+            test_near('Point3D_scaling', c.y, 5.6568542495);
+            test_near('Point3D_scaling', c.z, 7.0710678119);
+
+        };
+
+        var Point3D_stereographicToPlane = function() {
+            var a = new DMSLib.Point3D(1, 0, 0);
+            var plane_a = a.stereographicToPlane();
+            test('Point3D_stereographicToPlane', plane_a.x, 1);
+            test('Point3D_stereographicToPlane', plane_a.y, 0);
+
+            var b = new DMSLib.Point3D(0, 1, 0);
+            var plane_b = b.stereographicToPlane();
+            test('Point3D_stereographicToPlane', plane_b.x, 0);
+            test('Point3D_stereographicToPlane', plane_b.y, 1);
+
+            var c = new DMSLib.Point3D(0, 0, -1);
+            var plane_c = c.stereographicToPlane();
+            test('Point3D_stereographicToPlane', plane_c.x, 0);
+            test('Point3D_stereographicToPlane', plane_c.y, 0);
+
+            var d = new DMSLib.Point3D(0.23076923076923078, 0.3076923076923077, 0.9230769230769231);
+            var plane_d = d.stereographicToPlane();
+            test_near('Point3D_stereographicToPlane', plane_d.x, 3);
+            test_near('Point3D_stereographicToPlane', plane_d.y, 4);
+        };
+
+        var Point3D_toString = function() {
+            var a = new DMSLib.Point3D(3, 4, 5);
+            test('Point3D_toString', a.toString(), '(3,4,5)');
+        }
+
+        var Point3D_projected = function() {
+            var a = new DMSLib.Point3D(35, 63, 7);
+            var b = a.projected();
+            test_near('Point3D_projected', b.x, 5);
+            test_near('Point3D_projected', b.y, 9);
+        };
+
+        var Point3D_mercator = function() {
+            var on_sphere = DMSLib.Point3D.fromSphericalCoords(2.0, 0.5, 0.8);
+            var on_plane = on_sphere.mercator();
+            test_near('Point3D_mercator', on_plane.x, 0.8);
+            test_near('Point3D_mercator', on_plane.y, 1.3651517645);
+
+            var back_on_sphere = DMSLib.Point3D.fromMercator(on_plane);
+            test_near('Point3D_mercator', back_on_sphere.R(), 1.0);
+            test_near('Point3D_mercator', back_on_sphere.theta(), 0.8);
+            test_near('Point3D_mercator', back_on_sphere.phi(), 0.5);
+        };
+
+
+        var Point3D_staticValues = function() {
+            // static values (origin, axes)
+            var a = DMSLib.Point3D.origin();
+            test('Point3D_staticValues', a.x, 0);
+            test('Point3D_staticValues', a.y, 0);
+            test('Point3D_staticValues', a.z, 0);
+            a.x += 1;
+            test('Point3D_staticValues', DMSLib.Point3D.origin().x, 0);
+
+            a = DMSLib.Point3D.x_axis();
+            test('Point3D_staticValues', a.x, 1);
+            test('Point3D_staticValues', a.y, 0);
+            test('Point3D_staticValues', a.z, 0);
+            a.x += 1;
+            test('Point3D_staticValues', DMSLib.Point3D.x_axis().x, 1);
+
+            a = DMSLib.Point3D.y_axis();
+            test('Point3D_staticValues', a.x, 0);
+            test('Point3D_staticValues', a.y, 1);
+            test('Point3D_staticValues', a.z, 0);
+            a.x += 1;
+            test('Point3D_staticValues', DMSLib.Point3D.y_axis().x, 0);
+
+            a = DMSLib.Point3D.z_axis();
+            test('Point3D_staticValues', a.x, 0);
+            test('Point3D_staticValues', a.y, 0);
+            test('Point3D_staticValues', a.z, 1);
+            a.x += 1;
+            test('Point3D_staticValues', DMSLib.Point3D.z_axis().x, 0);
+        };
+
+        var Point3D_fromSphericalCoords = function () {
+            var a = DMSLib.Point3D.fromSphericalCoords(7.0710678119, 0.7853981634, 0.927295218);
+            test_near('Point3D_fromSphericalCoords', a.x, 3);
+            test_near('Point3D_fromSphericalCoords', a.y, 4);
+            test_near('Point3D_fromSphericalCoords', a.z, 5);
+        };
+
+        var Point3D_fromCylindricalCoords = function() {
+            var a = DMSLib.Point3D.fromCylindricalCoords(5, 5, 0.927295218);
+            test_near('Point3D_fromCylindricalCoords', a.x, 3);
+            test_near('Point3D_fromCylindricalCoords', a.y, 4);
+            test_near('Point3D_fromCylindricalCoords', a.z, 5);
+        };
+
+        var Point3D_dot = function () {
+            var a = new DMSLib.Point3D(1, 2, 3);
+            var b = new DMSLib.Point3D(3, 4, 5);
+            var val = DMSLib.Point3D.dot(a, b);
+            test('Point3D_dot', val, 26);
+        };
+
+        var Point3D_cross = function () {
+            var a = new DMSLib.Point3D(1, 2, 3);
+            var b = new DMSLib.Point3D(3, 4, 5);
+            var val = DMSLib.Point3D.cross(a, b);
+            test('Point3D_cross', val.x, -2);
+            test('Point3D_cross', val.y, 4);
+            test('Point3D_cross', val.z, -2);
+        };
+
+        var Point3D_angles = function () {
+            var a = new DMSLib.Point3D(1, 1, -1);
+            var b = new DMSLib.Point3D(1, 1, 1);
+            var c = new DMSLib.Point3D(1, -1, 1);
+
+            var val = DMSLib.Point3D.angle(a, b, c);
+            test_near('Point3D_angles', val, DMSLib.QUARTERTAU);
+
+            val = DMSLib.Point3D.sphereAngle(a, b, c);
+            test_near('Point3D_angles', val, DMSLib.TAU / 3.0);
+        };
+
+
+    </script>
+</head>
+
+<body>
+    <div id="results">Catastrophic failure</div>
+</body>
+
+<script>
+    // run!
+    Point3D_constructor();
+    Point3D_accessors();
+    Point3D_arithmetic();
+    Point3D_scaling();
+    Point3D_stereographicToPlane();
+    Point3D_mercator();
+    Point3D_projected();
+    Point3D_toString();
+    Point3D_staticValues();
+    Point3D_fromSphericalCoords();
+    Point3D_fromCylindricalCoords();
+    Point3D_dot();
+    Point3D_cross();
+    Point3D_angles();
+    document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
+</script>

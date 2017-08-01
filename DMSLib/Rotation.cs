@@ -54,27 +54,10 @@ namespace DMSLib
             Normalize();
 		}
 
-		public Rotation ( double RZ, double RY, double RX )
-		{
-            SetWithEuler(RZ, RY, RX);
-		}
+
 		#endregion
 
 		#region Accessors
-
-        public double [] Quat
-        {
-            get { return new double[4] {mQ0, mQX, mQY, mQZ}; }
-            set 
-            { 
-                mQ0 = value[0];
-                mQX = value[1];
-                mQY = value[2];
-                mQZ = value[3];
-                Normalize();
-            }
-
-        }
 
         public double Q0 { get { return mQ0; } }
         public double QX { get { return mQX; } }
@@ -160,23 +143,6 @@ namespace DMSLib
             get { return new Rotation(mQ0, -mQX, -mQY, -mQZ); }
         }
 
-        public double RZ
-        {
-            get { return Math.Atan2(2.0 * (Q0 * QZ + QX * QY), 1.0 - 2.0 * (QY * QY + QZ * QZ)); }
-            set { SetWithEuler(value, RY, RX); }
-        }
-
-        public double RY
-        {
-            get { return Math.Asin(2.0 * (Q0 * QY - QZ * QX)); }
-            set { SetWithEuler(RZ, value, RX); }
-        }
-
-        public double RX
-        {
-            get { return Math.Atan2(2.0 * (Q0 * QX + QY * QZ), 1.0 - 2.0 * (QX * QX + QY * QY)); }
-            set { SetWithEuler(RZ, RY, value); }
-        }
         #endregion
 
 		
@@ -199,10 +165,6 @@ namespace DMSLib
             return new Rotation(-A.Q0, A.QX, A.QY, A.QZ);
         }
 
-        static public Rotation operator /(Rotation A, Rotation B)
-        {
-            return A * B.Inverse;
-        }
 
         #endregion
 
@@ -232,14 +194,6 @@ namespace DMSLib
 
 		#region Private Functions
 
-        private void SetWithEuler( double RZ, double RY, double RX )
-        {
-            Rotation rotZ = new Rotation(RZ, new Point3D(0, 0, 1));
-            Rotation rotY = new Rotation(RY, new Point3D(0, 1, 0));
-            Rotation rotX = new Rotation(RX, new Point3D(1, 0, 0));
-
-            Quat = (rotZ * rotY * rotX).Quat;
-        }
 
 		private void Normalize()
 		{

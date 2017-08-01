@@ -1,34 +1,11 @@
-function skeleton() {
-    this.state = [];
-    this.__planepos = {x:250, y:250};
-    this.__planedir = {x:200, y:0};
-    this.__string = 'M' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-
-    this.push = function() {}; 
-    this.pop = function() {}; 
-    this.line = function(length, strength) {
-        this.__planepos.x += length * this.__planedir.x;
-        this.__planepos.y += length * this.__planedir.y;
-        this.__string += 'L' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-    }; 
-    this.move = function(length) {
-        this.__planepos.x += length * this.__planedir.x;
-        this.__planepos.y += length * this.__planedir.y;
-        this.__string += 'L' + String(this.__planepos.x) + ',' + String(this.__planepos.y) + ' ';
-    };
-    this.rotate = function(angle) {
-        var theta = Math.atan2(this.__planedir.y, this.__planedir.x);
-        theta = theta + (angle * Math.PI);
-        this.__planedir = {x: Math.cos(theta) * 200, y: Math.sin(theta) * 200};
-    }
-
-    this.toString = function() { return this.__string; }
-}
-
 var parse_globemaker = function(skeleton_string, skeleton_obj) {
-    // tokens
-    skeleton_string += ' <EOF>';
-    var __tokens = skeleton_string.split(/[ \t\r\n][ \t\r\n]*/);
+    // tokenize
+    skeleton_string = skeleton_string.replace(/#.*/g, ' ');    // comments beginning with #
+    skeleton_string = skeleton_string.replace(/\/\/.*/g, ' '); // comments beginning with // 
+    skeleton_string = skeleton_string.replace(/{/g, ' { ');    // whitespace not required for brackets
+    skeleton_string = skeleton_string.replace(/}/g, ' } ');
+    skeleton_string = '<BOF> ' + skeleton_string + ' <EOF>';   // to help accomodate leading / trailing whitespace
+    var __tokens = skeleton_string.split(/[ \t\r\n]+/);
     var __token_idx = 0;
 
     var token = function() {
@@ -53,14 +30,31 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
 
-    // commands
-    var lineto = function() {
-        if( terminal('l') || terminal('line') || terminal('lineto') ) {return true;}
+    var __label = '';
+    var label = function() {
+        __label = token();
+        if(/^[A-Za-z]+$/.test(__label)) { next_token(); return true;}
         return false;
     };
 
-    var moveto = function() {
-        if( terminal('m') || terminal('move') || terminal('moveto') ) {return true;}
+    // commands
+    var save = function() {
+        if( terminal('s') || terminal('save') ) {return true;}
+        return false;
+    };
+
+    var line = function() {
+        if( terminal('l') || terminal('line') ) {return true;}
+        return false;
+    };
+
+    var move = function() {
+        if( terminal('m') || terminal('move') ) {return true;}
+        return false;
+    };
+
+    var move_in_plane = function() {
+        if( terminal('o') ) {return true;}
         return false;
     };
 
@@ -69,8 +63,8 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
     
-    var lineto_cmd = function() {
-        if( lineto() ) {
+    var line_cmd = function() {
+        if( line() ) {
            var length;
            if(!value()) { /*TODO error*/ return false; }
            else { length = __value; }
@@ -85,8 +79,18 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return false;
     };
 
-    var moveto_cmd = function() {
-        if( moveto() ) {
+    var move_in_plane_cmd = function() {
+        if( move_in_plane() ) {
+           var length;
+           if(!value()) { /*TODO error*/ return false; }
+           skeleton_obj.move_in_plane(__value);
+           return true;
+        }
+        return false;
+    };
+
+    var move_cmd = function() {
+        if( move() ) {
            var length;
            if(!value()) { /*TODO error*/ return false; }
 
@@ -108,33 +112,44 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
     };
     
     // stack fnality
-    var pop = function() {
-        if( terminal('}') || terminal('pop') ) {return true;}
-        return false;
-    };
-    
-    var push = function() {
-        if( terminal('{') || terminal('push') ) {return true;}
-        return false;
-    };
-    
-    var stacked = function() {
-        if( !push() ) { return false; }
-        skeleton_obj.push();
+    var stack_cmd = function() {
+        if( terminal('{') || terminal('push') ) {
+            __value = 1
+        } else if( terminal('}') || terminal('pop') ) {
+            __value = -1;
+        } else if( terminal('p') ) {
+            if( !value() ) { /*TODO error*/ return false; }
+        } else {
+            return false;
+        }
 
-        if( !statements() ){ /*TODO error*/ return false; }
 
-        if( !pop() ) { /*TODO error*/ return false; }
-        skeleton_obj.pop();
-
+        if( __value > 0 ) {
+           skeleton_obj.push();
+        } else {
+           skeleton_obj.pop();
+        }
         return true;
     };
 
+    var save_cmd = function() {
+        if( save() ) {
+           if(!label()) { /*TODO error*/ return false; }
+
+           skeleton_obj.save(__label);
+           return true;
+        }
+        return false;
+    };
+
+
     // big stuff
     var statement = function() {
-        if (stacked()) { return true; }
-        if (lineto_cmd()) { return true; }
-        if (moveto_cmd()) { return true; }
+        if (stack_cmd()) { return true; }
+        if (save_cmd()) { return true; }
+        if (line_cmd()) { return true; }
+        if (move_cmd()) { return true; }
+        if (move_in_plane_cmd()) { return true; }
         if (rotate_cmd()) { return true; }
         return false;
     };
@@ -145,7 +160,9 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
         return true;
     };
 
-    if (!statements()) { return false; }
+    if (!terminal('<BOF>')) { /* TODO error */ return false; }
+    if (!statements()) { /* TODO error */ return false; }
     if (!terminal('<EOF>')) { /*TODO error*/ return false; }
+    skeleton_obj.init();
     return true;
 }
