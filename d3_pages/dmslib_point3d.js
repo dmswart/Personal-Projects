@@ -19,107 +19,105 @@
     };
 
     $.Point3D.prototype = {
-        copy : function() {return new $.Point3D(this);},
+        copy: function() {return new $.Point3D(this);},
         
         // chained arithmetic
-        equals : function(other) {
-			return Math.abs(this.x - other.x) < DMSLib.EPSILON && 
-			       Math.abs(this.y - other.y) < DMSLib.EPSILON && 
-			       Math.abs(this.z - other.z) < DMSLib.EPSILON;
+        equals: function(other) { return Math.abs(this.x - other.x) < DMSLib.EPSILON &&
+                                         Math.abs(this.y - other.y) < DMSLib.EPSILON &&
+                                         Math.abs(this.z - other.z) < DMSLib.EPSILON;
         },
-        nequal : function(other) {!this.equals(other)},
-        negate : function() {return new $.Point3D(-this.x, -this.y, -this.z);},
-        add : function(other) {return new $.Point3D(this.x + other.x, this.y + other.y, this.z + other.z);},
-        sub : function(other) {return new $.Point3D(this.x - other.x, this.y - other.y, this.z - other.z);},
-        mul : function(scalar) {return new $.Point3D(this.x * scalar, this.y * scalar, this.z * scalar);},
-        div : function(scalar) {return new $.Point3D(this.x / scalar, this.y / scalar, this.z / scalar);},
+        nequal: function(other) {return !this.equals(other);},
+        negate: function() {return new $.Point3D(-this.x, -this.y, -this.z);},
+        add: function(other) {return new $.Point3D(this.x + other.x, this.y + other.y, this.z + other.z);},
+        sub: function(other) {return new $.Point3D(this.x - other.x, this.y - other.y, this.z - other.z);},
+        mul: function(scalar) {return new $.Point3D(this.x * scalar, this.y * scalar, this.z * scalar);},
+        div: function(scalar) {return new $.Point3D(this.x / scalar, this.y / scalar, this.z / scalar);},
 
         // accessors
-        theta : function() {
+        theta: function() {
             // azimuthal, the angle about the z axis starting from the x axis
             return Math.atan2(this.y, this.x);
         },
-        setTheta : function(val) {
-            var old_r = this.R();
-            var old_phi = this.phi();
-            this.x = old_r * Math.sin(old_phi) * Math.cos(val);
-            this.y = old_r * Math.sin(old_phi) * Math.sin(val);
-            this.z = old_r * Math.cos(old_phi);
+        setTheta: function(val) {
+            var oldR = this.R();
+            var oldPhi = this.phi();
+            this.x = oldR * Math.sin(oldPhi) * Math.cos(val);
+            this.y = oldR * Math.sin(oldPhi) * Math.sin(val);
+            this.z = oldR * Math.cos(oldPhi);
         },
 
-        phi : function() {
+        phi: function() {
             var r = this.R();
             if (r == 0) { return 0; }
             return Math.acos(this.z / r);
         },
-        setPhi : function(val) {
-            var old_r = this.R();
-            var old_theta = this.theta();
-            this.x = old_r * Math.sin(val) * Math.cos(old_theta);
-            this.y = old_r * Math.sin(val) * Math.sin(old_theta);
-            this.z = old_r * Math.cos(val);
+        setPhi: function(val) {
+            var oldR = this.R();
+            var oldTheta = this.theta();
+            this.x = oldR * Math.sin(val) * Math.cos(oldTheta);
+            this.y = oldR * Math.sin(val) * Math.sin(oldTheta);
+            this.z = oldR * Math.cos(val);
         },
         
-        R2 : function() { return this.x * this.x + this.y * this.y + this.z * this.z; },
-        R : function() { return Math.sqrt(this.R2()); },
-        setR : function(val) {
+        R2: function() { return this.x * this.x + this.y * this.y + this.z * this.z; },
+        R: function() { return Math.sqrt(this.R2()); },
+        setR: function(val) {
             var r = this.R();
-            if (r != 0) { this.scale(val/r); }
+            if (r != 0) {this.scale(val / r);}
         },
 
         // regular functions
-        normalized : function() {
+        normalized: function() {
             var factor = 1.0;
             var r = this.R();
-            if( r != 0 ) {
+            if (r != 0) {
                 factor /= r;
                 return new $.Point3D(this.x * factor, this.y * factor, this.z * factor);
             }
         },
-        toString : function() {
-            return '(' + this.x + ',' + this.y + ',' + this.z + ')'; 
+        toString: function() {
+            return '(' + this.x + ',' + this.y + ',' + this.z + ')';
         },
-        normalize : function() {
+        normalize: function() {
             var r = this.R();
             if (r !== 0) {
                 this.scale(1.0 / r);
             }
         },
-        scale : function(factor) {
+        scale: function(factor) {
             this.x *= factor;
             this.y *= factor;
             this.z *= factor;
         },
-        scaledTo : function(new_length) {
+        scaledTo: function(newLength) {
             var result = new $.Point3D(this);
-            result.setR(new_length);
+            result.setR(newLength);
             return result;
         },
 
-        projected : function() {
+        projected: function() {
             // projected through origin onto z=1 plane
-            if (this.z == 0.0) return new Point2D(1e10, 1e10);
+            if (this.z == 0.0) {return new Point2D(1e10, 1e10);}
             return new $.Point2D(this.x / this.z, this.y / this.z);
         },
-        stereographicToPlane : function() {
+        stereographicToPlane: function() {
             if (this.z == 1.0) { return Point2D.origin(); }
-            return new $.Point2D( this.x / (1.0 - this.z), this.y / (1.0 - this.z) );
+            return new $.Point2D(this.x / (1.0 - this.z), this.y / (1.0 - this.z));
         },
-        mercator : function() {
+        mercator: function() {
             var latitude = $.QUARTERTAU - this.phi();
             return new $.Point2D(this.theta(), Math.log((Math.sin(latitude) + 1.0) / Math.cos(latitude)));
         },
-        jitter : function(radius) {
+        jitter: function(radius) {
             return this.add($.Point3D.random(radius));
         }
     };
 
-
     // static variables, functions
     $.Point3D.origin = function() { return new $.Point3D(0.0, 0.0, 0.0); };
-    $.Point3D.x_axis = function() { return new $.Point3D(1.0, 0.0, 0.0); };
-    $.Point3D.y_axis = function() { return new $.Point3D(0.0, 1.0, 0.0); };
-    $.Point3D.z_axis = function() { return new $.Point3D(0.0, 0.0, 1.0); };
+    $.Point3D.xAxis = function() { return new $.Point3D(1.0, 0.0, 0.0); };
+    $.Point3D.yAxis = function() { return new $.Point3D(0.0, 1.0, 0.0); };
+    $.Point3D.zAxis = function() { return new $.Point3D(0.0, 0.0, 1.0); };
 
     $.Point3D.fromSphericalCoords = function(r, phi, theta) {
         // R distance from origin
@@ -127,32 +125,31 @@
         // Theta azimuthal, the angle about the z axis starting from the x axis
         return new $.Point3D(r * Math.sin(phi) * Math.cos(theta),
                            r * Math.sin(phi) * Math.sin(theta),
-                           r * Math.cos(phi)); 
+                           r * Math.cos(phi));
     },
     $.Point3D.fromCylindricalCoords = function(r, z, theta) {
         // R distance from origin
         // Z distance up from XY Plane (z-coord)
         // Theta azimuthal, the angle about the z axis starting from the x axis
-        return new $.Point3D(r * Math.cos(theta), r * Math.sin(theta), z); 
+        return new $.Point3D(r * Math.cos(theta), r * Math.sin(theta), z);
     };
     $.Point3D.fromMercator = function(pos) {
         var latitude = Math.atan(Math.sinh(pos.y));
         return $.Point3D.fromSphericalCoords(1.0, $.QUARTERTAU - latitude, pos.x);
     };
-    $.Point3D.random = function(max_radius) {
-        var result = new $.Point3D(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1);
+    $.Point3D.random = function(maxRadius) {
+        var result = new $.Point3D(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
         while (result.R() > 1.0) {
-            result = new $.Point3D(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1);
+            result = new $.Point3D(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
         }
-        return result.mul(max_radius); 
+        return result.mul(maxRadius);
     };
-    
 
-    $.Point3D.dot = function(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+    $.Point3D.dot = function(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; };
     $.Point3D.cross = function(a, b) {
-        return new $.Point3D( a.y*b.z - a.z*b.y,
-                            a.z*b.x - a.x*b.z,
-                            a.x*b.y - a.y*b.x );
+        return new $.Point3D(a.y * b.z - a.z * b.y,
+                             a.z * b.x - a.x * b.z,
+                             a.x * b.y - a.y * b.x);
     };
     $.Point3D.angle = function(a, b, c) {
         // returns angle of ABC (B is vertex)
@@ -160,10 +157,10 @@
             return 0;
         }
 
-        var dot_product = $.Point3D.dot(a.sub(b).normalized(), c.sub(b).normalized());
-        if ( dot_product <= -1 ) { return $.HALFTAU; }
-        if ( dot_product >= 1 ) { return 0.0; }
-        return Math.acos(dot_product);
+        var dotProduct = $.Point3D.dot(a.sub(b).normalized(), c.sub(b).normalized());
+        if (dotProduct <= -1) { return $.HALFTAU; }
+        if (dotProduct >= 1) { return 0.0; }
+        return Math.acos(dotProduct);
     };
     $.Point3D.sphereAngle = function(a, b, c) {
         // returns the angle between the plane containing points ABO and the plane containing points CBO

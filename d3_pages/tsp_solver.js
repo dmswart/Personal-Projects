@@ -1,8 +1,10 @@
-var randomize_pts = function(pts, start_idx, end_idx) {
-    var i, x, tmp;
+var randomizePts = function(pts, startIdx, endIdx) {
+    var i;
+    var x;
+    var tmp;
 
-    for(i=start_idx+1; i<end_idx; i++) {
-        x = Math.floor(Math.random() * (end_idx-i)) + i;
+    for (i = startIdx + 1; i < endIdx; i++) {
+        x = Math.floor(Math.random() * (endIdx - i)) + i;
 
         tmp = pts[x].copy();
         pts[x] = pts[i].copy();
@@ -10,18 +12,19 @@ var randomize_pts = function(pts, start_idx, end_idx) {
     }
 };
 
-var do_insertion_heuristic = function(pts, start_idx, end_idx) { 
-    var i, j;
+var doInsertionHeuristic = function(pts, startIdx, endIdx) {
+    var i;
+    var j;
 
-    for (i = start_idx+2; i<end_idx; i++) {
+    for (i = startIdx + 2; i < endIdx; i++) {
         // find j such that Sum( [j,i] [i,j+1] -[j,j+1] )  is minimized
-        var newpt = pts[i].copy(),
-            minidx = -1,
-            mindist = 10000;
+        var newpt = pts[i].copy();
+        var minidx = -1;
+        var mindist = 10000;
 
-        for (j = Math.max(0,start_idx); j < i; j++) {
+        for (j = Math.max(0, startIdx); j < i; j++) {
             var a = pts[j];
-            var b = pts[(j+1)%i];
+            var b = pts[(j + 1) % i];
 
             var dist = a.sub(newpt).R() + newpt.sub(b).R() - a.sub(b).R();
             if (dist < mindist) {
@@ -31,20 +34,25 @@ var do_insertion_heuristic = function(pts, start_idx, end_idx) {
         }
 
         //now insert newpt after pts[minidx], shift everything else forward by one
-        for(j=i; j>minidx+1; j--) {
+        for (j = i; j > minidx + 1; j--) {
             pts[j] = pts[j - 1];
         }
-        pts[minidx+1] = newpt;
+        pts[minidx + 1] = newpt;
     }
 };
 
-
-var do_two_opt = function(pts, start_idx, end_idx, use_maxes) { 
+var doTwoOpt = function(pts, startIdx, endIdx, useMaxes) {
     var changed = false;
-    var a1, b1, a2, b2,
-        a1toa2, b1tob2, a1tob1, a2tob2;
-    for (a1 = start_idx+1; a1 < end_idx; a1++) {
-        for (b1 = a1 + 2; b1 < end_idx; b1++) {
+    var a1;
+    var b1;
+    var a2;
+    var b2;
+    var a1toa2;
+    var b1tob2;
+    var a1tob1;
+    var a2tob2;
+    for (a1 = startIdx + 1; a1 < endIdx; a1++) {
+        for (b1 = a1 + 2; b1 < endIdx; b1++) {
             a2 = (a1 + 1) % pts.length;
             b2 = (b1 + 1) % pts.length;
 
@@ -53,10 +61,11 @@ var do_two_opt = function(pts, start_idx, end_idx, use_maxes) {
             a1tob1 = pts[b1].sub(pts[a1]).R();
             a2tob2 = pts[b2].sub(pts[a2]).R();
 
-            if (!use_maxes && a1tob1 + a2tob2 < a1toa2 + b1tob2 ||
-                use_maxes && Math.max(a1tob1,a2tob2) < Math.max(a1toa2, b1tob2)) {
+            if (!useMaxes && a1tob1 + a2tob2 < a1toa2 + b1tob2 ||
+                useMaxes && Math.max(a1tob1, a2tob2) < Math.max(a1toa2, b1tob2)) {
                 // swap [a2 ... b1]
-                var from, to;
+                var from;
+                var to;
                 for (idx = 0; a2 + idx < b1 - idx; idx++) {
                     from = (a2 + idx) % pts.length;
                     to = (b1 - idx) % pts.length;

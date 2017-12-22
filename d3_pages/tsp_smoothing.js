@@ -1,55 +1,57 @@
-var __sa_temp = 0,
-    __smoothness = 0,
-    __step_size = 1,
-    __step_size_list = [];
-var __animation = [],
-    __animation2 = [];
+var __saTemp = 0;
+var __smoothness = 0;
+var __stepSize = 1;
+var __stepSizeList = [];
+var __animation = [];
+var __animation2 = [];
 
 // stepsize accessor
-var get_step_size = function(idx) {
-    if(idx >= __step_size_list.length) { return 1; }
-    if(__step_size_list[idx] === undefined) { return 1; }
-    return __step_size_list[idx];
+var getStepSize = function(idx) {
+    if (idx >= __stepSizeList.length) { return 1; }
+    if (__stepSizeList[idx] == undefined) { return 1; }
+    return __stepSizeList[idx];
 };
 
 // animation accessors
-var num_frames = function() { return __animation.length; };
-var get_frame = function(i) { return __animation[i]; };
-var reverse_animation = function() {
+var numFrames = function() { return __animation.length; };
+var getFrame = function(i) { return __animation[i]; };
+var reverseAnimation = function() {
     __animation = __animation.reverse();
-    __step_size_list = __step_size_list.reverse();
+    __stepSizeList = __stepSizeList.reverse();
 };
-var start_new_animation = function(pts) {
+var startNewAnimation = function(pts) {
     __animation2 = __animation;
     __animation = [];
     __animation.push(pts.slice());
 };
 
-get_animation_pts = function(pts, target, offset) {
-    var i, j,
-        result = [],
-        frame, pt,
-        min_x = 1028 
-        max_x = 0,
-        offset_x = 0;
+getAnimationPts = function(pts, target, offset) {
+    var i;
+    var j;
+    var result = [];
+    var frame;
+    var pt;
+    var minX = 1028;
+    var maxX = 0;
+    var offsetX = 0;
 
-    for(i=0; i<6; i++ ) {
-        frame = get_frame(Math.floor(i/5*(num_frames()-1)));
-        for(var j=0; j<frame.length; j++) {
-            pt = frame[j%frame.length];
-            result.push(new DMSLib.Point2D(pt.x+offset_x, pt.y));
-            min_x = Math.min(min_x, pt.x+offset_x);
-            max_x = Math.max(max_x, pt.x+offset_x);
+    for (i = 0; i < 6; i++) {
+        frame = getFrame(Math.floor(i / 5 * (numFrames() - 1)));
+        for (var j = 0; j < frame.length; j++) {
+            pt = frame[j % frame.length];
+            result.push(new DMSLib.Point2D(pt.x + offsetX, pt.y));
+            minX = Math.min(minX, pt.x + offsetX);
+            maxX = Math.max(maxX, pt.x + offsetX);
         }
-        if(ends_joined) {result.push(new DMSLib.Point2D(frame[0].x+offset_x, frame[0].y));}
+        if (endsJoined) {result.push(new DMSLib.Point2D(frame[0].x + offsetX, frame[0].y));}
         result.push(null);
-        offset_x = max_x + 20;
+        offsetX = maxX + 20;
     }
 
-    var scale = 1240 / (max_x - min_x);
-    for(i=0; i<result.length; i++) {
-        if(result[i]) {
-            result[i] = new DMSLib.Point2D((result[i].x - min_x) * scale + 20,
+    var scale = 1240 / (maxX - minX);
+    for (i = 0; i < result.length; i++) {
+        if (result[i]) {
+            result[i] = new DMSLib.Point2D((result[i].x - minX) * scale + 20,
                                            result[i].y * scale);
         }
     }
@@ -58,82 +60,81 @@ get_animation_pts = function(pts, target, offset) {
 };
 
 //accessors
-set_smoothness = function(val) { __smoothness = val; }
-set_sa_temp = function(val) { __sa_temp = val; }
+setSmoothness = function(val) { __smoothness = val; };
+setSaTemp = function(val) { __saTemp = val; };
 
-// step_size accessor 
-var set_stepsize = function(size) {
-    __step_size = size;
-    document.getElementById('stepsize').innerHTML = __step_size.toString();
+// stepSize accessor
+var setStepsize = function(size) {
+    __stepSize = size;
+    document.getElementById('stepsize').innerHTML = __stepSize.toString();
 };
 
-var scale_stepsize = function(scale) {
-    var new_val = __step_size * scale;
-    if(new_val < 1) {new_val = 1;}
+var scaleStepsize = function(scale) {
+    var newVal = __stepSize * scale;
+    if (newVal < 1) {newVal = 1;}
     
-    set_stepsize(new_val);
+    setStepsize(newVal);
 };
 
-
-// utility functions 
-var glue_animations = function(glue_frames) {
-    if(!__animation2.length) { return; }
+// utility functions
+var glueAnimations = function(glueFrames) {
+    if (!__animation2.length) { return; }
     
-    if(glue_frames === undefined) {glue_frames = 5;}
+    if (glueFrames == undefined) {glueFrames = 5;}
     
-    var new_frame, pt1, pt2;
-    for(var i=1; i<glue_frames-1; i++) {
-        new_frame = [];
-        for(var p=0; p<__animation[0].length; p++) {
-            pt1 = __animation[__animation.length-1][p];
-            pt2 = __animation2[__animation2.length-1][p];
-            new_frame[p] = pt1.mul(glue_frames-1-i).add(pt2.mul(i)).div(glue_frames-1);
+    var newFrame;
+    var pt1;
+    var pt2;
+    for (var i = 1; i < glueFrames - 1; i++) {
+        newFrame = [];
+        for (var p = 0; p < __animation[0].length; p++) {
+            pt1 = __animation[__animation.length - 1][p];
+            pt2 = __animation2[__animation2.length - 1][p];
+            newFrame[p] = pt1.mul(glueFrames - 1 - i).add(pt2.mul(i)).div(glueFrames - 1);
         }
-        __animation.push(new_frame);
+        __animation.push(newFrame);
     }
     __animation = __animation.concat(__animation2.reverse());
     __animation2 = [];
 
-
     // manage size
     while (__animation.length > 40) {
-        for(var i=0; i<__animation.length-2; i++) {
-            __animation.splice(i+1, 1);
+        for (var i = 0; i < __animation.length - 2; i++) {
+            __animation.splice(i + 1, 1);
         }
     }
 };
 
+var __isValidNewPoint = function(pts, newPt, idx) {
+    var a1 = pts[(idx - __stepSize + pts.length) % pts.length];
+    var oldA2 = pts[idx];
+    var newA2 = newPt;
+    var a3 = pts[(idx + __stepSize) % pts.length];
 
-var __is_valid_new_point = function(pts, new_pt, idx) {
-    var a1 = pts[(idx - __step_size + pts.length) % pts.length];
-    var old_a2 = pts[idx];
-    var new_a2 = new_pt;
-    var a3 = pts[(idx + __step_size) % pts.length];
-
-    if(!ends_joined) {
-        if(idx + __step_size >= pts.length) { a3 = pts[pts.length-1]; }
-        if(idx - __step_size < 0) { a1 = pts[0]; }
-    } 
+    if (!endsJoined) {
+        if (idx + __stepSize >= pts.length) { a3 = pts[pts.length - 1];}
+        if (idx - __stepSize < 0) { a1 = pts[0]; }
+    }
 
     var tolerance = Math.min(a1.sub(a3).R()) * 0.2;
     
-    for (var i = (idx%__step_size); i < pts.length; i+=__step_size) {
+    for (var i = (idx % __stepSize); i < pts.length; i += __stepSize) {
         var b1 = pts[i];
-        var b2 = pts[(i+__step_size)%pts.length];
+        var b2 = pts[(i + __stepSize) % pts.length];
 
         // check proximity
-        if(b1 !== a1 && b1 !== old_a2 && b1 !== a3) {
-            if (b1.sub(new_a2).R() < tolerance) {
+        if (b1 !== a1 && b1 !== oldA2 && b1 !== a3) {
+            if (b1.sub(newA2).R() < tolerance) {
                 return false;
             }
         }
 
         // edge intersection
-        if(!ends_joined && (i + __step_size >= pts.length || i - __step_size < 0)) {continue;} // don't check the edge between endpts
-        if (b1 !== a1 && b1 !== old_a2) {
-            if (edge_intersects_edge(a1, new_a2, b1, b2) || 
-                edge_intersects_edge(new_a2, a3, b1, b2) ||
-                edge_intersects_edge(old_a2, new_a2, b1, b2)) {
+        if (!endsJoined && (i + __stepSize >= pts.length || i - __stepSize < 0)) {continue;}  // don't check the edge between endpts
+        if (b1 !== a1 && b1 !== oldA2) {
+            if (edgeIntersectsEdge(a1, newA2, b1, b2) ||
+                edgeIntersectsEdge(newA2, a3, b1, b2) ||
+                edgeIntersectsEdge(oldA2, newA2, b1, b2)) {
                 return false;
             }
         }
@@ -141,147 +142,148 @@ var __is_valid_new_point = function(pts, new_pt, idx) {
     return true;
 };
 
-
-var __angle_threshold_for_step_size_increment = 0.08; // ~5 degrees
-var smooth = function(max_mvmt) {
-    // if max_mvt = undefined, it's first frame: start animation
-    if (max_mvmt === undefined) {
-        max_mvmt = 0;
-        set_stepsize(1);
-        start_new_animation(tour);
-        __step_size_list = [1];
+var __angleThresholdForStepSizeIncrement = 0.08; // ~5 degrees
+var smooth = function(maxMvmt) {
+    // if maxMvt = undefined, it's first frame: start animation
+    if (maxMvmt == undefined) {
+        maxMvmt = 0;
+        setStepsize(1);
+        startNewAnimation(tour);
+        __stepSizeList = [1];
     }
     
-    var pointspread = get_pointspread(get_frame(0));
-    var saved_tour = tour.slice();
+    var pointspread = getPointspread(getFrame(0));
+    var savedTour = tour.slice();
 
-    if( tour.length / __step_size > 64 && avg_bend(tour, __step_size) < __angle_threshold_for_step_size_increment) {
-        scale_stepsize(2);
+    if (tour.length / __stepSize > 64 && avgBend(tour, __stepSize) < __angleThresholdForStepSizeIncrement) {
+        scaleStepsize(2);
     }
 
-    var num_iter, idx, prev, next, new_pt;
-    for (num_iter = 0; num_iter < 1000; num_iter++) {
+    var numIter;
+    var idx;
+    var prev;
+    var next;
+    var newPt;
 
-        var new_tour = [];
-        for(idx=0; idx<=start_idx; idx++) {new_tour[idx] = tour[idx];}
-        for(idx=end_idx; idx<tour.length; idx++) {new_tour[idx] = tour[idx];}
+    for (numIter = 0; numIter < 1000; numIter++) {
+        var newTour = [];
+        for (idx = 0; idx <= startIdx; idx++) {newTour[idx] = tour[idx];}
+        for (idx = endIdx; idx < tour.length; idx++) {newTour[idx] = tour[idx];}
         
-        if(xs_are_monotonic(tour, start_idx, end_idx)) {
+        if (xsAreMonotonic(tour, startIdx, endIdx)) {
             //totally gonna cheat
-            for (idx = start_idx+1; idx < end_idx; idx++) {
-                var final_pt = tour[start_idx].mul(end_idx-1-idx).add(tour[end_idx].mul(idx-start_idx)).div(end_idx-start_idx-1);
-                new_tour[idx] = tour[idx].mul(0.75).add(final_pt.mul(0.25));
+            for (idx = startIdx + 1; idx < endIdx; idx++) {
+                var finalPt = tour[startIdx].mul(endIdx - 1 - idx).add(tour[endIdx].mul(idx - startIdx)).div(endIdx - startIdx - 1);
+                newTour[idx] = tour[idx].mul(0.75).add(finalPt.mul(0.25));
             }
         } else {
-            for (idx = start_idx+1; idx < end_idx; idx+=__step_size) {
-                prev = (idx - __step_size + tour.length) % tour.length;
-                next = (idx + __step_size) % tour.length;
-                if(!ends_joined) {
-                    if (idx + __step_size >= tour.length) {next = tour.length-1;}
-                    if (idx - __step_size < 0) {prev = 0;}
+            for (idx = startIdx + 1; idx < endIdx; idx += __stepSize) {
+                prev = (idx - __stepSize + tour.length) % tour.length;
+                next = (idx + __stepSize) % tour.length;
+                if (!endsJoined) {
+                    if (idx + __stepSize >= tour.length) {next = tour.length - 1;}
+                    if (idx - __stepSize < 0) {prev = 0;}
                 }
     
                 // Chow Glickstein with a parameter of delta = 1/3
-                new_pt = calc_centroid([tour[prev], tour[idx], tour[next]]);
+                newPt = calcCentroid([tour[prev], tour[idx], tour[next]]);
                 
-    
-                if (__is_valid_new_point(tour, new_pt, idx)) {
-                    new_tour[idx] = new_pt;
+                if (__isValidNewPoint(tour, newPt, idx)) {
+                    newTour[idx] = newPt;
                 } else {
-                    new_tour[idx] = tour[idx];
+                    newTour[idx] = tour[idx];
                 }
             }
     
-            fill_in_tour(new_tour, tour.length);
-            if(start_idx < 0) {set_pointspread(new_tour, pointspread);}
+            fillInTour(newTour, tour.length);
+            if (startIdx < 0) {setPointspread(newTour, pointspread);}
         }
-        tour = new_tour;
+        tour = newTour;
 
-        var mvmt = movement(tour, saved_tour);
-        if (max_mvmt === 0) { max_mvmt = mvmt; }
-        if (mvmt >= max_mvmt) { break; }
+        var mvmt = movement(tour, savedTour);
+        if (maxMvmt == 0) { maxMvmt = mvmt; }
+        if (mvmt >= maxMvmt) { break; }
     }
 
     // if this is first time through, we use this amount of movement as the step amount.
     __animation.push(tour.slice());
-    __step_size_list.push(__step_size);
+    __stepSizeList.push(__stepSize);
 
-    update_line();
+    updateLine();
 
-    if (mvmt < max_mvmt) {
+    if (mvmt < maxMvmt) {
         clearTimeout(timer);
         timer = null;
         d3.select('#Smooth').property('value', 'Smooth');
     } else {
-        timer = setTimeout(function() {smooth(max_mvmt); }, 21);
+        timer = setTimeout(function() {smooth(maxMvmt); }, 21);
     }
 };
 
-
 var tighten = function() {
-    glue_animations();
-    __step_size_list = [];
+    glueAnimations();
+    __stepSizeList = [];
 
-    var num_pts = get_frame(0).length;
-    var first_centroid = calc_centroid(get_frame(0));
-    var last_centroid = calc_centroid(get_frame(num_frames()-1));
+    var numPts = getFrame(0).length;
+    var firstCentroid = calcCentroid(getFrame(0));
+    var lastCentroid = calcCentroid(getFrame(numFrames() - 1));
 
-    for(var f = 1; f < num_frames()-1; f++) {
+    for (var f = 1; f < numFrames() - 1; f++) {
         var p;
-        var new_frame = [];
-        var avg_edge_size = avg_edge(tour);
+        var newFrame = [];
+        var avgEdgeSize = avgEdge(tour);
         
-        for(p=0; p<=start_idx; p++) {new_frame[p] = __animation[f][p];}
-        for(p=end_idx; p<num_pts; p++) {new_frame[p] = __animation[f][p];}
+        for (p = 0; p <= startIdx; p++) {newFrame[p] = __animation[f][p];}
+        for (p = endIdx; p < numPts; p++) {newFrame[p] = __animation[f][p];}
         
-        for(p = start_idx+1; p < end_idx; p+=__step_size) {
-            var prev = (p + num_pts - __step_size) % num_pts;
-            var next = (p + __step_size) % num_pts;
+        for (p = startIdx + 1; p < endIdx; p += __stepSize) {
+            var prev = (p + numPts - __stepSize) % numPts;
+            var next = (p + __stepSize) % numPts;
 
-            if(!ends_joined) {
-                if(p - __step_size < 0) {prev = 0;} 
-                if(p + __step_size >= num_pts) {next = num_pts-1;}
+            if (!endsJoined) {
+                if (p - __stepSize < 0) {prev = 0;}
+                if (p + __stepSize >= numPts) {next = numPts - 1;}
             }
 
-            var newpt = calc_centroid([__animation[f][p],
-                                       __animation[f+1][p],
-                                       __animation[f-1][p],
+            var newpt = calcCentroid([__animation[f][p],
+                                       __animation[f + 1][p],
+                                       __animation[f - 1][p],
                                        __animation[f][prev],
                                        __animation[f][next]],
                                       [1, 1, 1, 0.05 * __smoothness, 0.05 * __smoothness])
-                        .jitter(avg_edge_size * (__sa_temp / 10));
+                        .jitter(avgEdgeSize * (__saTemp / 10));
 
-            if( __is_valid_new_point(__animation[f], newpt, p)) {
-                new_frame[p] = newpt;
+            if (__isValidNewPoint(__animation[f], newpt, p)) {
+                newFrame[p] = newpt;
             } else {
-                new_frame[p] = __animation[f][p];
+                newFrame[p] = __animation[f][p];
             }
         }
 
-        if(!ends_joined) {
-            if(new_frame[num_pts-1] === undefined) {
+        if (!endsJoined) {
+            if (newFrame[numPts - 1] == undefined) {
                 // write in the last point so we can fill things in if nec.
-                new_frame[num_pts - 1] = __animation[f][num_pts - 1];
+                newFrame[numPts - 1] = __animation[f][numPts - 1];
             }
-            new_frame[0].y = 467;
-            new_frame[num_pts-1].y = 467;
+            newFrame[0].y = 467;
+            newFrame[numPts - 1].y = 467;
         }
 
-        fill_in_tour(new_frame, num_pts);
+        fillInTour(newFrame, numPts);
         
-        if(new_frame[0] instanceof DMSLib.Point3D) {
-            var target_centroid = first_centroid.mul(num_frames()-1-f).add(last_centroid.mul(f)).div(num_frames()-1);
-            set_pointspread(new_frame, target_centroid);
+        if (newFrame[0] instanceof DMSLib.Point3D) {
+            var targetCentroid = firstCentroid.mul(numFrames() - 1 - f).add(lastCentroid.mul(f)).div(numFrames() - 1);
+            setPointspread(newFrame, targetCentroid);
         }
         
-        __animation[f] = new_frame;
+        __animation[f] = newFrame;
     }
 
-    tour = __animation[Math.floor(num_frames()/2)];
-    update_line();
+    tour = __animation[Math.floor(numFrames() / 2)];
+    updateLine();
 
     timer = setTimeout(function() {tighten();}, 11);
 };
 
-//TODO - remove external globals? (start_idx, end_idx, timer, tour)
+//TODO - remove external globals? (startIdx, endIdx, timer, tour)
 // TODO - fix bug where tightening animations causes line to go through itself

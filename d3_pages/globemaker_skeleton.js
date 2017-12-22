@@ -5,7 +5,7 @@ var Globemaker = Globemaker || {};
     // TurtleState
     // -----------------------------------------------------------------
     $.TurtleState = function(p, dir, rot) {
-        if( p instanceof $.TurtleState ) {
+        if (p instanceof $.TurtleState) {
             this.pos = p.pos;
             this.dir = p.dir;
             this.rot = p.rot;
@@ -18,7 +18,6 @@ var Globemaker = Globemaker || {};
 
     $.TurtleState.prototype = {};
 
-
     // -----------------------------------------------------------------
     // Skeleton
     // -----------------------------------------------------------------
@@ -27,18 +26,17 @@ var Globemaker = Globemaker || {};
         this.segments = [];
     };
 
-
     $.Skeleton.prototype = {
         // functions
-        blah : function() {
+        blah: function() {
         },
 
-        blah2 : function() {
+        blah2: function() {
         }
     };
 
     // static variables, functions
-    $.Skeleton.blah3 = function( pt3d, seg, criteria ) {
+    $.Skeleton.blah3 = function(pt3d, seg, criteria) {
     };
 
 })(Globemaker);

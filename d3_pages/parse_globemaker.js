@@ -1,156 +1,154 @@
-var parse_globemaker = function(skeleton_string, skeleton_obj) {
+var parseGlobemaker = function(skeletonString, skeletonObj) {
     // tokenize
-    skeleton_string = skeleton_string.replace(/#.*/g, ' ');    // comments beginning with #
-    skeleton_string = skeleton_string.replace(/\/\/.*/g, ' '); // comments beginning with // 
-    skeleton_string = skeleton_string.replace(/{/g, ' { ');    // whitespace not required for brackets
-    skeleton_string = skeleton_string.replace(/}/g, ' } ');
-    skeleton_string = '<BOF> ' + skeleton_string + ' <EOF>';   // to help accomodate leading / trailing whitespace
-    var __tokens = skeleton_string.split(/[ \t\r\n]+/);
-    var __token_idx = 0;
+    skeletonString = skeletonString.replace(/#.*/g, ' ');    // comments beginning with #
+    skeletonString = skeletonString.replace(/\/\/.*/g, ' '); // comments beginning with double-slashes
+    skeletonString = skeletonString.replace(/{/g, ' { ');    // whitespace not required for brackets
+    skeletonString = skeletonString.replace(/}/g, ' } ');
+    skeletonString = '<BOF> ' + skeletonString + ' <EOF>';   // to help accomodate leading / trailing whitespace
+    var __tokens = skeletonString.split(/[ \t\r\n]+/);
+    var __tokenIdx = 0;
 
     var token = function() {
-        return __tokens[__token_idx];
+        return __tokens[__tokenIdx];
     };
-    var next_token = function() {
-        if(token() !== '<EOF>') {
-            __token_idx++;
+    var nextToken = function() {
+        if (token() !== '<EOF>') {
+            __tokenIdx++;
         }
     };
 
     // terminals
     var terminal = function(str) {
-        if( str.toUpperCase() === token().toUpperCase()) {next_token(); return true;}
+        if (str.toUpperCase() === token().toUpperCase()) {nextToken(); return true;}
         return false;
     };
 
     var __value = 0;
     var value = function() {
         __value = parseFloat(token());
-        if( !isNaN(__value) ) { next_token(); return true;}
+        if (!isNaN(__value)) { nextToken(); return true;}
         return false;
     };
 
     var __label = '';
     var label = function() {
         __label = token();
-        if(/^[A-Za-z]+$/.test(__label)) { next_token(); return true;}
+        if (/^[A-Za-z]+$/.test(__label)) { nextToken(); return true;}
         return false;
     };
 
     // commands
     var save = function() {
-        if( terminal('s') || terminal('save') ) {return true;}
+        if (terminal('s') || terminal('save')) {return true;}
         return false;
     };
 
     var line = function() {
-        if( terminal('l') || terminal('line') ) {return true;}
+        if (terminal('l') || terminal('line')) {return true;}
         return false;
     };
 
     var move = function() {
-        if( terminal('m') || terminal('move') ) {return true;}
+        if (terminal('m') || terminal('move')) {return true;}
         return false;
     };
 
-    var move_in_plane = function() {
-        if( terminal('o') ) {return true;}
+    var moveInPlane = function() {
+        if (terminal('o')) {return true;}
         return false;
     };
 
     var rotate = function() {
-        if( terminal('r') || terminal('rotate') ) {return true;}
+        if (terminal('r') || terminal('rotate')) {return true;}
         return false;
     };
     
-    var line_cmd = function() {
-        if( line() ) {
-           var length;
-           if(!value()) { /*TODO error*/ return false; }
-           else { length = __value; }
+    var lineCmd = function() {
+        if (line()) {
+            var length;
+            if (!value()) { /*TODO error*/ return false; }
+            else { length = __value; }
 
-           var strength;
-           if(!value()) { strength = 1.0; }
-           else { strength = __value; }
+            var strength;
+            if (!value()) { strength = 1.0; }
+            else { strength = __value; }
            
-           skeleton_obj.line(length, strength);
-           return true;
+            skeletonObj.line(length, strength);
+            return true;
         }
         return false;
     };
 
-    var move_in_plane_cmd = function() {
-        if( move_in_plane() ) {
-           var length;
-           if(!value()) { /*TODO error*/ return false; }
-           skeleton_obj.move_in_plane(__value);
-           return true;
+    var moveInPlaneCmd = function() {
+        if (moveInPlane()) {
+            var length;
+            if (!value()) { /*TODO error*/ return false; }
+            skeletonObj.moveInPlane(__value);
+            return true;
         }
         return false;
     };
 
-    var move_cmd = function() {
-        if( move() ) {
-           var length;
-           if(!value()) { /*TODO error*/ return false; }
+    var moveCmd = function() {
+        if (move()) {
+            var length;
+            if (!value()) { /*TODO error*/ return false; }
 
-           skeleton_obj.move(__value);
-           return true;
+            skeletonObj.move(__value);
+            return true;
         }
         return false;
     };
 
-    var rotate_cmd = function() {
-        if( rotate() ) {
-           var angle;
-           if(!value()) { /*TODO error*/ return false; }
+    var rotateCmd = function() {
+        if (rotate()) {
+            var angle;
+            if (!value()) { /*TODO error*/ return false; }
 
-           skeleton_obj.rotate(__value);
-           return true;
+            skeletonObj.rotate(__value);
+            return true;
         }
         return false;
     };
     
     // stack fnality
-    var stack_cmd = function() {
-        if( terminal('{') || terminal('push') ) {
-            __value = 1
-        } else if( terminal('}') || terminal('pop') ) {
+    var stackCmd = function() {
+        if (terminal('{') || terminal('push')) {
+            __value = 1;
+        } else if (terminal('}') || terminal('pop')) {
             __value = -1;
-        } else if( terminal('p') ) {
-            if( !value() ) { /*TODO error*/ return false; }
+        } else if (terminal('p')) {
+            if (!value()) { /*TODO error*/ return false; }
         } else {
             return false;
         }
 
-
-        if( __value > 0 ) {
-           skeleton_obj.push();
+        if (__value > 0) {
+            skeletonObj.push();
         } else {
-           skeleton_obj.pop();
+            skeletonObj.pop();
         }
         return true;
     };
 
-    var save_cmd = function() {
-        if( save() ) {
-           if(!label()) { /*TODO error*/ return false; }
+    var saveCmd = function() {
+        if (save()) {
+            if (!label()) { /*TODO error*/ return false; }
 
-           skeleton_obj.save(__label);
-           return true;
+            skeletonObj.save(__label);
+            return true;
         }
         return false;
     };
 
-
     // big stuff
     var statement = function() {
-        if (stack_cmd()) { return true; }
-        if (save_cmd()) { return true; }
-        if (line_cmd()) { return true; }
-        if (move_cmd()) { return true; }
-        if (move_in_plane_cmd()) { return true; }
-        if (rotate_cmd()) { return true; }
+        if (stackCmd()) { return true; }
+        if (saveCmd()) { return true; }
+        if (lineCmd()) { return true; }
+        if (moveCmd()) { return true; }
+        if (moveInPlaneCmd()) { return true; }
+        if (rotateCmd()) { return true; }
         return false;
     };
 
@@ -163,6 +161,6 @@ var parse_globemaker = function(skeleton_string, skeleton_obj) {
     if (!terminal('<BOF>')) { /* TODO error */ return false; }
     if (!statements()) { /* TODO error */ return false; }
     if (!terminal('<EOF>')) { /*TODO error*/ return false; }
-    skeleton_obj.init();
+    skeletonObj.init();
     return true;
-}
+};
