@@ -1,0 +1,101 @@
+<html>
+<head>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+</head>
+<body>
+<div id="output"></div>
+</body>
+</html>
+
+<script>
+    var size = 900;
+    var margin = 25;
+
+    var inside_color = 'lightyellow';
+    var outside_color = 'lightblue';
+    var line_color = 'black';
+
+    var getPathString = function(pts) {
+        var n = pts.length;
+        var result = '';
+        result += 'M' + pts[n-1][0] + ' ' + pts[n-1][1] + ' ';
+
+        pts.forEach(pt => {
+            result += 'L' + pt[0] + ' ' + pt[1] + ' ';
+        });
+        return result;
+    };
+
+    var svg = d3.select("#output").append("svg")
+            .attr("width", size)
+            .attr("height", size);
+
+
+    drawC = function(A, B, C, D, steps, inside) {
+        // draw a square
+        svg.append('path')
+            .attr('d', getPathString([A, B, C, D]) )
+            .attr('stroke', 'black')
+            .attr('fill', inside ? inside_color : outside_color);
+
+        // take a step down
+        if (steps > 0) {
+          var AB = [A[0] * 0.5 + B[0] * 0.5, A[1] * 0.5 + B[1] * 0.5];
+          var BC = [B[0] * 0.5 + C[0] * 0.5, B[1] * 0.5 + C[1] * 0.5];
+          var CD = [C[0] * 0.5 + D[0] * 0.5, C[1] * 0.5 + D[1] * 0.5];
+          var DA = [D[0] * 0.5 + A[0] * 0.5, D[1] * 0.5 + A[1] * 0.5];
+
+          drawB(DA, A, AB, steps - 1, false);
+          drawB(AB, B, BC, steps - 1, false);
+          drawB(BC, C, CD, steps - 1, false);
+          drawB(CD, D, DA, steps - 1, false);
+        }
+    };
+
+    // A B C : B is opposite hypotenuse
+    drawB = function(A, B, C, steps, inside) {
+        // draw a triangle
+        svg.append('path')
+            .attr('d', getPathString([A, B, C]) )
+            .attr('stroke', line_color)
+            .attr('fill', inside ? inside_color : outside_color);
+
+        // take a step down
+        if (steps > 0) {
+            var AB = [A[0] * 0.5 + B[0] * 0.5, A[1] * 0.5 + B[1] * 0.5];
+            var BC = [B[0] * 0.5 + C[0] * 0.5, B[1] * 0.5 + C[1] * 0.5];
+            var CA = [C[0] * 0.5 + A[0] * 0.5, C[1] * 0.5 + A[1] * 0.5];
+
+            drawA(A, AB, CA, steps - 1, !inside);
+            drawA(CA, BC, C, steps - 1, !inside);
+        }
+    };
+
+    // A B C : B is opposite hypotenuse
+    drawA = function(A, B, C, steps, inside) {
+        const tt = 2/3;
+        const ot = 1/3;
+        // draw a triangle
+        svg.append('path')
+            .attr('d', getPathString([A, B, C]) )
+            .attr('stroke', line_color)
+            .attr('fill', inside ? inside_color : outside_color);
+
+        // take a step down
+        if (steps > 0) {
+            var D = [A[0] * ot + B[0] * tt, A[1] * ot + B[1] * tt];
+            var E = [C[0] * ot + B[0] * tt, C[1] * ot + B[1] * tt];
+            var F = [A[0] * ot + C[0] * tt, A[1] * ot + C[1] * tt];
+            var G = [A[0] * tt + C[0] * ot, A[1] * tt + C[1] * ot];
+
+            drawA(A, G, D, steps - 1, !inside);
+            drawA(E, F, C, steps - 1, !inside);
+            drawB(D, B, E, steps - 1, !inside);
+        }
+    };
+
+
+
+    drawC([margin, margin], [size-margin, margin], [size-margin, size-margin], [margin, size-margin], 10, true);
+
+</script>
