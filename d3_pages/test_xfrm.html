@@ -117,6 +117,13 @@
             test('RotationCombine', rotc.apply(DMSLib.Point3D.origin()).equals(DMSLib.Point3D.origin()));
         };
 
+        var RotationRandom = function() {
+            var rot = DMSLib.Rotation.random();
+            var a = rot.apply(DMSLib.Point3D.xAxis());
+
+            test('RotationRandom', !a.equals(DMSLib.Point3D.xAxis()))
+        }
+
         var RotationInverse = function() {
             var rota = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3.0, new DMSLib.Point3D(1,1,1));
             var rotb = rota.inverse();
@@ -157,6 +164,7 @@
     RotationToString();
     RotationCombine();
     RotationInverse();
+    RotationRandom();
     TransformConstructApply();
     document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
 </script>

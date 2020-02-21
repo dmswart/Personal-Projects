@@ -3,6 +3,9 @@ var DMSLib = DMSLib || {};
 (function($) {
     // -----------------------------------------------------------------
     // Rotation
+    //     (other)
+    //     ()
+    //     (q0, qx, qy, qz)
     // -----------------------------------------------------------------
     $.Rotation = function(a, b, c, d) {
         if (a instanceof $.Rotation && b === undefined) {
@@ -85,10 +88,19 @@ var DMSLib = DMSLib || {};
         return new $.Rotation(q0, qx, qy, qz);
     };
 
+    $.Rotation.random = function() {
+        var angle = Math.acos(Math.random()*2-1);
+        var axis = $.Point3D.random(1.0);
+        return $.Rotation.fromAngleAxis(angle, axis);
+    }
+
     $.Rotation.identity = function() { return new $.Rotation(); };
 
     // -----------------------------------------------------------------
     // Transform
+    //   (a: Transform)
+    //   ()
+    //   (a: Rotation, b: Point3D)
     // -----------------------------------------------------------------
     $.Transform = function(a, b) {
         if (a instanceof $.Transform && b == undefined) {
