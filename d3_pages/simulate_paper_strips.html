@@ -1,0 +1,260 @@
+<html>
+<head>
+    <script src="./d3.v3.min.js"></script>
+    <script src='./dmslib_core.js'></script>
+    <script src='./dmslib_point3d.js'></script>
+    <script src='./dmslib_xfrm.js'></script>
+NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);"><br>
+</head>
+<body>
+<div id="output"></div>
+</body>
+</html>
+
+<script>
+    let intersections = {};
+
+    var svg = d3.select("#output").append("svg")
+        .attr("width", 1000)
+        .attr("height", 500);
+
+
+    let findIntersection = function(streetA, streetB, id, up) {
+        if(streetA > streetB) {
+            [streetA, streetB, up] = [streetB, streetA, !up];
+        }
+        let name = streetA + "_" + streetB + "_" + id;
+
+        if (!intersections[name]) {
+           intersections[name] = {
+               name: name,
+               major: streetA, // first street in alphabetical order
+               minor: streetB, // second in alphabetical order
+               up: up,         // true if major street crosses from below to above minor street
+               neighbors: {}   // list of neighbors
+           };
+        } else {
+            if(intersections[name].up != up) throw "Incompatible crossing for " + name;
+        }
+
+        return intersections[name];
+    };
+
+    // major always goes West to East
+    let addSegment = function(street, intA, intB, dist, colorString) {
+        let dir;
+        if(intA.major === street) {
+            dir = DMSLib.Point3D.xAxis();  // E
+        } else if (intA.up){
+            dir = DMSLib.Point3D.yAxis().negate();  // S
+        } else {  // intA, major crosses down
+            dir = DMSLib.Point3D.yAxis();  // N
+        }
+        intA.neighbors[intB.name] = { name: intB.name, dir: dir, dist: dist, color: colorString };
+
+        if(intB.major === street) {
+            dir = DMSLib.Point3D.xAxis().negate();  // W
+        } else if (intB.up) {
+            dir = DMSLib.Point3D.yAxis();  // N
+        } else {  // intB, major crosses down
+            dir = DMSLib.Point3D.yAxis().negate();  // S
+        }
+        intB.neighbors[intA.name] = { name: intA.name, dir: dir, dist: dist, color: colorString };
+    };
+
+    let parseStreet = function(streetName, details, colorString) {
+        let previousIntersection = null;
+        let segmentLength = 0;
+        for (let i=0; i<details.length; i++) {
+            if (typeof(details[i]) === "number") {
+                segmentLength = details[i];
+            } else if (typeof(details[i]) === "string") {
+                let crossingString = details[i];
+                let up = crossingString[0] === "+";
+                let crossingStreet = crossingString.replace(/[^A-Za-z]/g, "");
+                let id = parseInt(crossingString[crossingString.length - 1]);
+                if (Number.isNaN(id)) id = 0;
+
+                let intersection = findIntersection(streetName, crossingStreet, id, up);
+                if (previousIntersection)
+                    addSegment(streetName, previousIntersection, intersection, segmentLength, colorString);
+                previousIntersection = intersection;
+            }
+        }
+    };
+
+    let onNetworkChange = function(value) {
+        intersections = {};
+        let colors = ['blue', 'red', 'green', 'purple', 'orange', 'yellow', 'lime', 'cyan', 'magenta', 'grey'];
+        let json = JSON.parse(value);
+        if (typeof(json) !== "object") {
+            throw "input networkString is not an object";
+        }
+
+        Object.keys(json).forEach((k, i) => {
+            parseStreet(k, json[k], colors[i]);
+        });
+    };
+
+
+    let initializeNetwork = function() {
+        Object.keys(intersections).forEach(k => {
+            intersections[k].rot = DMSLib.Rotation.random(),
+            intersections[k].pos = DMSLib.Point3D.random(20.0);
+        });
+
+        intersections.A_C_0.rot = new DMSLib.Rotation();
+        intersections.A_D_0.rot = new DMSLib.Rotation();
+        intersections.B_C_0.rot = new DMSLib.Rotation();
+        intersections.B_D_0.rot = new DMSLib.Rotation();
+
+        intersections.A_C_0.pos = new DMSLib.Point3D(0.01, 5, 0);
+        intersections.A_D_0.pos = new DMSLib.Point3D(5, 5, 0);
+        intersections.B_C_0.pos = new DMSLib.Point3D(0, 0, 0);
+        intersections.B_D_0.pos = new DMSLib.Point3D(5, 0, 0);
+
+        outputNetwork();
+    };
+
+    // approximation
+    let calcArcAngle = function(cordLength, arcLength) {
+        if(cordLength > arcLength) {
+            return 0;
+        }
+        return DMSLib.TAU - Math.asin(Math.pow(cordLength / arcLength, 0.8)) * 4;
+    };
+
+    let calculateAdjustedPos = function(intr, neighbor) {
+        let dist = intr.neighbors[neighbor.name].dist;
+        let dir = intr.neighbors[neighbor.name].dir;
+
+        /************** calculate position */
+        let nDir = neighbor.neighbors[intr.name].dir;
+        let nPlaneAxis = DMSLib.Point3D.cross(DMSLib.Point3D.zAxis(), nDir);  // if we are neighbor's east, (east x up) to get south
+        let nPlaneVector = neighbor.rot.apply(nPlaneAxis);  // which way is neighbor's south pointing?
+
+        // project to the plane that goes through neighbor.pos, normal to nPlaneVector
+        let deltaD = DMSLib.Point3D.dot(nPlaneVector, neighbor.pos.sub(intr.pos));
+        let newPos = intr.pos.add(nPlaneVector.scaledTo(deltaD));
+
+        /************** clip distance */
+        if (newPos.sub(neighbor.pos).R() > dist) {
+            newPos = neighbor.pos.add( newPos.sub(neighbor.pos).scaledTo(dist - DMSLib.EPSILON) );
+        }
+
+        /************** set rotation */
+
+        // neighbor's plane vector might point north, and our plane vector might point, say, east. Correct this.
+        let planeAxis = DMSLib.Point3D.cross(dir, DMSLib.Point3D.zAxis());
+        let correctPlaneAxis = DMSLib.Rotation.fromVectorToVector(planeAxis, nPlaneAxis);
+
+        // after that we will want to rotate by the arc of the paper strip around nPlaneVector
+        let arcAngle = calcArcAngle(newPos.sub(neighbor.pos).R(), dist);
+        let stripRotation = DMSLib.Rotation.fromAngleAxis(arcAngle, nPlaneVector);
+
+        // let's put it all together
+        let newRot = stripRotation.combine(neighbor.rot.combine(correctPlaneAxis));
+
+
+        /************** flex paper strip */
+        //TODO
+
+        return [newPos, newRot];
+    };
+
+    let adjustNetwork = function() {
+        Object.keys(intersections).forEach(k => {
+            let intr = intersections[k];
+
+            intr.adjusted = {count: 4, pos: intr.pos.mul(4), q0: intr.rot._q0, qx: intr.rot._qx, qy: intr.rot._qy, qz: intr.rot._qz };
+            Object.keys(intr.neighbors).forEach(name => {
+                let neighbor = intersections[name];
+                let [newPos, newRot] = calculateAdjustedPos(intr, neighbor);
+                intr.adjusted.pos = intr.adjusted.pos.add(newPos);
+                intr.adjusted.count++;
+                intr.adjusted.q0 += newRot._q0;
+                intr.adjusted.qx += newRot._qx;
+                intr.adjusted.qy += newRot._qy;
+                intr.adjusted.qz += newRot._qz;
+            });
+        });
+
+        centerNetwork();
+        outputNetwork();
+    };
+
+    let centerNetwork = function() {
+        Object.keys(intersections).forEach(k => {
+            let intr = intersections[k];
+            intr.pos = intr.adjusted.pos.div(intr.adjusted.count);
+            intr.rot = new DMSLib.Rotation(intr.adjusted.q0, intr.adjusted.qx, intr.adjusted.qy, intr.adjusted.qz);
+        });
+
+        let avg = DMSLib.Point3D.origin();
+        Object.keys(intersections).forEach(k => {
+            avg = avg.add(intersections[k].pos);
+        });
+        avg = avg.div(Object.keys(intersections).length);
+
+        Object.keys(intersections).forEach(k => {
+            let intr = intersections[k];
+            intr.pos = intr.pos.sub(avg);
+        });
+    };
+
+
+    let simulateNetwork = function() {
+        // initialize;
+        initializeNetwork();
+        for (let iter = 0; iter < 50; iter++) {
+            adjustNetwork();
+        }
+    };
+
+
+    let doRightTriangle = function() {
+        onNetworkChange('{"A": ["+B", 5, "-C"], "B": ["-A", 5, "-C"], "C": ["+B", 5, "+A"]}');
+    };
+
+    let doSquare = function() {
+        onNetworkChange('{"A": ["-C", 5, "-D"], "B": ["-C", 5, "-D"], "C": ["+B", 5, "+A"], "D": ["+B", 5, "+A"]}');
+    };
+
+    var lineFunction = d3.svg.line()
+        .x(function(d) { return d.x * 40 + 500;})
+        .y(function(d) { return d.y * 40 + 250;});
+
+    let outputNetwork = function() {
+        // log
+        console.log("-------------------");
+        Object.keys(intersections).forEach(k => {
+            let intr = intersections[k];
+            console.log("pos = " + intr.pos.toString() + " rot = " + intr.rot.toString());
+        });
+
+        // draw
+        d3.selectAll("#strip").remove();
+        Object.keys(intersections).forEach(k => {
+            let intr = intersections[k];
+            Object.keys(intr.neighbors).forEach(k2 => {
+                let dir = intr.neighbors[k2].dir;
+                let color = intr.neighbors[k2].color;
+                svg.append('path')
+                    .attr('id', 'strip')
+                    .attr('stroke', color)
+                    .attr('stroke-width', 2)
+                    .attr('d', lineFunction([intr.pos, intr.rot.apply(dir).add(intr.pos)]));
+            });
+            svg.append('path')
+                .attr('id', 'strip')
+                .attr('stroke', 'black')
+                .attr('stroke-width', 1)
+                .attr('d', lineFunction([intr.pos, intr.rot.apply(DMSLib.Point3D.zAxis()).add(intr.pos)]));
+        });
+    };
+
+    // Launch!
+    doSquare();
+    simulateNetwork();
+
+</script>
