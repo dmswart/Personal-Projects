@@ -101,14 +101,27 @@
             test('RotationAxis', b.equals(DMSLib.Point3D.zAxis()));
         };
 
+        var RotationFromTo = function () {
+            var rotation = DMSLib.Rotation.fromVectorToVector(DMSLib.Point3D.xAxis(), DMSLib.Point3D.zAxis());
+
+            var a = rotation.apply(DMSLib.Point3D.xAxis());
+            test('RotationFromVectorToVector', a.equals(DMSLib.Point3D.zAxis()));
+
+            var b = rotation.apply(DMSLib.Point3D.yAxis());
+            test('RotationFromVectorToVector', b.equals(DMSLib.Point3D.yAxis()));
+
+            var c = rotation.apply(DMSLib.Point3D.zAxis());
+            test('RotationFromVectorToVector', c.equals(DMSLib.Point3D.xAxis().negate()));
+        }
+
         var RotationToString = function() {
             var rotation = new DMSLib.Rotation();
             test('RotationTostring', rotation.toString(), "(1,0,0,0)");
         };
        
         var RotationCombine = function() {
-            var rota = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3.0, new DMSLib.Point3D(1,1,1));
-            var rotb = DMSLib.Rotation.fromAngleAxis(DMSLib.QUARTERTAU, new DMSLib.Point3D(0,0,1));
+            var rota = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3.0, new DMSLib.Point3D(1,1,1));  // x-> y -> z -> x
+            var rotb = DMSLib.Rotation.fromAngleAxis(DMSLib.QUARTERTAU, new DMSLib.Point3D(0,0,1)); // x -> y -> -x -> -y -> x
 
             var rotc = rota.combine(rotb);
             test('RotationCombine', rotc.apply(DMSLib.Point3D.xAxis()).equals(DMSLib.Point3D.zAxis()));
@@ -161,6 +174,7 @@
     RotationAxisAngle();
     RotationAxis();
     RotationAngle();
+    RotationFromTo();
     RotationToString();
     RotationCombine();
     RotationInverse();

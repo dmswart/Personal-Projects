@@ -88,6 +88,12 @@ var DMSLib = DMSLib || {};
         return new $.Rotation(q0, qx, qy, qz);
     };
 
+    $.Rotation.fromVectorToVector = function(from, to) {
+        var axis = DMSLib.Point3D.cross(from, to);
+        var angle = DMSLib.Point3D.angle(from, DMSLib.Point3D.origin(), to);
+        return $.Rotation.fromAngleAxis(angle, axis);
+    };
+
     $.Rotation.random = function() {
         var angle = Math.acos(Math.random()*2-1);
         var axis = $.Point3D.random(1.0);
