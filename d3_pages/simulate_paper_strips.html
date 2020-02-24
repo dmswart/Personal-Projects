@@ -4,10 +4,10 @@
     <script src='./dmslib_core.js'></script>
     <script src='./dmslib_point3d.js'></script>
     <script src='./dmslib_xfrm.js'></script>
-NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);"><br>
 </head>
 <body>
 <div id="output"></div>
+<span> NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);"><br> </span>
 </body>
 </html>
 
@@ -103,126 +103,206 @@ NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);
             intersections[k].pos = DMSLib.Point3D.random(20.0);
         });
 
-        intersections.A_C_0.rot = new DMSLib.Rotation();
-        intersections.A_D_0.rot = new DMSLib.Rotation();
-        intersections.B_C_0.rot = new DMSLib.Rotation();
-        intersections.B_D_0.rot = new DMSLib.Rotation();
+        /*
+        intersections.A_B_0.pos = new DMSLib.Point3D(0, 0, 10/Math.PI);
+        intersections.B_C_0.pos = new DMSLib.Point3D(0, 10/Math.PI, 0);
+        intersections.A_C_0.pos = new DMSLib.Point3D(10/Math.PI, 0, 0);
 
-        intersections.A_C_0.pos = new DMSLib.Point3D(0.01, 5, 0);
-        intersections.A_D_0.pos = new DMSLib.Point3D(5, 5, 0);
-        intersections.B_C_0.pos = new DMSLib.Point3D(0, 0, 0);
-        intersections.B_D_0.pos = new DMSLib.Point3D(5, 0, 0);
-
-        outputNetwork();
+        intersections.A_B_0.rot = new DMSLib.Rotation();
+        intersections.B_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3, new DMSLib.Point3D(-1, 1, 1));
+        intersections.A_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.QUARTERTAU, DMSLib.Point3D.yAxis());
+        */
     };
 
     // approximation
-    let calcArcAngle = function(cordLength, arcLength) {
-        if(cordLength > arcLength) {
+    let calcArcAngle = function(chordLength, arcLength) {
+        if(chordLength > arcLength) {
             return 0;
         }
-        return DMSLib.TAU - Math.asin(Math.pow(cordLength / arcLength, 0.8)) * 4;
+        return DMSLib.TAU - Math.asin(Math.pow(chordLength / arcLength, 0.8)) * 4;
     };
 
-    let calculateAdjustedPos = function(intr, neighbor) {
-        let dist = intr.neighbors[neighbor.name].dist;
-        let dir = intr.neighbors[neighbor.name].dir;
+    let calculateForce = function(intr, neighbor) {
+        const tensileForce = 0.49;
+        const flexForce = 0.01;
+        const torsionForce = 0.0;
+        var result = new DMSLib.Point3D();
 
-        /************** calculate position */
-        let nDir = neighbor.neighbors[intr.name].dir;
-        let nPlaneAxis = DMSLib.Point3D.cross(DMSLib.Point3D.zAxis(), nDir);  // if we are neighbor's east, (east x up) to get south
-        let nPlaneVector = neighbor.rot.apply(nPlaneAxis);  // which way is neighbor's south pointing?
+        const dist = intr.neighbors[neighbor.name].dist;
+        const dir = intr.neighbors[neighbor.name].dir;
 
-        // project to the plane that goes through neighbor.pos, normal to nPlaneVector
-        let deltaD = DMSLib.Point3D.dot(nPlaneVector, neighbor.pos.sub(intr.pos));
-        let newPos = intr.pos.add(nPlaneVector.scaledTo(deltaD));
-
-        /************** clip distance */
-        if (newPos.sub(neighbor.pos).R() > dist) {
-            newPos = neighbor.pos.add( newPos.sub(neighbor.pos).scaledTo(dist - DMSLib.EPSILON) );
+        /************** if neighbor is farther than strip length - pull hard otherwise flex a tiny bit */
+        const chordLength = intr.pos.sub(neighbor.pos).R();
+        if (chordLength > dist) {
+            result = result.add(
+                neighbor.pos.sub(intr.pos).scaledTo((chordLength-dist) * tensileForce)
+            );
+        } else {
+            result = result.add(
+                intr.pos.sub(neighbor.pos).scaledTo((dist-chordLength) * flexForce)
+            );
         }
 
-        /************** set rotation */
+        /************** torsion force moved into a plane */
+        const nDir = neighbor.neighbors[intr.name].dir;
+        const nPlaneAxis = DMSLib.Point3D.cross(DMSLib.Point3D.zAxis(), nDir);  // if we are neighbor's east, (east x up) to get south
+        const nPlaneVector = neighbor.rot.apply(nPlaneAxis);  // which way is neighbor's south pointing?
 
-        // neighbor's plane vector might point north, and our plane vector might point, say, east. Correct this.
-        let planeAxis = DMSLib.Point3D.cross(dir, DMSLib.Point3D.zAxis());
-        let correctPlaneAxis = DMSLib.Rotation.fromVectorToVector(planeAxis, nPlaneAxis);
+        // project to the plane that goes through neighbor.pos, normal to nPlaneVector
+        const deltaD = DMSLib.Point3D.dot(nPlaneVector, neighbor.pos.sub(intr.pos));
+        let torsionVector = nPlaneVector.scaledTo(deltaD * torsionForce);
+        const torsionR = Math.min(torsionVector.R(), torsionForce * dist);
+        result = result.add( torsionVector.scaledTo(torsionR) );
 
-        // after that we will want to rotate by the arc of the paper strip around nPlaneVector
-        let arcAngle = calcArcAngle(newPos.sub(neighbor.pos).R(), dist);
-        let stripRotation = DMSLib.Rotation.fromAngleAxis(arcAngle, nPlaneVector);
+        return result;
+    };
 
-        // let's put it all together
-        let newRot = stripRotation.combine(neighbor.rot.combine(correctPlaneAxis));
+    // imagine the following diagram is kinda bent, side dir is common throughout
+    //
+    //      z  side                         nZ side
+    //      | /                             | /
+    //      |/----->dir ---------- ndir<----|/
+    let calculateOrientation = function(intr, neighbor) {
+        // the following are in the global coordinate system
+        const dir = neighbor.pos.sub(intr.pos).normalized();
+        const nZ = neighbor.rot.apply(DMSLib.Point3D.zAxis());
+        const side = DMSLib.Point3D.cross( nZ, dir ).normalized();
 
+        // in local coordinate system
+        const localDir = intr.neighbors[neighbor.name].dir;
+        const localSide = DMSLib.Point3D.cross(DMSLib.Point3D.zAxis(), localDir).normalized();
 
-        /************** flex paper strip */
-        //TODO
+        // what do we need to rotate localSide to side, and localDir to dir
+        const partA = DMSLib.Rotation.fromVectorToVector(localDir, dir);
+        const partALocalSide = partA.apply(localSide);
+        const partB = DMSLib.Rotation.fromVectorToVector(partALocalSide, side);
+        const intrRotation = partB.combine(partA);
 
-        return [newPos, newRot];
+        // after that we will want to rotate by the arc of the paper strip around side
+        let arcAngle = calcArcAngle(intr.pos.sub(neighbor.pos).R(), intr.neighbors[neighbor.name].dist);
+        let stripRotation = DMSLib.Rotation.fromAngleAxis(arcAngle / 2, side);
+
+        // put it all together
+        return stripRotation.combine(intrRotation);
+    };
+
+    let forEachIntersection = function(fn) {
+        Object.keys(intersections).forEach(k => {
+            fn(intersections[k]);
+        });
     };
 
     let adjustNetwork = function() {
-        Object.keys(intersections).forEach(k => {
-            let intr = intersections[k];
-
-            intr.adjusted = {count: 4, pos: intr.pos.mul(4), q0: intr.rot._q0, qx: intr.rot._qx, qy: intr.rot._qy, qz: intr.rot._qz };
+        // calculate force on each point, then apply
+        forEachIntersection(intr => {
+            intr.adj = new DMSLib.Point3D();
             Object.keys(intr.neighbors).forEach(name => {
                 let neighbor = intersections[name];
-                let [newPos, newRot] = calculateAdjustedPos(intr, neighbor);
-                intr.adjusted.pos = intr.adjusted.pos.add(newPos);
-                intr.adjusted.count++;
-                intr.adjusted.q0 += newRot._q0;
-                intr.adjusted.qx += newRot._qx;
-                intr.adjusted.qy += newRot._qy;
-                intr.adjusted.qz += newRot._qz;
+                intr.adj = intr.adj.add(calculateForce(intr, neighbor));
             });
+        });
+        let forceError = 0;
+        forEachIntersection(intr => {
+            forceError += intr.adj.R();
+            intr.pos = intr.pos.add(intr.adj);
+        });
+        forceError /= Object.keys(intersections).length;
+        console.log("forceError = " + forceError);
+
+
+        // calculate orientations based on each neighor, then apply average
+        forEachIntersection(intr => {
+            intr.adj = {q0: intr.rot._q0, qx: intr.rot._qx, qy: intr.rot._qy, qz: intr.rot._qz};
+            Object.keys(intr.neighbors).forEach(name => {
+                let neighbor = intersections[name];
+                const newRot = calculateOrientation(intr, neighbor);
+                intr.adj.q0 += newRot._q0;
+                intr.adj.qx += newRot._qx;
+                intr.adj.qy += newRot._qy;
+                intr.adj.qz += newRot._qz;
+            });
+        });
+        forEachIntersection(intr => {
+            intr.rot = new DMSLib.Rotation(intr.adj.q0, intr.adj.qx, intr.adj.qy, intr.adj.qz);
         });
 
         centerNetwork();
-        outputNetwork();
+        // outputNetwork();
+        return forceError;
     };
 
     let centerNetwork = function() {
-        Object.keys(intersections).forEach(k => {
-            let intr = intersections[k];
-            intr.pos = intr.adjusted.pos.div(intr.adjusted.count);
-            intr.rot = new DMSLib.Rotation(intr.adjusted.q0, intr.adjusted.qx, intr.adjusted.qy, intr.adjusted.qz);
-        });
-
         let avg = DMSLib.Point3D.origin();
-        Object.keys(intersections).forEach(k => {
-            avg = avg.add(intersections[k].pos);
+        forEachIntersection(intr => {
+            avg = avg.add(intr.pos);
         });
         avg = avg.div(Object.keys(intersections).length);
 
-        Object.keys(intersections).forEach(k => {
-            let intr = intersections[k];
+        forEachIntersection(intr => {
             intr.pos = intr.pos.sub(avg);
         });
     };
 
 
     let simulateNetwork = function() {
-        // initialize;
         initializeNetwork();
-        for (let iter = 0; iter < 50; iter++) {
-            adjustNetwork();
+        outputNetwork();
+
+        for (let iter = 0; iter < 1000; iter++) {
+            if (adjustNetwork() < 0.0001) break;
         }
+
+        outputNetwork();
     };
 
 
-    let doRightTriangle = function() {
+    let doTriangleNetwork = function() {
         onNetworkChange('{"A": ["+B", 5, "-C"], "B": ["-A", 5, "-C"], "C": ["+B", 5, "+A"]}');
     };
 
-    let doSquare = function() {
+    let doSquareNetwork = function() {
         onNetworkChange('{"A": ["-C", 5, "-D"], "B": ["-C", 5, "-D"], "C": ["+B", 5, "+A"], "D": ["+B", 5, "+A"]}');
+    };
+
+    let doLineNetwork = function() {
+        onNetworkChange( '{"A": ["-B", 5, "-C"]}' );
     };
 
     var lineFunction = d3.svg.line()
         .x(function(d) { return d.x * 40 + 500;})
         .y(function(d) { return d.y * 40 + 250;});
+
+
+    let calculateArcPoints = function(intr, neighbor) {
+        const chordLength = intr.pos.sub(neighbor.pos).R();
+        const arcLength = intr.neighbors[neighbor.name].dist;
+        const arcAngle = calcArcAngle(chordLength, arcLength);
+        if (arcAngle < 1 * (DMSLib.TAU/360.0)) {
+            return [intr.pos, neighbor.pos];
+        }
+
+        // local coordinate system (centered around midpoint on chord between intr and neighbor
+        const chordDir = neighbor.pos.sub(intr.pos).normalized();
+        const avgZ = intr.rot.apply(DMSLib.Point3D.zAxis()).add( neighbor.rot.apply(DMSLib.Point3D.zAxis()) );
+        const arcAxis = DMSLib.Point3D.cross(avgZ, chordDir).normalized();
+        const upDir = DMSLib.Point3D.cross( neighbor.pos.sub(intr.pos), arcAxis ).normalized();
+        const origin = intr.pos.add(neighbor.pos).div(2);
+
+        const originToCenterDist = (chordLength / 2) / Math.tan(arcAngle/2);  // close to 0 angle means large +ve dist
+        const center = origin.sub(upDir.mul(originToCenterDist));
+        const radius = intr.pos.sub(center).R();
+
+        let result = [];
+        for(let a = -arcAngle/2; a < arcAngle/2; a += DMSLib.TAU / 30) {
+            const s = Math.sin(a) * radius;
+            const c = Math.cos(a) * radius;
+
+            result.push(center.add(chordDir.mul(s)).add(upDir.mul(c)));
+        }
+        result.push(neighbor.pos);
+
+        return result;
+    };
 
     let outputNetwork = function() {
         // log
@@ -234,27 +314,35 @@ NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);
 
         // draw
         d3.selectAll("#strip").remove();
-        Object.keys(intersections).forEach(k => {
-            let intr = intersections[k];
-            Object.keys(intr.neighbors).forEach(k2 => {
-                let dir = intr.neighbors[k2].dir;
-                let color = intr.neighbors[k2].color;
-                svg.append('path')
-                    .attr('id', 'strip')
-                    .attr('stroke', color)
-                    .attr('stroke-width', 2)
-                    .attr('d', lineFunction([intr.pos, intr.rot.apply(dir).add(intr.pos)]));
+        forEachIntersection(intr => {
+            Object.keys(intr.neighbors).forEach(k => {
+                if(intr.name < k) { // only need to draw once
+                    let points = calculateArcPoints(intr, intersections[k]);
+
+                    let dir = intr.neighbors[k].dir;
+                    let color = intr.neighbors[k].color;
+                    svg.append('path')
+                        .attr('id', 'strip')
+                        .attr('stroke', color)
+                        .attr('stroke-width', 2)
+                        .attr('fill', 'none')
+                        .attr('d', lineFunction(points));
+                }
             });
+
+            const interPoints = [[0, 0, 0.5], [0, 0, 0], [0.25, 0, 0], [0.25, 0.25, 0], [-0.25, 0.25, 0], [-0.25, -0.25, 0], [0.25, -0.25, 0], [0.25, 0, 0]];
+            let placedPoints = interPoints.map(p => intr.rot.apply(new DMSLib.Point3D(p[0], p[1], p[2])).add(intr.pos) );
             svg.append('path')
                 .attr('id', 'strip')
                 .attr('stroke', 'black')
                 .attr('stroke-width', 1)
-                .attr('d', lineFunction([intr.pos, intr.rot.apply(DMSLib.Point3D.zAxis()).add(intr.pos)]));
+                .attr('fill', 'none')
+                .attr('d', lineFunction(placedPoints));
         });
     };
 
     // Launch!
-    doSquare();
+    doTriangleNetwork();
     simulateNetwork();
 
 </script>
