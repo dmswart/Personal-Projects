@@ -6,13 +6,33 @@
     <script src='./dmslib_xfrm.js'></script>
 </head>
 <body>
+NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);"><br>
+Tensile<input type="number" value="49" min="0" max="50" onchange="onTensileChange(this.value);"/>
+Flex<input type="number" value="7" min="0" max="100" onchange="onFlexChange(this.value);"/>
+Torsion<input type="number" value="30" min="0" max="100" onchange="onTorsionChange(this.value);"/>
+Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(this.value);"/><br>
+<button onclick="doLineNetwork();">line</button>
+<button onclick="doCNetwork();">c</button>
+<button onclick="doSquareNetwork();">square</button>
+<button onclick="doTriangleNetwork();">triangle</button><br>
+<button onclick="adjustNetwork();">step</button>
+<button onclick="simulateNetwork();">finish</button>
+<button onclick="initializeNetwork(); simulateNetwork();">redo</button><br>
 <div id="output"></div>
-<span> NetworkJSON:<input type="text" value="{}" onchange="onNetworkChange(this.value);"><br> </span>
 </body>
 </html>
 
 <script>
     let intersections = {};
+    let tensileFactor = 0.49;
+    let flexFactor = 0.07;
+    let torsionFactor = 0.30;
+    let twistFactor = 0.0;
+
+    let onTensileChange = function(val) { tensileFactor = parseInt(val) / 100; };
+    let onFlexChange = function(val) { flexFactor = parseInt(val) / 100; };
+    let onTorsionChange = function(val) { torsionFactor = parseInt(val) / 100; };
+    let onTwistChange = function(val) { twistFactor = parseInt(val) / 100; };
 
     const WIDTH = 500;
     const HEIGHT = 500;
@@ -96,6 +116,8 @@
         Object.keys(json).forEach((k, i) => {
             parseStreet(k, json[k], colors[i]);
         });
+
+        initializeNetwork();
     };
 
 
@@ -105,7 +127,7 @@
             intersections[k].pos = DMSLib.Point3D.random(20.0);
         });
 
-        /*
+        /* TRIANGLE
         intersections.A_B_0.pos = new DMSLib.Point3D(0, 0, 10/Math.PI);
         intersections.B_C_0.pos = new DMSLib.Point3D(0, -10/Math.PI, 0);
         intersections.A_C_0.pos = new DMSLib.Point3D(10/Math.PI, 0, 0);
@@ -114,6 +136,20 @@
         intersections.B_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3, new DMSLib.Point3D(1, 1, -1));
         intersections.A_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.QUARTERTAU, DMSLib.Point3D.yAxis());
         */
+
+        /* SQUARE
+        intersections.A_C_0.pos = new DMSLib.Point3D(21, 3, 8);
+        intersections.A_D_0.pos = new DMSLib.Point3D(5, 5, 0);
+        intersections.B_C_0.pos = new DMSLib.Point3D(0, 0, 0);
+        intersections.B_D_0.pos = new DMSLib.Point3D(5, 0, 0);
+
+        intersections.A_C_0.rot = new DMSLib.Rotation();
+        intersections.A_D_0.rot = new DMSLib.Rotation();
+        intersections.B_C_0.rot = new DMSLib.Rotation();
+        intersections.B_D_0.rot = new DMSLib.Rotation();
+        */
+
+        outputNetwork();
     };
 
     // approximation
@@ -125,10 +161,6 @@
     };
 
     let calculateForce = function(intr, neighbor) {
-        const tensileFactor = 0.49;
-        const flexFactor = 0.01;
-        const torsionFactor = 0.1;
-        const twistFactor = 0.0;
         var result = new DMSLib.Point3D();
 
         const dist = intr.neighbors[neighbor.name].dist;
@@ -271,34 +303,15 @@
             intr.rot = DMSLib.Rotation.average(intr.adj);
         });
 
-        centerNetwork();
         outputNetwork();
         return forceError;
     };
 
-    let centerNetwork = function() {
-        let avg = DMSLib.Point3D.origin();
-        forEachIntersection(intr => {
-            avg = avg.add(intr.pos);
-        });
-        avg = avg.div(Object.keys(intersections).length);
-
-        forEachIntersection(intr => {
-            intr.pos = intr.pos.sub(avg);
-        });
-    };
-
-
     let simulateNetwork = function() {
-        initializeNetwork();
-        centerNetwork();
-        outputNetwork();
-
         for (let iter = 0; iter < 1000; iter++) {
             if (adjustNetwork() < 0.0001) break;
         }
 
-        centerNetwork();
         outputNetwork();
     };
 
@@ -356,6 +369,18 @@
     };
 
     let outputNetwork = function() {
+        // center
+        let avg = DMSLib.Point3D.origin();
+        forEachIntersection(intr => {
+            avg = avg.add(intr.pos);
+        });
+        avg = avg.div(Object.keys(intersections).length);
+
+        forEachIntersection(intr => {
+            intr.pos = intr.pos.sub(avg);
+        });
+
+
         // log
         /*
         console.log("-------------------");
@@ -417,5 +442,4 @@
     // Launch!
     doSquareNetwork();
     simulateNetwork();
-
 </script>
