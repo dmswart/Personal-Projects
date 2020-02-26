@@ -102,6 +102,30 @@ var DMSLib = DMSLib || {};
 
     $.Rotation.identity = function() { return new $.Rotation(); };
 
+    $.Rotation.average = function(arrayOfRotations) {
+        let q0 = 0;
+        let qx = 0;
+        let qy = 0;
+        let qz = 0;
+
+        arrayOfRotations.forEach(r => {
+            if (r._q0 >= 0) {
+                q0 += r._q0;
+                qx += r._qx;
+                qy += r._qy;
+                qz += r._qz;
+            } else {
+                q0 -= r._q0;
+                qx -= r._qx;
+                qy -= r._qy;
+                qz -= r._qz;
+            }
+
+        });
+
+        return new $.Rotation(q0, qx, qy, qz);
+    };
+
     // -----------------------------------------------------------------
     // Transform
     //   (a: Transform)
