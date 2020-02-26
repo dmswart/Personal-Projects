@@ -89,8 +89,8 @@ var DMSLib = DMSLib || {};
     };
 
     $.Rotation.fromVectorToVector = function(from, to) {
-        var axis = DMSLib.Point3D.cross(from, to);
-        var angle = DMSLib.Point3D.angle(from, DMSLib.Point3D.origin(), to);
+        var axis = $.Point3D.cross(from, to);
+        var angle = $.Point3D.angle(from, $.Point3D.origin(), to);
         return $.Rotation.fromAngleAxis(angle, axis);
     };
 
@@ -103,27 +103,18 @@ var DMSLib = DMSLib || {};
     $.Rotation.identity = function() { return new $.Rotation(); };
 
     $.Rotation.average = function(arrayOfRotations) {
-        let q0 = 0;
-        let qx = 0;
-        let qy = 0;
-        let qz = 0;
+        let zs = arrayOfRotations.map(r => r.apply($.Point3D.zAxis()));
+        let sumz = zs.reduce((a, z) => a.add(z), $.Point3D.origin());
+        let avgz = sumz.div(arrayOfRotations.length);
 
-        arrayOfRotations.forEach(r => {
-            if (r._q0 >= 0) {
-                q0 += r._q0;
-                qx += r._qx;
-                qy += r._qy;
-                qz += r._qz;
-            } else {
-                q0 -= r._q0;
-                qx -= r._qx;
-                qy -= r._qy;
-                qz -= r._qz;
-            }
+        let xs = arrayOfRotations.map(r => r.apply($.Point3D.xAxis()));
+        let sumx = xs.reduce((a, x) => a.add(x), $.Point3D.origin());
+        let avgx = sumx.div(arrayOfRotations.length);
 
-        });
-
-        return new $.Rotation(q0, qx, qy, qz);
+        let rotZ = $.Rotation.fromVectorToVector($.Point3D.zAxis(), avgz);
+        let rotatedX = rotZ.apply($.Point3D.xAxis());
+        let rotX = $.Rotation.fromVectorToVector(rotatedX, avgx);
+        return rotX.combine(rotZ);
     };
 
     // -----------------------------------------------------------------

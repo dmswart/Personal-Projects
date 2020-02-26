@@ -17,7 +17,8 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
 <button onclick="doTriangleNetwork();">triangle</button><br>
 <button onclick="adjustNetwork();">step</button>
 <button onclick="simulateNetwork();">finish</button>
-<button onclick="initializeNetwork(); simulateNetwork();">redo</button><br>
+<button onclick="initializeNetwork(); simulateNetwork();">redo</button>
+<input type="checkbox" unchecked onclick="onFixPoints(this.checked)"> <br>
 <div id="output"></div>
 </body>
 </html>
@@ -28,11 +29,13 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
     let flexFactor = 0.07;
     let torsionFactor = 0.30;
     let twistFactor = 0.0;
+    let fixPoints = false;
 
     let onTensileChange = function(val) { tensileFactor = parseInt(val) / 100; };
     let onFlexChange = function(val) { flexFactor = parseInt(val) / 100; };
     let onTorsionChange = function(val) { torsionFactor = parseInt(val) / 100; };
     let onTwistChange = function(val) { twistFactor = parseInt(val) / 100; };
+    let onFixPoints = function(val) { fixPoints = val; }
 
     const WIDTH = 500;
     const HEIGHT = 500;
@@ -127,7 +130,7 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
             intersections[k].pos = DMSLib.Point3D.random(20.0);
         });
 
-        /* TRIANGLE
+        /* TRIANGLE*/
         intersections.A_B_0.pos = new DMSLib.Point3D(0, 0, 10/Math.PI);
         intersections.B_C_0.pos = new DMSLib.Point3D(0, -10/Math.PI, 0);
         intersections.A_C_0.pos = new DMSLib.Point3D(10/Math.PI, 0, 0);
@@ -135,7 +138,6 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
         intersections.A_B_0.rot = new DMSLib.Rotation();
         intersections.B_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 3, new DMSLib.Point3D(1, 1, -1));
         intersections.A_C_0.rot = DMSLib.Rotation.fromAngleAxis(DMSLib.QUARTERTAU, DMSLib.Point3D.yAxis());
-        */
 
         /* SQUARE
         intersections.A_C_0.pos = new DMSLib.Point3D(21, 3, 8);
@@ -282,8 +284,10 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
         });
         let forceError = 0;
         forEachIntersection(intr => {
-            forceError += intr.adj.R();
-            intr.pos = intr.pos.add(intr.adj);
+            if (!fixPoints || intr.name === Object.keys(intersections)[0]) {
+                forceError += intr.adj.R();
+                intr.pos = intr.pos.add(intr.adj);
+            }
         });
         forceError /= Object.keys(intersections).length;
         console.log("forceError = " + forceError);
@@ -299,8 +303,10 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
                 intr.adj.push(newRot);
             });
         });
-        forEachIntersection(intr => {
-            intr.rot = DMSLib.Rotation.average(intr.adj);
+        forEachIntersection((intr, i) => {
+            if (!fixPoints || intr.name === Object.keys(intersections)[0]) {
+                intr.rot = DMSLib.Rotation.average(intr.adj);
+            }
         });
 
         outputNetwork();
@@ -440,6 +446,6 @@ Twist<input type="number" value="0" min="0" max="100" onchange="onTwistChange(th
     };
 
     // Launch!
-    doSquareNetwork();
+    doTriangleNetwork();
     simulateNetwork();
 </script>
