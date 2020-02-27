@@ -172,4 +172,10 @@
 
         return $.Point3D.angle(normal1, $.Point3D.origin(), normal2);
     };
+
+    $.Point3D.average = function(arrayOfPoints) {
+        let sum = arrayOfPoints.reduce((a, p) => a.add(p), $.Point3D.origin());
+        return sum.div(arrayOfPoints.length);
+    };
+
 })(DMSLib);

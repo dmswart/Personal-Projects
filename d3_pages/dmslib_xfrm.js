@@ -103,17 +103,13 @@ var DMSLib = DMSLib || {};
     $.Rotation.identity = function() { return new $.Rotation(); };
 
     $.Rotation.average = function(arrayOfRotations) {
-        let zs = arrayOfRotations.map(r => r.apply($.Point3D.zAxis()));
-        let sumz = zs.reduce((a, z) => a.add(z), $.Point3D.origin());
-        let avgz = sumz.div(arrayOfRotations.length);
+        let targetZ = $.Point3D.average(arrayOfRotations.map(r => r.apply($.Point3D.zAxis()))).normalized();
+        let targetX = $.Point3D.average(arrayOfRotations.map(r => r.apply($.Point3D.xAxis()))).normalized();
 
-        let xs = arrayOfRotations.map(r => r.apply($.Point3D.xAxis()));
-        let sumx = xs.reduce((a, x) => a.add(x), $.Point3D.origin());
-        let avgx = sumx.div(arrayOfRotations.length);
-
-        let rotZ = $.Rotation.fromVectorToVector($.Point3D.zAxis(), avgz);
-        let rotatedX = rotZ.apply($.Point3D.xAxis());
-        let rotX = $.Rotation.fromVectorToVector(rotatedX, avgx);
+        let rotZ = $.Rotation.fromVectorToVector($.Point3D.zAxis(), targetZ);
+        let unRotatedTargetX = rotZ.inverse().apply(targetX);
+        let angle = unRotatedTargetX.theta();
+        let rotX = $.Rotation.fromAngleAxis(angle, targetZ);
         return rotX.combine(rotZ);
     };
 
