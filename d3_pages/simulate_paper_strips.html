@@ -141,7 +141,7 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         */
 
         /* SQUARE
-        intersections.A_C_0.pos = new DMSLib.Point3D(21, 3, 8);
+        intersections.A_C_0.pos = new DMSLib.Point3D(0, 4.9, 0);
         intersections.A_D_0.pos = new DMSLib.Point3D(5, 5, 0);
         intersections.B_C_0.pos = new DMSLib.Point3D(0, 0, 0);
         intersections.B_D_0.pos = new DMSLib.Point3D(5, 0, 0);
@@ -182,15 +182,12 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         }
 
         /************** torsion force moved into a plane */
+        let iInNeighborSpace = neighbor.rot.inverse().apply(intr.pos.sub(neighbor.pos));
         const nDir = neighbor.neighbors[intr.name].dir;
-        const nPlaneAxis = DMSLib.Point3D.cross(DMSLib.Point3D.zAxis(), nDir);  // if we are neighbor's east, (east x up) to get south
-        const nPlaneVector = neighbor.rot.apply(nPlaneAxis);  // which way is neighbor's south pointing?
-
-        // project to the plane that goes through neighbor.pos, normal to nPlaneVector
-        const deltaD = DMSLib.Point3D.dot(nPlaneVector, neighbor.pos.sub(intr.pos));
-        let torsionVector = nPlaneVector.scaledTo(deltaD);
-        const torsionR = Math.min(torsionVector.R(), dist);
-        result = result.add( torsionVector.scaledTo(torsionR * torsionFactor) );
+        const angle = DMSLib.fixAngle(nDir.theta() - iInNeighborSpace.theta()) * torsionFactor;
+        iInNeighborSpace.setTheta(iInNeighborSpace.theta() + angle);
+        const torsionedPos = neighbor.rot.apply(iInNeighborSpace).add(neighbor.pos);
+        result = result.add(torsionedPos.sub(intr.pos));
 
         /************** strip twisting force */
         const Z = intr.rot.apply(DMSLib.Point3D.zAxis());
