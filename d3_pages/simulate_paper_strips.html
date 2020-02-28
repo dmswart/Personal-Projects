@@ -18,7 +18,8 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
 <button onclick="adjustNetwork();">step</button>
 <button onclick="simulateNetwork();">finish</button>
 <button onclick="initializeNetwork(); simulateNetwork();">redo</button>
-<input type="checkbox" unchecked onclick="onFixPoints(this.checked)"> <br>
+<input type="checkbox" unchecked onclick="onFixPoints(this.checked)"> <label>FixPoints</label><br>
+<button onclick="outputSkeleton();">Draw Skeleton</button><br>
 <div id="output"></div>
 </body>
 </html>
@@ -226,7 +227,7 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         const Z = intr.rot.apply(DMSLib.Point3D.zAxis());
         const nZ = neighbor.rot.apply(DMSLib.Point3D.zAxis());
 
-        const nSide = DMSLib.Point3D.cross( nZ, dir ).normalized();
+        const nSide = DMSLib.Point3D.cross( nDir, nZ ).normalized();
         const side = DMSLib.Point3D.cross( Z, dir ).normalized();
 
         // z to dir should be equal to nZ to nDir
@@ -237,6 +238,13 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         // sides should be the same
         let sideSideAngle = DMSLib.Point3D.angle(side, DMSLib.Point3D.origin(), nSide);
         result += sideSideAngle;
+
+        // the *actual directions* should be orthogonal to sides.
+        const dir2 = intr.rot.apply(intr.neighbors[neighbor.name].dir);
+        const nDir2 = neighbor.rot.apply(neighbor.neighbors[intr.name].dir);
+        result += DMSLib.Point3D.dot(nDir2, nSide);
+        result += DMSLib.Point3D.dot(dir2, side);
+
 
         return result;
     };
@@ -271,6 +279,32 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         });
     };
 
+    /***********************
+     * TODO
+     * write the paper!
+     *     do outline - use blog draft
+     *     - figure out what I said at art show
+     *         what's in our mind
+     *         though in a traffic industry, not a phycologist
+     *         not serious mental model - point to ted talk guy
+     *
+     *     determine figures that I want.
+     *         get images for physical network
+     *         get images for triangle pentagon square
+     *         fake simple ones
+     *
+     * make nice output
+     *
+     * get input for kitchener (fake?)
+     * theoretical amsterdam
+     * theoretical manhattan
+     * theoretical strathroy
+     *
+     * Get math basis for it: curvature - Gauss bonnet therorem?
+     * Nod to Italian weaver lady.
+     *
+     * Fix simulation: focus "avg" rotation on fitting dirs - not Z - but don't break triangle.
+     * *************************/
     let adjustNetwork = function() {
         // calculate force on each point, then apply
         forEachIntersection(intr => {
@@ -372,6 +406,13 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         return result;
     };
 
+    let calcBrightness = function(norm) {
+        const light = new DMSLib.Point3D(0.5, 1, -1).normalized();
+        let brightness = DMSLib.Point3D.dot(norm.normalized(), light);
+        if (brightness < 0) brightness = 0;
+        return brightness;
+    }
+
     let outputNetwork = function() {
         // center
         let avg = DMSLib.Point3D.origin();
@@ -385,6 +426,88 @@ Twist<input type="number" value="18" min="0" max="100" onchange="onTwistChange(t
         });
 
 
+        // collect items
+        let items = [];
+        const HALF_WIDTH = 0.25
+        const square = [[HALF_WIDTH, -HALF_WIDTH, 0],
+                        [-HALF_WIDTH, -HALF_WIDTH, 0],
+                        [-HALF_WIDTH, HALF_WIDTH, 0],
+                        [HALF_WIDTH, HALF_WIDTH, 0]];
+        let squarePoints = square.map(p => new DMSLib.Point3D(p[0], p[1], p[2]));
+
+        forEachIntersection(intr => {
+            // add intersection square
+            const mappedPoints = squarePoints.map(p => intr.rot.apply(p).add(intr.pos));
+            items.push({type: 'quad',
+                        color: 'rgb(40, 40, 40)',
+                        points: mappedPoints,
+                        z: intr.pos.z});
+            for(let i=0; i<4; i++) {
+                items.push({type: 'line',
+                            points: [mappedPoints[i], mappedPoints[(i+1)%4]],
+                            z: mappedPoints[i].add(mappedPoints[(i+1)%4]).mul(0.5).z });
+            }
+
+            Object.keys(intr.neighbors).forEach(k => {
+                if(intr.name < k) { // only need to draw once
+                    let color = intr.neighbors[k].color;
+                    let neighbor = intersections[k];
+                    let points = calculateArcPoints(intr, intersections[k]);
+                    const chordDir = neighbor.pos.sub(intr.pos).normalized();
+                    const avgZ = intr.rot.apply(DMSLib.Point3D.zAxis()).add( neighbor.rot.apply(DMSLib.Point3D.zAxis()) );
+                    const side = DMSLib.Point3D.cross(chordDir, avgZ).scaledTo(HALF_WIDTH);
+                    for(let i=0; i<points.length - 1; i++) {
+                        let p1 = points[i];
+                        let p2 = points[i+1];
+                        if (i===0) p1 = p1.add(p2.sub(p1).scaledTo(HALF_WIDTH));
+                        if (i+1 === points.length-1) p2 = p2.add(p1.sub(p2).scaledTo(HALF_WIDTH));
+                        let pmid = p1.add(p2).mul(0.5);
+
+                        items.push({type: 'quad',
+                                    color: color,
+                                    points: [p1.add(side), p1.sub(side), p2.sub(side), p2.add(side)],
+                                    z: pmid.z })
+
+                        items.push({type: 'line', points: [p1.add(side), p2.add(side)], z: pmid.add(side).z });
+                        items.push({type: 'line', points: [p1.sub(side), p2.sub(side)], z: pmid.sub(side).z });
+                    }
+                }
+            });
+        });
+
+        // sort quads and lines by z
+        items = items.sort((a,b) => b.z - a.z);
+
+        // draw
+        d3.selectAll("#strip").remove();
+        items.forEach(item => {
+            if(item.type === 'quad') {
+                let norm = DMSLib.Point3D.cross(item.points[0].sub(item.points[1]), item.points[2].sub(item.points[1]));
+                let newcolor = 'silver';
+                if (norm.z < 0) {
+                    let rgb = d3.rgb(item.color);
+                    let brightness = 0.5 + calcBrightness( norm ) * 0.5;
+                    newcolor = 'rgb(' + (rgb.r * brightness) + ', ' + (rgb.g * brightness) + ', ' + (rgb.b * brightness) + ')';
+                }
+                svg.append('path')
+                    .attr('id', 'strip')
+                    .attr('stroke', newcolor)
+                    .attr('stroke-width', 0.5)
+                    .attr('fill', newcolor)
+                    .attr('d', lineFunction(item.points));
+            } else if (item.type === 'line') {
+                svg.append('path')
+                    .attr('id', 'strip')
+                    .attr('stroke', 'black')
+                    .attr('stroke-width', 2)
+                    .attr('fill', 'none')
+                    .attr('d', lineFunction(item.points));
+            }
+        });
+    };
+
+
+    let outputSkeleton = function() {
         // log
         /*
         console.log("-------------------");

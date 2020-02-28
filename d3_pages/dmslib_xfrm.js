@@ -94,8 +94,10 @@ var DMSLib = DMSLib || {};
         return $.Rotation.fromAngleAxis(angle, axis);
     };
 
-    $.Rotation.random = function() {
-        var angle = Math.acos(Math.random()*2-1);
+    $.Rotation.random = function(maxAngle) {
+        if (maxAngle === undefined) maxAngle = DMSLib.HALFTAU;
+
+        let angle = Math.acos(1 - Math.random() * (1 - Math.cos(maxAngle)));
         var axis = $.Point3D.random(1.0);
         return $.Rotation.fromAngleAxis(angle, axis);
     }
