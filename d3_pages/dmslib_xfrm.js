@@ -94,13 +94,20 @@ var DMSLib = DMSLib || {};
         return $.Rotation.fromAngleAxis(angle, axis);
     };
 
-    $.Rotation.random = function(maxAngle) {
-        if (maxAngle === undefined) maxAngle = DMSLib.HALFTAU;
+    $.Rotation.random = function() {
+        let [x, y] = [Math.random() * 2 - 1, Math.random() * 2 - 1];
+        while(x*x + y*y > 1)
+            [x, y] = [Math.random() * 2 - 1, Math.random() * 2 - 1];
+        let [u, v] = [Math.random() * 2 - 1, Math.random() * 2 - 1];
+        while(u*u + v*v > 1)
+            [u, v] = [Math.random() * 2 - 1, Math.random() * 2 - 1];
 
-        let angle = Math.acos(1 - Math.random() * (1 - Math.cos(maxAngle)));
-        var axis = $.Point3D.random(1.0);
-        return $.Rotation.fromAngleAxis(angle, axis);
-    }
+        let z = x*x + y*y;
+        let w = u*u + v*v;
+        let s = Math.sqrt((1-z) / w);
+
+        return new $.Rotation(x, y, s*u, s*v);
+    };
 
     $.Rotation.identity = function() { return new $.Rotation(); };
 
