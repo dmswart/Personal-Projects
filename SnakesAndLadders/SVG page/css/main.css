@@ -1,0 +1,17 @@
+.board {}
+.label { stroke: black; fill: white; stroke-width: 1px; font-size: 36px; font-family: 'Subway'; alignment-baseline: middle; text-anchor: middle}
+path.vertical, path.horizontal, path.border { stroke:black; stroke-width: 6px; fill: none}
+
+rect.space { stroke: black; stroke-width: 0.5px; fill: #82d6ed; }
+rect.space.base {fill: #FFF77F; }
+rect.space.top {fill: #0A8DDD; }
+rect.space.tail {fill: #F2C552; }
+rect.space.head {fill: #CC0B06; }
+
+path.snake {fill:#44964C; stroke-width: 2px; stroke: darkgreen; }
+
+path.ladder        { fill:none; stroke-width: 3px; stroke: gold; }
+path.ladder.shadow { stroke: black; stroke-width: 4px; }
+path.ladder.rungs  { stroke-width: 16px}
+
+circle.eye         { stroke-width: 2px; stroke:black; fill: gray;}

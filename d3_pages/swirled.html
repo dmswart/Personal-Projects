@@ -1,0 +1,133 @@
+<html>
+<head>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+
+<script type='text/javascript' src='./dmslib_core.js'></script>
+<script type='text/javascript' src='./dmslib_point2d.js'></script>
+<script type='text/javascript' src='./dmslib_point3d.js'></script>
+<script type='text/javascript' src='./dmslib_xfrm.js'></script>
+</head>
+<body>
+<div>
+    Frame:
+    <input type='number' min='0' max='180' value='0' onchange='frame = this.value; updateImage();'>
+    <p>
+</div>
+<div id='output'></div>
+</body>
+</html>
+
+<script>
+    // inputs
+    var zoom = 1465;
+    var frame = 0;
+
+    // image properties
+    const width = 512;
+    const height = 512; 
+    const center = {x:width/2, y:height/2};
+
+    var lineFunction = d3.svg.line()
+            .x(function(d) { return -d.x * zoom + center.x;})
+            .y(function(d) { return d.y * zoom + center.y;});
+
+    var svg = d3.select('#output').append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+    svg.append('rect')
+      .attr('class', 'background')
+      .attr('width', center.x * 2)
+      .attr('height', center.y * 2)
+      .attr('stroke', 'none')
+      .attr('fill', 'black')
+
+    function toPoint2D(point3D) {
+      return new DMSLib.Point2D(point3D.x / point3D.z, point3D.y / point3D.z);
+    }
+
+    const rotationAxis = new DMSLib.Point3D(1, 1, 1);
+    function rotatePoint(pt, linearT) {
+        const rotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU * linearT, rotationAxis);
+        return rotation.apply(pt);
+    }
+
+    function snapPt(lat, lng, pt, t) {
+        const scale = 64 / zoom;
+        const snapBuffer = 0.3
+        if(t < snapBuffer) {
+            const startSnap =  new DMSLib.Point2D(-scale*(lng-30), - scale*(lat-15));
+            const easeStart = d3.ease('exp-in-out')((t-0) / snapBuffer);
+            return startSnap.mul(1-easeStart).add(pt.mul(easeStart));
+        } else if (t > 1 - snapBuffer) {
+            const endSnap =  new DMSLib.Point2D(-scale*(lat-15), scale*(lng-45));
+            const easeEnd = d3.ease('exp-in-out')((1-t) / snapBuffer);
+            return endSnap.mul(1-easeEnd).add(pt.mul(easeEnd));
+        } else {
+            return pt;
+        }
+    }
+
+    const LightSource = new DMSLib.Point3D(1, -2, -1).normalized();
+    function calcColor(pts3D, darkenFactor) {
+        const u = pts3D[0].sub(pts3D[1]).R() > 0 ?
+                  pts3D[0].sub(pts3D[1]).normalized() :
+                  pts3D[3].sub(pts3D[1]).normalized();
+        const v = pts3D[2].sub(pts3D[1]).R() > 0 ?
+                  pts3D[2].sub(pts3D[1]).normalized() :
+                  pts3D[3].sub(pts3D[1]).normalized();
+        const surfaceNormal = DMSLib.Point3D.cross(v, u);
+        const value0to1 = Math.max(0, DMSLib.Point3D.dot(surfaceNormal, LightSource));
+        const darkening = (1 - value0to1) * darkenFactor * 128;
+        const lightHex = Math.floor(255 - darkening).toString(16);
+        return '#' + lightHex + lightHex + lightHex;
+    }
+
+    const numFrames = 180;
+    var closestDistance = 3;
+    const farthestDistance = 8;
+    function updateImage() {
+      d3.selectAll('.object').remove();
+
+      const t = frame/(numFrames-1);
+      const ease0to1to0 = t < 0.5 ? d3.ease('exp-in-out')(t*2) : d3.ease('exp-in-out')((1-t)* 2);
+      const easeRotation = d3.ease('exp-in-out')(t) * (2/3) + (2/3);
+      const centerZ = closestDistance + (farthestDistance-closestDistance) * ease0to1to0;
+
+
+      const theta = Math.asin(1.0 / centerZ);  // ball radius = 1.0
+      const tangentZ = centerZ * Math.cos(theta) * Math.cos(theta)
+
+      // Draw squares:  lat long on imaginary earth with lat = 0 to 45 and lng = 0 to 90
+      const NUM_SQUARES = 30
+      const offsetPt = new DMSLib.Point3D(0, 0, centerZ);
+      for (let lat = 0; lat<NUM_SQUARES; lat++) {
+          for (let lng = 0; lng<NUM_SQUARES*2; lng++) {
+            if (((lat + lng) % 2) !== 0) {  // for checkerboard
+                const squareLL = [{lat: lat, lng: lng},
+                                  {lat: lat+1, lng: lng},
+                                  {lat: lat+1, lng: lng+1},
+                                  {lat: lat, lng: lng+1}];
+                const square3D = squareLL.map(
+                  ll => DMSLib.Point3D.fromSphericalCoords(1.0, ll.lat/NUM_SQUARES*Math.PI, ll.lng/NUM_SQUARES*Math.PI)
+                );
+                const rotated3D = square3D.map( pt => rotatePoint(pt, easeRotation));
+                const offset3D = rotated3D.map( pt => pt.add(offsetPt) );
+
+                if (offset3D.some(p => p.z < tangentZ)) {
+                    const offset2D = offset3D.map(toPoint2D);
+                    const snap2D = offset2D.map((pt, i) => snapPt(squareLL[i].lat, squareLL[i].lng, pt, t));
+                    svg.append('path')
+                      .attr('class', 'object')
+                      .attr('stroke', 'none')
+                      .attr('fill', calcColor(rotated3D, ease0to1to0))
+                      .attr('d', lineFunction(snap2D));
+                }
+
+            }
+          }
+      }
+    }
+
+    updateImage(0);
+</script>

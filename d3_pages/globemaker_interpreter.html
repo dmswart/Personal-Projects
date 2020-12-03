@@ -1,0 +1,160 @@
+<html>
+<head>
+<script src='http://d3js.org/d3.v3.min.js'></script>
+<script src='./globemaker_skeleton.js'></script>
+<script src='./globemaker_parse.js'></script>
+</head>
+
+<body>
+<div style='width: 100%; overflow: hidden;'>
+    <div id='output' style='width: 500px; float: left;'></div>
+    <div style='margin-left: 520px;'> 
+        <textarea id='input' type='text' cols=40 rows=32 style='overflow:scroll' onchange='newSkeleton(this.value);'>l 0</textarea>
+    </div>
+</div>
+</body>
+
+</html>
+
+<script>
+    const size = 500;
+    let __scale = 100.0;
+    let svg;
+
+    function setupPreview() {
+        svg = d3.select('#output').append('svg')
+            .attr('width', size)
+            .attr('height',size)
+        svg.append('rect')
+            .attr('width', '100%')
+            .attr('height', '100%')
+            .attr('stroke', 'gray')
+            .attr('stroke-width', 1)
+            .attr('fill', 'silver');
+        svg.append('g').attr('id', 'lines')
+            .attr('stroke', 'blue')
+            .attr('stroke-width', 2)
+            .attr('fill', 'none');
+        svg.append('g').attr('id', 'moves')
+            .attr('stroke', 'gray')
+            .attr('stroke-width', 1)
+            .attr('fill', 'none');
+        svg.append('g').attr('id', 'move_on_plane')
+            .attr('stroke', 'gray')
+            .attr('stroke-width', 1)
+            .attr('fill', 'none');
+        svg.append('g').attr('id', 'grid')
+            .attr('stroke', 'none');
+    }
+
+    function updateLines(skel) {
+        var selection = svg.select('#lines').selectAll('path')
+            .data(skel.list('line'), function(d) { return d.id; });
+        selection.enter().append('path')
+            .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); });
+        selection.exit().remove();
+        selection = svg.select('#lines').selectAll('circle')
+            .data(skel.list('line'), function(d) { return d.id; });
+        selection.enter().append('circle')
+            .attr('r', 2)
+            .attr('cx', function(d) { return d.x2; })
+            .attr('cy', function(d) { return d.y2; });
+        selection.exit().remove();
+    }
+
+    function updateMoves(skel) {
+        // moves on plane
+        selection = svg.select('#move_on_plane').selectAll('path')
+            .data(skel.list('move_on_plane'), function(d) { return d.id; });
+        selection.enter().append('path')
+            .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); })
+            .attr('stroke-dasharray', '3,3');
+        selection.exit().remove();
+        selection = svg.select('#move_on_plane').selectAll('circle')
+            .data(skel.list('move_on_plane'), function(d) { return d.id; });
+        selection.enter().append('circle')
+            .attr('r', 1)
+            .attr('fill', 'gray')
+            .attr('cx', function(d) { return d.x2; })
+            .attr('cy', function(d) { return d.y2; });
+        selection.exit().remove();
+
+        // normal moves
+        selection = svg.select('#moves').selectAll('path')
+            .data(skel.list('move'), function(d) { return d.id; });
+        selection.enter().append('path')
+            .attr('d', function(d) { return 'M' + String(d.x1) + ',' + String(d.y1) + 'L' + String(d.x2) + ',' + String(d.y2); });
+        selection.exit().remove();
+        selection = svg.select('#moves').selectAll('circle')
+            .data(skel.list('move'), function(d) { return d.id; });
+        selection.enter().append('circle')
+            .attr('r', 1)
+            .attr('fill', 'gray')
+            .attr('cx', function(d) { return d.x2; })
+            .attr('cy', function(d) { return d.y2; });
+        selection.exit().remove();
+    }
+
+    function evaluateCoordinate(skel, x, y) {
+        const P = new Point2D( x / size, y / size);
+        const S = skel.
+
+        //given P, find nearest segment S on plane
+        RelativePosition S = m_Skeleton.NearestSegmentOnPlane( P );
+    //determine corresponding point Q on sphere.
+    Point3D Q = S.PointOnSphere;
+    //find if nearest segment on sphere to Q exists.
+    if( m_Skeleton.bNearerSegmentOnSphereExists( Q, S.Distance * S.Segment.Strength - m_Skeleton.bleedout ) )
+    {
+    return m_Blank;
+    } /* if */
+    if( m_Source != null )
+    {
+    return m_Source.GetSpherePixel( Q );
+    }
+    //draw skeleton line
+    if (S.Distance < 0.4 * DMS.TAU / 360.0)
+    return Color.Black;
+    //draw bluish greenish color;
+    int nIdx = m_Skeleton.IndexOf(S.Segment);
+    return colorFromRandomIndex(nIdx);
+    }
+
+    function updateGrid(skel) {
+        const density = 10
+        const gridData = [];
+        for (let i = 0; i < density; i++) {
+            for (let j = 0; j < density; j++) {
+                gridData.push({
+                    x: (i + 0.5) * (size/density),
+                    y: (j + 0.5) * (size/density),
+                    val: 0});
+            }
+        }
+        selection = svg.select('#grid').selectAll('circle')
+            .data(gridData);
+        selection.enter().append('circle')
+            .attr('r', 3)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('fill', d => (d.val > 0 ? 'white' : 'black'));
+        selection.exit().remove();
+    }
+
+    function newSkeleton(skeleton_def) {
+        let skel = new skeleton(__scale);
+        if(parseGlobemaker(skeleton_def, skel)) {
+            // input text box successfully parsed: white background
+            d3.select('#input').attr('style', 'background-color:white');
+
+            updateLines(skel);
+            updateMoves(skel);
+            updateGrid(skel);
+        } else {
+            // input text box unsuccessful: pink background
+            d3.select('#input').attr('style', 'background-color:pink');
+        }
+    }
+
+    setupPreview();
+</script>

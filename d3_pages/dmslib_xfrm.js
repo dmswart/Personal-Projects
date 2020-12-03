@@ -54,6 +54,7 @@ var DMSLib = DMSLib || {};
         inverse: function() { return new $.Rotation(-this._q0, this._qx, this._qy, this._qz); },
 
         combine: function(other) {
+            // a.combine(b) applied to x is like applying a(b(x))
             var q0 = this._q0 * other._q0 - this._qx * other._qx - this._qy * other._qy - this._qz * other._qz;
             var qx = this._q0 * other._qx + this._qx * other._q0 + this._qy * other._qz - this._qz * other._qy;
             var qy = this._q0 * other._qy + this._qy * other._q0 + this._qz * other._qx - this._qx * other._qz;
