@@ -9,8 +9,8 @@ var toBeat3D = function(x, y, target) {
 };
 
 var tspDist3D = function(a, b) {
-    var a3d = DMSLib.Point3D.fromSphericalCoords(1.0, a.y / 720 * DMSLib.HALFTAU, a.x / 1280 * DMSLib.TAU);
-    var b3d = DMSLib.Point3D.fromSphericalCoords(1.0, b.y / 720 * DMSLib.HALFTAU, b.x / 1280 * DMSLib.TAU);
+    var a3d = DMSLib.Point3D.fromSphericalCoordinates(1.0, a.y / 720 * DMSLib.HALFTAU, a.x / 1280 * DMSLib.TAU);
+    var b3d = DMSLib.Point3D.fromSphericalCoordinates(1.0, b.y / 720 * DMSLib.HALFTAU, b.x / 1280 * DMSLib.TAU);
     return a3d.sub(b3d).R();
 };
 
@@ -20,7 +20,7 @@ var __display = function(pt) {
 
 var __to3D = function(obj) {
     if (obj instanceof DMSLib.Point2D) {
-        return DMSLib.Point3D.fromSphericalCoords(1.0, obj.y / 720 * DMSLib.HALFTAU, obj.x / 1280 * DMSLib.TAU);
+        return DMSLib.Point3D.fromSphericalCoordinates(1.0, obj.y / 720 * DMSLib.HALFTAU, obj.x / 1280 * DMSLib.TAU);
     }
     
     if (Array.isArray(obj)) {

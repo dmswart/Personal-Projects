@@ -16,6 +16,7 @@ function SkeletonNode(type, value, strength, scale) {
     this.scale = scale;
     this.id = uniqueId++;
 
+    // global state has positions in *image* coordinates
     this.globalState = {}; //TBD!
 
     this.addChild = function(node) {
@@ -26,26 +27,27 @@ function SkeletonNode(type, value, strength, scale) {
     this.calcGlobalState = function() {
         var parentState = (this.parent != null) ?
                            this.parent.globalState :
-                           {plane_pos: new point2D(250, 250), plane_theta: 0, sphere_rot: new Rotation()};
+                           {plane_pos: new DMSLib.Point2D(0, 0), plane_theta: 0, sphere_rot: new DMSLib.Rotation()};
 
         // calculate global state from parent state + local values
         // first plane values
-        this.globalState.plane_theta = parentState.plane.theta + this.theta;
-        this.globalState.plane_pos = parentState.pos.add(Point2D.fromPolar(this.length * this.scale, this.globalState.plane.theta));
+        this.globalState.plane_theta = parentState.plane_theta + this.theta;
+        this.globalState.plane_pos = parentState.plane_pos.add(DMSLib.Point2D.fromPolar(this.length * this.scale, this.globalState.plane_theta));
         // for sphere value, each line, move, starts locally at z axis and rotates/moves towards x axis
-        const local_rotation = new Rotation.fromAngleAxis(this.theta, Point3D.zAxis());
-        const local_move = Rotation.fromAngleAxis( (this.type === 'move' || this.type === 'line') ? this.length : 0, Point3D.yAxis);
+        const local_rotation = new DMSLib.Rotation.fromAngleAxis(this.theta, DMSLib.Point3D.zAxis());
+        const local_move = DMSLib.Rotation.fromAngleAxis( (this.type === 'move' || this.type === 'line') ? this.length : 0, DMSLib.Point3D.yAxis());
         this.globalState.sphere_rot = parentState.sphere_rot.combine(local_rotation).combine(local_move);
 
         this.children.forEach(function(child) {child.calcGlobalState();});
     };
 
+    // recursive calculation of plane info (x1, y1, x2, y2, id)
     this.list = function(type) {
-        var result = [];
-        var valid = false;
+        let result = [];
+        let valid = false;
 
         if (this.parent !== null && this.type === type) {
-            var parentState = this.parent.globalState;
+            let parentState = this.parent.globalState;
             result.push({x1: parentState.plane_pos.x, y1: parentState.plane_pos.y,
                          x2: this.globalState.plane_pos.x, y2: this.globalState.plane_pos.y,
                          id: this.id});
@@ -53,52 +55,101 @@ function SkeletonNode(type, value, strength, scale) {
         this.children.forEach(function(child) {result = result.concat(child.list(type));});
         return result;
     };
+
+    this.segments = function() {
+        let result = [];
+        if (this.parent !== null && this.type === 'line') {
+            let parentState = this.parent.globalState;
+            // state information is in image coordinates, unscale before creating segments
+            result.push(new Globemaker.Segment(parentState.sphere_rot,
+                                               parentState.plane_pos.div(this.scale),
+                                               this.globalState.plane_pos.div(this.scale),
+                                               this.strength,
+                                               this.length === 0));
+        }
+        this.children.forEach(function(child) {result = result.concat(child.segments(type));});
+        return result;
+    }
 }
 
-function skeleton(scale) {
+function Skeleton(scale) {
     // private
-    this.__idCounter;
-    this.__scale = scale;
-    this.__parentNode = new SkeletonNode(0, 0, 0);
-    this.__currentNode = this.__parentNode;
+    this.idCounter;
+    this.scale = scale;
+    this.parentNode = new SkeletonNode(0, 0, 0, this.scale);
+    this.currentNode = this.parentNode;
 
-    this.__nodeStack = [];
+    this.nodeStack = [];
 
     // construction commands
     this.push = function() {
-        this.__nodeStack.push(this.__currentNode);
+        this.nodeStack.push(this.currentNode);
     };
     this.pop = function() {
-        this.__currentNode = this.__nodeStack.pop();
+        this.currentNode = this.nodeStack.pop();
     };
 
     this.line = function(length, strength) {
-        var newNode = new SkeletonNode('line', length * this.__scale, strength);
-        this.__currentNode.addChild(newNode);
-        this.__currentNode = newNode;
+        let newNode = new SkeletonNode('line', length * Math.PI, strength, this.scale);
+        this.currentNode.addChild(newNode);
+        this.currentNode = newNode;
     };
 
     this.move = function(length) {
-        var newNode = new SkeletonNode('move', length * this.__scale, 0);
-        this.__currentNode.addChild(newNode);
-        this.__currentNode = newNode;
+        var newNode = new SkeletonNode('move', length * Math.PI, 0, this.scale);
+        this.currentNode.addChild(newNode);
+        this.currentNode = newNode;
     };
     this.moveInPlane = function(length) {
-        var newNode = new SkeletonNode('moveInPlane', length * this.__scale, 0);
-        this.__currentNode.addChild(newNode);
-        this.__currentNode = newNode;
+        var newNode = new SkeletonNode('moveInPlane', length * Math.PI, 0, this.scale);
+        this.currentNode.addChild(newNode);
+        this.currentNode = newNode;
     };
     this.rotate = function(theta) {
-        var newNode = new SkeletonNode('rotate', theta * Math.PI, 0);
-        this.__currentNode.addChild(newNode);
-        this.__currentNode = newNode;
+        var newNode = new SkeletonNode('rotate', theta * Math.PI, 0, this.scale);
+        this.currentNode.addChild(newNode);
+        this.currentNode = newNode;
     };
     this.save = function(label) {
         //TODO
     };
 
     // init before use
-    this.init = function() { this.__parentNode.calcGlobalState(); };
+    this.init = function() {
+        this.parentNode.calcGlobalState();
+        this.segments = this.parentNode.segments();
+    };
 
-    this.list = function(type) {return this.__parentNode.list(type); };
+    // access list of drawing info as an array of {x1, y1, x2, y2, id}
+    this.list = function(type) {return this.parentNode.list(type); };
+
+
+    this.relativePositiontoNearestSegmentOnPlane = function(pointOnPlane) {
+        let bestRP;
+        this.segments.forEach(seg => {
+            let rp = new Globemaker.RelativePosition(pointOnPlane, seg);
+            if (!bestRP || rp.distance * rp.seg.strength + DMSLib.EPSILON < bestRP.distance * rp.seg.strength) {
+                bestRP = rp;
+            }
+        });
+        return bestRP;
+    }
+
+    this.nearerSegmentOnSphereExists = function(pointOnSphere, criteria) {
+        // shortcut - just check our last successful answer first.
+        if( this.lastCloserSegment !== undefined &&
+            Globemaker.RelativePosition.isNearerOnSphere( pointOnSphere, this.lastCloserSegment, criteria ) ) {
+            return true;
+        }
+
+        for(let i = 0; i < this.segments.length; i++) {
+            let seg = this.segments[i];
+            if (Globemaker.RelativePosition.isNearerOnSphere(pointOnSphere, seg, criteria)) {
+                this.lastCloserSegment = seg;
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

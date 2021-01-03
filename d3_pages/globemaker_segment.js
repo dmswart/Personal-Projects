@@ -10,9 +10,8 @@ var Globemaker = Globemaker || {};
         this.b = bOnPlane;
         this.strength = strength;
 
-        this.aToBDir = this.a.sub(this.b).normalized();
-        if (isZeroLength) {this.b = new DMSLib.Point3D(this.a);}
-        this.length = this.b.sub(this.a).r();
+        this.aToBDir = isZeroLength ? DMSLib.Point2D.xAxis() : this.b.sub(this.a).normalized();
+        this.length = this.b.sub(this.a).R();
     };
 
     $.Segment.prototype = {

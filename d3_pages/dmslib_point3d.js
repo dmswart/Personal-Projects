@@ -122,7 +122,7 @@
     $.Point3D.yAxis = function() { return new $.Point3D(0.0, 1.0, 0.0); };
     $.Point3D.zAxis = function() { return new $.Point3D(0.0, 0.0, 1.0); };
 
-    $.Point3D.fromSphericalCoords = function(r, phi, theta) {
+    $.Point3D.fromSphericalCoordinates = function(r, phi, theta) {
         // R distance from origin
         // Phi inclination/declination, angle down from +z axis
         // Theta azimuthal, the angle about the z axis starting from the x axis
@@ -130,7 +130,7 @@
                            r * Math.sin(phi) * Math.sin(theta),
                            r * Math.cos(phi));
     },
-    $.Point3D.fromCylindricalCoords = function(r, z, theta) {
+    $.Point3D.fromCylindricalCoordinates = function(r, z, theta) {
         // R distance from origin
         // Z distance up from XY Plane (z-coord)
         // Theta azimuthal, the angle about the z axis starting from the x axis
@@ -138,7 +138,7 @@
     };
     $.Point3D.fromMercator = function(pos) {
         var latitude = Math.atan(Math.sinh(pos.y));
-        return $.Point3D.fromSphericalCoords(1.0, $.QUARTERTAU - latitude, pos.x);
+        return $.Point3D.fromSphericalCoordinates(1.0, $.QUARTERTAU - latitude, pos.x);
     };
     $.Point3D.random = function(maxRadius) {
         var result = new $.Point3D(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);

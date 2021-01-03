@@ -196,7 +196,7 @@
         };
 
         var Point3DMercator = function() {
-            var onSphere = DMSLib.Point3D.fromSphericalCoords(2.0, 0.5, 0.8);
+            var onSphere = DMSLib.Point3D.fromSphericalCoordinates(2.0, 0.5, 0.8);
             var onPlane = onSphere.mercator();
             testNear('Point3DMercator', onPlane.x, 0.8);
             testNear('Point3DMercator', onPlane.y, 1.3651517645);
@@ -239,18 +239,18 @@
             test('Point3DStaticValues', DMSLib.Point3D.zAxis().x, 0);
         };
 
-        var Point3DFromSphericalCoords = function () {
-            var a = DMSLib.Point3D.fromSphericalCoords(7.0710678119, 0.7853981634, 0.927295218);
-            testNear('Point3DFromSphericalCoords', a.x, 3);
-            testNear('Point3DFromSphericalCoords', a.y, 4);
-            testNear('Point3DFromSphericalCoords', a.z, 5);
+        var Point3DFromSphericalCoordinates = function () {
+            var a = DMSLib.Point3D.fromSphericalCoordinates(7.0710678119, 0.7853981634, 0.927295218);
+            testNear('Point3DFromSphericalCoordinates', a.x, 3);
+            testNear('Point3DFromSphericalCoordinates', a.y, 4);
+            testNear('Point3DFromSphericalCoordinates', a.z, 5);
         };
 
-        var Point3DFromCylindricalCoords = function() {
-            var a = DMSLib.Point3D.fromCylindricalCoords(5, 5, 0.927295218);
-            testNear('Point3DFromCylindricalCoords', a.x, 3);
-            testNear('Point3DFromCylindricalCoords', a.y, 4);
-            testNear('Point3DFromCylindricalCoords', a.z, 5);
+        var Point3DFromCylindricalCoordinates = function() {
+            var a = DMSLib.Point3D.fromCylindricalCoordinates(5, 5, 0.927295218);
+            testNear('Point3DFromCylindricalCoordinates', a.x, 3);
+            testNear('Point3DFromCylindricalCoordinates', a.y, 4);
+            testNear('Point3DFromCylindricalCoordinates', a.z, 5);
         };
 
         var Point3DDot = function () {
@@ -300,8 +300,8 @@
     Point3DProjected();
     Point3DToString();
     Point3DStaticValues();
-    Point3DFromSphericalCoords();
-    Point3DFromCylindricalCoords();
+    Point3DFromSphericalCoordinates();
+    Point3DFromCylindricalCoordinates();
     Point3DDot();
     Point3DCross();
     Point3DAngles();

@@ -110,8 +110,8 @@ var DMSLib = DMSLib || {};
 
     // static variables, functions
     $.Point2D.origin = function() { return new $.Point2D(0.0, 0.0); };
-    $.Point2D.x_axis = function() { return new $.Point2D(1.0, 0.0); };
-    $.Point2D.y_axis = function() { return new $.Point2D(0.0, 1.0); };
+    $.Point2D.xAxis = function() { return new $.Point2D(1.0, 0.0); };
+    $.Point2D.yAxis = function() { return new $.Point2D(0.0, 1.0); };
 
     $.Point2D.fromPolar = function(r, theta) {return new $.Point2D(r * Math.cos(theta), r * Math.sin(theta));};
     $.Point2D.random = function(max_radius) {

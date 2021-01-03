@@ -86,7 +86,7 @@ namespace globemaker
 
 			    m_fDistance =  Math.Sin( fAnglePosAB ) * AtoPos.R;
 			    m_fClosestPt = Math.Cos( fAnglePosAB ) * AtoPos.R;
-			    m_fTheta = m_fDistance > 0.0 ? DMS.QUARTERTAU : -DMS.QUARTERTAU;
+			    m_fTheta = m_fDistance > 0.0 ? DMSLib.QUARTERTAU : -DMSLib.QUARTERTAU;
 			    m_fDistance = Math.Abs( m_fDistance );
 		    } /* else */
         }

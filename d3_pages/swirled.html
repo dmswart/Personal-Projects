@@ -109,7 +109,7 @@
                                   {lat: lat+1, lng: lng+1},
                                   {lat: lat, lng: lng+1}];
                 const square3D = squareLL.map(
-                  ll => DMSLib.Point3D.fromSphericalCoords(1.0, ll.lat/NUM_SQUARES*Math.PI, ll.lng/NUM_SQUARES*Math.PI)
+                  ll => DMSLib.Point3D.fromSphericalCoordinates(1.0, ll.lat/NUM_SQUARES*Math.PI, ll.lng/NUM_SQUARES*Math.PI)
                 );
                 const rotated3D = square3D.map( pt => rotatePoint(pt, easeRotation));
                 const offset3D = rotated3D.map( pt => pt.add(offsetPt) );

@@ -183,17 +183,17 @@
             a.x += 1;
             test('Point2D_staticValues', DMSLib.Point2D.origin().x, 0);
 
-            a = DMSLib.Point2D.x_axis();
+            a = DMSLib.Point2D.xAxis();
             test('Point2D_staticValues', a.x, 1);
             test('Point2D_staticValues', a.y, 0);
             a.x += 1;
-            test('Point2D_staticValues', DMSLib.Point2D.x_axis().x, 1);
+            test('Point2D_staticValues', DMSLib.Point2D.xAxis().x, 1);
 
-            a = DMSLib.Point2D.y_axis();
+            a = DMSLib.Point2D.yAxis();
             test('Point2D_staticValues', a.x, 0);
             test('Point2D_staticValues', a.y, 1);
             a.x += 1;
-            test('Point2D_staticValues', DMSLib.Point2D.y_axis().x, 0);
+            test('Point2D_staticValues', DMSLib.Point2D.yAxis().x, 0);
         };
 
         var Point2D_fromPolar = function () {
