@@ -13,9 +13,10 @@
 
 <body>
 <div style='width: 100%; overflow: hidden;'>
-    <div id='output' style='width: 500px; float: left;'></div>
-    <div style='margin-left: 520px;'> 
+    <div id='output' style='width: 720px; float: left;'></div>
+    <div style='margin-left: 740px;'>
         <textarea id='input' type='text' cols=40 rows=32 style='overflow:scroll' onchange='newSkeleton(this.value);'>l 0</textarea>
+        <input type='number' value=30 min=2 max=100 onchange='setDensity(this.value)'/>
     </div>
 </div>
 </body>
@@ -23,9 +24,11 @@
 </html>
 
 <script>
-    const size = 500;
-    let __scale = 50.0;
+    const size = 720;
+    let scale = 72.0;
     let svg;
+    let density = 30;
+    let skel;
 
     function setupPreview() {
         svg = d3.select('#output').append('svg')
@@ -66,7 +69,7 @@
         selection = svg.select('#lines').selectAll('circle')
             .data(skel.list('line'), d => d.id);
         selection.enter().append('circle')
-            .attr('r', 2)
+            .attr('r', 3)
             .attr('cx', d => d.x2)
             .attr('cy', d => d.y2);
         selection.exit().remove();
@@ -106,7 +109,7 @@
     }
 
     function evaluateCoordinate(skel, x, y) {
-        const P = new DMSLib.Point2D( x / __scale, y / __scale);
+        const P = new DMSLib.Point2D( x / scale, y / scale);
 
         //given P, find nearest relative position to segment S on plane
         const rpS = skel.relativePositiontoNearestSegmentOnPlane(P);
@@ -123,7 +126,6 @@
     }
 
     function updateGrid(skel) {
-        const density = 30
         const gridData = [];
         for (let i = 0; i < density; i++) {
             for (let j = 0; j < density; j++) {
@@ -135,17 +137,25 @@
         let selection = svg.select('#grid').selectAll('circle')
             .data(gridData, d => d.id);
         selection.enter().append('circle')
-            .attr('r', 3)
+            .attr('opacity', 0.3)
+            .attr('r', 0.4 * size/density)
             .attr('cx', d => d.x)
             .attr('cy', d => d.y)
             .attr('fill', d => (d.val ? 'black' : 'white'));
         selection.exit().remove();
         selection
+            .attr('r', 0.4 * size/density)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
             .attr('fill', d => (d.val ? 'black' : 'white'));
     }
 
+    function setDensity(newValue) {
+        density = newValue;
+        if (skel) updateGrid(skel);
+    }
     function newSkeleton(skeleton_def) {
-        let skel = new Skeleton(__scale);
+        skel = new Skeleton(scale);
         if(parseGlobemaker(skeleton_def, skel)) {
             // input text box successfully parsed: white background
             d3.select('#input').attr('style', 'background-color:white');

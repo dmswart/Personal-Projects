@@ -71,7 +71,7 @@ var parseGlobemaker = function(skeletonString, skeletonObj) {
 
             var strength;
             if (!value()) { strength = 1.0; }
-            else { strength = __value; }
+            else { strength = 1.0 / __value; }  // invert strength before multiplying to distance.
            
             skeletonObj.line(length, strength);
             return true;

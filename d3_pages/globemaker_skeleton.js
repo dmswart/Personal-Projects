@@ -128,7 +128,7 @@ function Skeleton(scale) {
         let bestRP;
         this.segments.forEach(seg => {
             let rp = new Globemaker.RelativePosition(pointOnPlane, seg);
-            if (!bestRP || rp.distance * rp.seg.strength + DMSLib.EPSILON < bestRP.distance * rp.seg.strength) {
+            if (!bestRP || rp.distance * rp.seg.strength + DMSLib.EPSILON < bestRP.distance * bestRP.seg.strength) {
                 bestRP = rp;
             }
         });
