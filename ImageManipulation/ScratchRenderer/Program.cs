@@ -96,7 +96,7 @@ namespace ScratchRenderer
 
             //ImageOut = new DMSImage(new Tetrahedral(ImageIn)); // black and white
             //ImageOut = new DMSImage(new Icosahedral()); // black and white
-            //ImageOut = new DMSImage(new Octohedral(ImageIn)); // black and white
+            ImageOut = new DMSImage(new Octohedral(ImageIn)); // black and white
 
             //ImageOut = new DMSImage( new Equirect2Ortho( new Icosahedral(ImageIn), 3300) );
             // ImageOut = new DMSImage(new Icosahedral(ImageIn));
@@ -127,7 +127,7 @@ namespace ScratchRenderer
             //ImageOut = new Palette(new DMSImage(args[1]), ImageIn);
             //new Stars(5000, args[0], 0.004).Save("Stars.bmp");
 
-            // ImageOut = new DMSImage(new CubeFace(ImageIn));
+            //ImageOut = new DMSImage(new CubeFace(ImageIn));
 
 #if false //octahedron
             Mosaicker finalmosaic = new Mosaicker(1500, 1500, 3, 2, 60);
