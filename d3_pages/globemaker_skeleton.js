@@ -76,7 +76,7 @@ function Skeleton(scale) {
     // private
     this.idCounter;
     this.scale = scale;
-    this.parentNode = new SkeletonNode(0, 0, 0, this.scale);
+    this.parentNode = new SkeletonNode('none', 0, 0, this.scale);
     this.currentNode = this.parentNode;
 
     this.nodeStack = [];
@@ -118,6 +118,7 @@ function Skeleton(scale) {
     this.init = function() {
         this.parentNode.calcGlobalState();
         this.segments = this.parentNode.segments();
+        this.lastCloserSegment = undefined;
     };
 
     // access list of drawing info as an array of {x1, y1, x2, y2, id}
@@ -151,5 +152,20 @@ function Skeleton(scale) {
         }
 
         return false;
+    }
+
+    this.evaluateCoordinate = function(x, y) {
+        const P = new DMSLib.Point2D( x / this.scale, y / this.scale);
+
+        //given P, find nearest relative position to segment S on plane
+        const rpS = this.relativePositiontoNearestSegmentOnPlane(P);
+
+        //determine corresponding point Q on sphere.
+        const Q = rpS.pointOnSphere();
+
+        //find if nearest segment on sphere to Q exists.
+        return !this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) ;
+
+        // for color, return blank_color, or m_Source.GetSpherePixel( Q )
     }
 }
