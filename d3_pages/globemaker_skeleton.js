@@ -70,6 +70,7 @@ function SkeletonNode(type, value, strength, scale) {
         this.children.forEach(function(child) {result = result.concat(child.segments(type));});
         return result;
     }
+
 }
 
 function Skeleton(scale) {
@@ -171,7 +172,5 @@ function Skeleton(scale) {
         let H = Math.floor(Q.theta() * 180 / Math.PI);
         let L = Math.floor( 10 + Q.phi() * 80 / Math.PI);
         return 'hsl(' + H + ', 80%, ' + L + '%)';
-
-
     }
 }

@@ -40,9 +40,8 @@
 
 <script>
     const size = 720;      // size of image
-    let scale = 72.0;      // how many pixels corresponds to 1 radian
     let svg;               // d3 selection for base svg object
-    let skel;              // skeleton object
+    let skel = {scale: 72.0}; // dummy skeleton object, with how many pixels correspond to radian
     let target;            // target image object
 
     function setupPreview() {
@@ -177,10 +176,11 @@
     }
 
     function newSkeleton(skeleton_def) {
-        skel = new Skeleton(scale);
-        if(parseGlobemaker(skeleton_def, skel)) {
+        skel = new Skeleton(skel.scale);
+        if(deserializeSkeleton(skeleton_def, skel)) {
             // input text box successfully parsed: white background
             d3.select('#input').attr('style', 'background-color:white');
+            d3.select('#input').property('value', serializeSkeleton(skel));
 
             updateLines(skel);
             updateMoves(skel);
@@ -221,6 +221,7 @@
     function optimizeToTarget() {
         optimizeSkeleton(skel, target, size);
         skel.init();
+        d3.select('#input').property('value', serializeSkeleton(skel));
         updateLines(skel);
         updateMoves(skel);
         updateGrid(skel);

@@ -1,4 +1,4 @@
-var parseGlobemaker = function(skeletonString, skeletonObj) {
+let deserializeSkeleton = function(skeletonString, skeletonObj) {
     // tokenize
     skeletonString = skeletonString.replace(/#.*/g, ' ');    // comments beginning with #
     skeletonString = skeletonString.replace(/\/\/.*/g, ' '); // comments beginning with double-slashes
@@ -164,3 +164,44 @@ var parseGlobemaker = function(skeletonString, skeletonObj) {
     skeletonObj.init();
     return true;
 };
+
+let serializeSkeletonNode = function( node, initialSpace ) {
+    let result = '';
+
+    if (initialSpace === undefined) initialSpace = '';
+
+    if(node.type === 'line') {
+        result += initialSpace + 'l ' + (node.length / Math.PI).toFixed(3);
+        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(3);
+        result += '\n';
+    } else if (node.type === 'move') {
+        result += initialSpace + 'm ' + (node.length / Math.PI).toFixed(3) + '\n';
+    } else if (node.type === 'moveOnPlane') {
+        result += initialSpace + 'o ' + (node.length / Math.PI).toFixed(3) + '\n';
+    } else if (node.type === 'rotate') {
+        result += initialSpace + 'r ' + (node.theta / Math.PI).toFixed(3) + '\n';
+    }
+
+    if (node.children.length === 0) {
+        // do nothing
+    } else if(node.children.length === 1) {
+        result += serializeSkeletonNode(node.children[0], initialSpace);
+    } else {
+        node.children.forEach(c => {
+            result += initialSpace + '{' + '\n';
+            result += serializeSkeletonNode(c, initialSpace + '  ');
+            result += initialSpace + '}' + '\n';
+        });
+    }
+
+    return result;
+}
+let serializeSkeleton = function(skeleton) {
+    let result = serializeSkeletonNode(skeleton.parentNode);
+
+    result = result.replace(/00*\n/g, '\n');
+    result = result.replace(/00* /g, ' ');
+    result = result.replace(/\.\n/g, '\n');
+    result = result.replace(/\. /g, ' ');
+    return result;
+}
