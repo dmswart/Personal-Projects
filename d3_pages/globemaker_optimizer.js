@@ -137,7 +137,7 @@ function calcCost(skeleton, targetPixels, width, height, parameters) {
     let actualPixels = [];
     for(let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            actualPixels.push(skeleton.evaluateCoordinate(x - width / 2, y - height / 2) ? 0 : 255);
+            actualPixels.push(skeleton.colorOfCoordinate(x - width / 2, y - height / 2) === 'white' ? 255 : 0);
         }
     }
     calcDistanceMap(actualPixels, width, height);

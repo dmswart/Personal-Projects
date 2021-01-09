@@ -154,7 +154,8 @@ function Skeleton(scale) {
         return false;
     }
 
-    this.evaluateCoordinate = function(x, y) {
+    // returns "white" for empty, or a hex color (i.e., "#FF00CC") for valid pixel
+    this.colorOfCoordinate = function(x, y) {
         const P = new DMSLib.Point2D( x / this.scale, y / this.scale);
 
         //given P, find nearest relative position to segment S on plane
@@ -163,9 +164,14 @@ function Skeleton(scale) {
         //determine corresponding point Q on sphere.
         const Q = rpS.pointOnSphere();
 
-        //find if nearest segment on sphere to Q exists.
-        return !this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) ;
+        //find if nearer segment on sphere to Q exists.
+        if( this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) ) return 'white';
 
-        // for color, return blank_color, or m_Source.GetSpherePixel( Q )
+        // return color based on Q
+        let H = Math.floor(Q.theta() * 180 / Math.PI);
+        let L = Math.floor( 10 + Q.phi() * 80 / Math.PI);
+        return 'hsl(' + H + ', 80%, ' + L + '%)';
+
+
     }
 }

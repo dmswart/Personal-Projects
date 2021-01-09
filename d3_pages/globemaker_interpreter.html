@@ -154,7 +154,11 @@
             for (let j = 0; j < density; j++) {
                 let x = (i -(density/2)+ 0.5) * (size/density);
                 let y = (j -(density/2)+ 0.5) * (size/density);
-                gridData.push({x: x, y: y, val: skel.evaluateCoordinate(x, y), id: i * density + j});
+                gridData.push({
+                    x: x,
+                    y: y,
+                    color: skel.colorOfCoordinate(x, y),
+                    id: i * density + j});
             }
         }
         let selection = svg.select('#grid').selectAll('circle')
@@ -163,13 +167,13 @@
             .attr('r', 0.4 * size/density)
             .attr('cx', d => d.x)
             .attr('cy', d => d.y)
-            .attr('fill', d => (d.val ? '#000000' : '#FFFFFF'));
+            .attr('fill', d => d.color);
         selection.exit().remove();
         selection
             .attr('r', 0.4 * size/density)
             .attr('cx', d => d.x)
             .attr('cy', d => d.y)
-            .attr('fill', d => (d.val ? '#000000' : '#FFFFFF'));
+            .attr('fill', d => d.color);
     }
 
     function newSkeleton(skeleton_def) {
