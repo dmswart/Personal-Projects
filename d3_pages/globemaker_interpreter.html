@@ -20,6 +20,7 @@
 <div id='controls' style='position: absolute; left: 740px; top: 0px;'>
     <ul style="list-style: none;">
         <li> <textarea id="input" type="text" cols="40" rows="32" style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea> </li>
+        <li> GridSize: <input type="number" min=25 max=200 value=100 onchange="newGridSize(this.value);"/>
         <li>
             <button onclick="optimizeToTarget();">Optimize</button>
             <b> Target: </b>
@@ -44,6 +45,7 @@
     let svg;               // d3 selection for base svg object
     let skel = {scale: 72.0}; // dummy skeleton object, with how many pixels correspond to radian
     let target;            // target image object
+    let gridSize = 100;
 
     function setupPreview() {
         svg = d3.select('#output').append('svg')
@@ -148,7 +150,7 @@
     }
 
     function updateGrid(skel) {
-        const density = 100;   // grid sample density
+        const density = gridSize;
         const gridData = [];
         for (let i = 0; i < density; i++) {
             for (let j = 0; j < density; j++) {
@@ -174,6 +176,11 @@
             .attr('cx', d => d.x)
             .attr('cy', d => d.y)
             .attr('fill', d => d.color);
+    }
+
+    function newGridSize(val) {
+        gridSize = val;
+        updateGrid(skel);
     }
 
     function newSkeleton(skeleton_def) {
@@ -220,7 +227,7 @@
     }
 
     function optimizeToTarget() {
-        optimizeSkeleton(skel, target, size);
+        optimizeSkeleton(skel, target, size, 100/gridSize);
         skel.init();
         d3.select('#input').property('value', serializeSkeleton(skel));
         updateLines(skel);
@@ -229,7 +236,7 @@
     }
 
     function randomize() {
-        skel = getRandomSkeleton(10, skel.scale);
+        skel = getRandomSkeleton(10, 72);
         skel.init();
         d3.select('#input').property('value', serializeSkeleton(skel));
         updateLines(skel);

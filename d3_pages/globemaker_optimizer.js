@@ -128,7 +128,7 @@ function calcDistanceMap(pixelArray, width, height) {
     }
 }
 
-function calcCost(skeleton, targetPixels, width, height, parameters) {
+function calcCost(skeleton, targetPixels, width, height, parameters, stepsize) {
     unpackSkeleton(parameters, skeleton);
 
     // generate actualPixels with distance map
@@ -151,23 +151,28 @@ function calcCost(skeleton, targetPixels, width, height, parameters) {
     return error;
 }
 
-function optimizeSkeleton(skeleton, targetImage, displaySize) {
+function optimizeSkeleton(skeleton, targetImage, displaySize, downscaleStepsize) {
+    /* downscale */
+    if(downscaleStepsize === undefined) downscaleStepsize = 1;
+    downscaledWidth = Math.floor(targetImage.width / downscaleStepsize);
+    downscaledHeight = Math.floor(targetImage.height / downscaleStepsize);
+
     // generate target pixels with distance gradient
     let targetPixels = [];
-    for(let y=0; y<targetImage.height; y++) {
-        for(let x=0; x<targetImage.width; x++) {
+    for(let y=0; y<targetImage.height; y+=downscaleStepsize) {
+        for(let x=0; x<targetImage.width; x+=downscaleStepsize) {
             targetPixels.push(targetImage.pixel(x, y));
         }
     }
-    calcDistanceMap(targetPixels, targetImage.width, targetImage.height);
+    calcDistanceMap(targetPixels, downscaledWidth, downscaledHeight);
 
     // our skeleton is scaled to a display size.  our target image has it's own size
-    skeleton.scale *= targetImage.width / displaySize;
-    let costFunction = p => calcCost(skeleton, targetPixels, target.width, target.height, p);
+    skeleton.scale *= downscaledWidth / displaySize;
+    let costFunction = p => calcCost(skeleton, targetPixels, downscaledWidth, downscaledHeight, p);
     let initialParams = packSkeleton(skeleton);
 
     minimizeByGradientDescent(costFunction, initialParams, 50);
-    skeleton.scale *= displaySize / targetImage.width;
+    skeleton.scale *= displaySize / downscaledWidth;
 }
 
 
