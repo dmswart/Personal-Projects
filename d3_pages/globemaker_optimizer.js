@@ -20,7 +20,6 @@ function packSkeletonNode(node) {
 function packSkeleton(skeleton) {
     let result = [];
     result.push(skeleton.scale);
-    result.push(1.0); // multiplier for all line distances
     result = result.concat(packSkeletonNode(skeleton.parentNode));
     return result;
 }
@@ -29,28 +28,27 @@ function packSkeleton(skeleton) {
 /* takes parameters and updates relevant parts of the skeleton
  * returns number of parameters used up
  */
-function unpackSkeletonNode(parameters, node, lineMultiplier) {
+function unpackSkeletonNode(parameters, node) {
     idx = 0;
 
     if(node.type === 'line') {
-        node.length = parameters[idx++] * lineMultiplier;
+        node.length = parameters[idx++];
         node.strength = parameters[idx++];
     } else if(node.type === 'move' || node.type === 'moveOnPlane') {
-        node.length = parameters[idx++] * lineMultiplier;
+        node.length = parameters[idx++];
     } else if(node.type === 'rotate') {
         node.theta = parameters[idx++];
     }
 
-    node.children.forEach(c => idx += unpackSkeletonNode(parameters.slice(idx), c, lineMultiplier));
+    node.children.forEach(c => idx += unpackSkeletonNode(parameters.slice(idx), c));
 
     return idx;
 }
 
 function unpackSkeleton(parameters, skeleton) {
     skeleton.scale = parameters[0];
-    let lineMultiplier = parameters[1];
 
-    unpackSkeletonNode(parameters.slice(2), skeleton.parentNode, lineMultiplier);
+    unpackSkeletonNode(parameters.slice(1), skeleton.parentNode);
 
     skeleton.init();
 }
@@ -170,4 +168,67 @@ function optimizeSkeleton(skeleton, targetImage, displaySize) {
 
     minimizeByGradientDescent(costFunction, initialParams, 50);
     skeleton.scale *= displaySize / targetImage.width;
+}
+
+
+function getRandomSkeleton(numPoints, scale) {
+    /* initialize random points on sphere */
+    let points = [];
+    for (let i = 0; i < numPoints; i++) {
+        points.push({
+            pos: DMSLib.Point3D.random(1.0).normalized(),
+            neighbors: [],
+            subTree: i
+        });
+    }
+
+    /* create spanning tree */
+    while (points.some(p => p.subTree !== points[0].subTree)) {
+        // find points I, J with the shortest distance between two points not in the same subtree, and connect them
+        let bestDist = 20; // big number
+        let [I, J] = [-1, -1];
+        for (let i = 0; i < numPoints; i++) {
+            let pI = points[i];
+            for (let j = i + 1; j < numPoints; j++) {
+                let pJ = points[j];
+                let dist = DMSLib.Point3D.angle(pI.pos, DMSLib.Point3D.origin(), pJ.pos);
+                if(dist < 0)
+                    console.log('hey');
+                if (pI.subTree != pJ.subTree && dist < bestDist) {
+                    bestDist = dist;
+                    [I, J] = [i, j];
+                }
+            }
+        }
+        points.filter(p => p.subTree === points[J].subTree).forEach(p => p.subTree = points[I].subTree);
+        points[J].neighbors.push(I);
+        points[I].neighbors.push(J);
+    }
+
+    /* descend through tree and build up skeleton*/
+    let visited = [0];
+    let skel = new Skeleton(scale);
+    skel.rotate(points[0].pos.theta() / Math.PI);
+    skel.move(points[0].pos.phi() / Math.PI);
+
+    // skel has just arrived at thisPoint (from prevPos)
+    let doNode = function(skel, prevPos, thisPoint) {
+        visited.push(thisPoint);
+        let children = points[thisPoint].neighbors.filter(n => !visited.includes(n));
+        children.forEach(c => {
+            skel.push();
+
+            let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
+            let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
+            skel.rotate(rotAmount / Math.PI);
+            skel.line(lineAmount / Math.PI, 1.0);
+
+            doNode(skel, points[thisPoint].pos, c);
+            skel.pop();
+        });
+    };
+
+    doNode(skel, DMSLib.Point3D.zAxis(), 0);
+
+    return skel;
 }

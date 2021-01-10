@@ -25,8 +25,24 @@
                 console.log(name + ": Expected " + expected + ", but was " + actual);
             }
         }
-    
-    
+
+        var testGT = function(name, actual, expectedThreshold) {
+            results.total++;
+            if (actual <= expectedThreshold) {
+                results.bad++;
+                console.log(name + ": Expected to be greater than" + expected + ", but was " + actual);
+            }
+        }
+
+        var testLT = function(name, actual, expectedThreshold) {
+            results.total++;
+            if (actual >= expectedThreshold) {
+                results.bad++;
+                console.log(name + ": Expected to be less than" + expected + ", but was " + actual);
+            }
+        }
+
+
         var results = {
             total: 0,
             bad: 0
@@ -281,6 +297,20 @@
             testNear('Point3DAngles', val, DMSLib.TAU / 3.0);
         };
 
+        var Point3DDeflection = function () {
+            var a = new DMSLib.Point3D(1, 0, 0);
+            var b = new DMSLib.Point3D(0, 1, 0);
+            var c = new DMSLib.Point3D(-0.2, 0.9, 0.1);
+            var d = new DMSLib.Point3D(-0.2, 0.9, -0.1);
+
+            let val = DMSLib.Point3D.sphereDeflection(a, b, c);
+            testGT('Point3DAngles', val, 0);
+
+            val = DMSLib.Point3D.sphereDeflection(a, b, d);
+            testLT('Point3DAngles', val, 0);
+
+        }
+
 
     </script>
 </head>
@@ -305,5 +335,6 @@
     Point3DDot();
     Point3DCross();
     Point3DAngles();
+    Point3DDeflection();
     document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
 </script>

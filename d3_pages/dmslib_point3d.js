@@ -173,6 +173,16 @@
         return $.Point3D.angle(normal1, $.Point3D.origin(), normal2);
     };
 
+    $.Point3D.sphereDeflection = function(a, b, c) {
+        // returns the signed angle a path from a to b needs to turn at point b in order to head towards c
+        let unsignedDeflection = Math.PI - $.Point3D.sphereAngle(a, b, c);
+
+        let normalAtoB = $.Point3D.cross(a, b);
+        let cGoesLeft = $.Point3D.dot(c.sub(b), normalAtoB) > 0;
+
+        return cGoesLeft ? unsignedDeflection : -unsignedDeflection;
+    }
+
     $.Point3D.average = function(arrayOfPoints) {
         let sum = arrayOfPoints.reduce((a, p) => a.add(p), $.Point3D.origin());
         return sum.div(arrayOfPoints.length);

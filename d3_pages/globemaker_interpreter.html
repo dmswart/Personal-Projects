@@ -21,10 +21,11 @@
     <ul style="list-style: none;">
         <li> <textarea id="input" type="text" cols="40" rows="32" style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea> </li>
         <li>
+            <button onclick="optimizeToTarget();">Optimize</button>
             <b> Target: </b>
             <input type="file" onchange="onTargetSelected(event)" value="chose target">
-            <button onclick="optimizeToTarget(skel, target);">Optimize</button>
         </li>
+        <li> <button onclick="randomize();">Randomize</button> </li>
     </ul>
 </div>
 
@@ -220,6 +221,15 @@
 
     function optimizeToTarget() {
         optimizeSkeleton(skel, target, size);
+        skel.init();
+        d3.select('#input').property('value', serializeSkeleton(skel));
+        updateLines(skel);
+        updateMoves(skel);
+        updateGrid(skel);
+    }
+
+    function randomize() {
+        skel = getRandomSkeleton(10, skel.scale);
         skel.init();
         d3.select('#input').property('value', serializeSkeleton(skel));
         updateLines(skel);
