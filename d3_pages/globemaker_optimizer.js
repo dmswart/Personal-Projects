@@ -64,7 +64,6 @@ function minimizeByGradientDescent(f, initialParams, steps) {
     let stepScale = initialParams.map(n => 0.1);
     for (let step = 0; step < steps; step++) {
         if (!stepScale.some(s => s > 1e-4)) break;
-        console.log( 'f = ' + f(parameters));
         for (let i = 0; i < parameters.length; i++) {
             const parametersCopy = parameters.slice();
             // find which way down
@@ -86,7 +85,6 @@ function minimizeByGradientDescent(f, initialParams, steps) {
         }
     }
     console.log( 'final f = ' + f(parameters));
-    console.log('final params = ' + parameters);
     return parameters;
 }
 
@@ -151,9 +149,11 @@ function calcCost(skeleton, targetPixels, width, height, parameters, stepsize) {
     return error;
 }
 
-function optimizeSkeleton(skeleton, targetImage, displaySize, downscaleStepsize) {
-    /* downscale */
+function optimizeSkeleton(skeleton, targetImage, displaySize, downscaleStepsize, numSteps) {
+    if(numSteps === undefined)  numSteps = 50;
     if(downscaleStepsize === undefined) downscaleStepsize = 1;
+
+    /* downscale */
     downscaledWidth = Math.floor(targetImage.width / downscaleStepsize);
     downscaledHeight = Math.floor(targetImage.height / downscaleStepsize);
 
@@ -171,10 +171,12 @@ function optimizeSkeleton(skeleton, targetImage, displaySize, downscaleStepsize)
     let costFunction = p => calcCost(skeleton, targetPixels, downscaledWidth, downscaledHeight, p);
     let initialParams = packSkeleton(skeleton);
 
-    minimizeByGradientDescent(costFunction, initialParams, 50);
-    skeleton.scale *= displaySize / downscaledWidth;
-}
+    const resultParms = minimizeByGradientDescent(costFunction, initialParams, numSteps);
+    const resultCost = costFunction(resultParms);
 
+    skeleton.scale *= displaySize / downscaledWidth;
+    return resultCost;
+}
 
 function getRandomSkeleton(numPoints, scale) {
     /* initialize random points on sphere */
@@ -197,8 +199,6 @@ function getRandomSkeleton(numPoints, scale) {
             for (let j = i + 1; j < numPoints; j++) {
                 let pJ = points[j];
                 let dist = DMSLib.Point3D.angle(pI.pos, DMSLib.Point3D.origin(), pJ.pos);
-                if(dist < 0)
-                    console.log('hey');
                 if (pI.subTree != pJ.subTree && dist < bestDist) {
                     bestDist = dist;
                     [I, J] = [i, j];
@@ -213,8 +213,8 @@ function getRandomSkeleton(numPoints, scale) {
     /* descend through tree and build up skeleton*/
     let visited = [0];
     let skel = new Skeleton(scale);
-    skel.rotate(points[0].pos.theta() / Math.PI);
-    skel.move(points[0].pos.phi() / Math.PI);
+    skel.rotate(0);
+    skel.move(0);
 
     // skel has just arrived at thisPoint (from prevPos)
     let doNode = function(skel, prevPos, thisPoint) {
