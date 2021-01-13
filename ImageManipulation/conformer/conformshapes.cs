@@ -18,6 +18,7 @@ namespace conformer
         Bitmap2Rectangle,
         Diamond2Lens,
         Triangle2Rouleaux,
+        Hexagon2Triangle,
         Hexagon2Circle,
         Square2Rectangle,
         Square2Oval,
@@ -88,6 +89,7 @@ namespace conformer
                 case ConformShapeType.Bitmap2Circle:        Bitmap2Circle();        break;
                 case ConformShapeType.Diamond2Lens:         Diamond2Lens();         break;
                 case ConformShapeType.Triangle2Rouleaux:    Triangle2Rouleaux();    break;
+                case ConformShapeType.Hexagon2Triangle:     Hexagon2Triangle();     break;
                 case ConformShapeType.Bitmap2Rectangle:     Bitmap2Rectangle();     break;
                 case ConformShapeType.Square2Rectangle:     Square2Rectangle();     break;
                 case ConformShapeType.Square2Oval:          Square2Oval();          break;
@@ -557,9 +559,6 @@ namespace conformer
                 }
             }
 
-
-
-
             m_net.SetNeighbors();
 
             //align arcs
@@ -579,6 +578,63 @@ namespace conformer
             m_net[third, third].Alignment = new AlignFixed( Point2D.FromPolar(1.0, Math.PI) );
             m_net[third, 0].Alignment = new AlignFixed( Point2D.FromPolar(1.0, (4.0/3.0) * Math.PI) );
             m_net[twothirds, 0].Alignment = new AlignFixed( Point2D.FromPolar(1.0, (5.0/3.0) * Math.PI) );
+        }
+
+        private void Hexagon2Triangle()
+        {
+            int full = (m_net.Size - 1);
+            int onethird = m_net.Size / 3;
+            int twothirds = m_net.Size * 2 / 3;
+
+
+            Point2D pA = new Point2D(0, 0);
+            Point2D pB = new Point2D(1.0, 0);
+            Point2D pC = new Point2D(0.5, Math.Sqrt(3.0) / 2.0);
+            Point2D pAB = (pA + pB) / 2.0;
+            Point2D pBC = (pB + pC) / 2.0;
+            Point2D pCA = (pC + pA) / 2.0;
+
+            if (m_bFirstPass)
+            {
+                m_net = new TriangularNet(m_net.Size);
+            }
+
+
+            //zero out what we don't need
+            for (int i = 0; i < m_net.Size; i++)
+            {
+                for (int j = 0; j < m_net.Size; j++)
+                {
+                    if (m_net[i, j] != null)
+                    {
+                        if (i < j ||           // remove top half of triangle
+                            i < onethird ||       // clip one corner
+                            j > twothirds ||    // clip second corner
+                            i > j + twothirds) // clip third corner
+                        {
+                            m_net[i, j] = null;
+                        }
+                    }
+                }
+            }
+
+            m_net.SetNeighbors();
+
+            //align segs
+            m_net.AlignEdge(m_net[onethird, 0], m_net[twothirds, 0], new AlignToSeg(pA, pAB));
+            m_net.AlignEdge(m_net[twothirds, 0], m_net[full, onethird], new AlignToSeg(pAB, pB));
+            m_net.AlignEdge(m_net[full, onethird], m_net[full, twothirds], new AlignToSeg(pB, pBC));
+            m_net.AlignEdge(m_net[full, twothirds], m_net[twothirds, twothirds], new AlignToSeg(pBC, pC));
+            m_net.AlignEdge(m_net[twothirds, twothirds], m_net[onethird, onethird], new AlignToSeg(pC, pCA));
+            m_net.AlignEdge(m_net[onethird,onethird], m_net[onethird, 0], new AlignToSeg(pCA, pA));
+
+            //Align Points
+            m_net[onethird, 0].Alignment = new AlignFixed(pA);
+            m_net[twothirds, 0].Alignment = new AlignFixed(pAB);
+            m_net[full, onethird].Alignment = new AlignFixed(pB);
+            m_net[full, twothirds].Alignment = new AlignFixed(pBC);
+            m_net[twothirds, twothirds].Alignment = new AlignFixed(pC);
+            m_net[onethird, onethird].Alignment = new AlignFixed(pCA);
         }               
  
         // good to go

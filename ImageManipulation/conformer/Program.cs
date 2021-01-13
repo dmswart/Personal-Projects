@@ -22,19 +22,20 @@ namespace conformer
                 return;
             }
 
-            Net net = new Net(63);
+            Net net = new Net(64);
             ConformShapes shaper = new ConformShapes(net,
                 //ConformShapeType.Bitmap2Rectangle, args[0], 1.0);
                 //ConformShapeType.Bitmap2Circle, args[0]);
                 //ConformShapeType.Diamond2Lens);
                 //ConformShapeType.Triangle2Rouleaux);
+                ConformShapeType.Hexagon2Triangle);
                 //ConformShapeType.Hexagon2Circle);
                 //ConformShapeType.Square2Paralellogram);
                 //ConformShapeType.Parallelogram2Square);
                 //ConformShapeType.Triangle, Math.Sqrt(3.0));
                 //ConformShapeType.Square2Circle);
                 //ConformShapeType.Square2Rectangle, 2.0);
-                ConformShapeType.HalfCross2Circle1);
+                //ConformShapeType.HalfCross2Circle1);
                 //ConformShapeType.Square2Heart);
                 //ConformShapeType.Square2Oval);
                 //ConformShapeType.HyperbolizeExample);
