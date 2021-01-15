@@ -83,6 +83,7 @@ function minimizeByGradientDescent(f, initialParams, steps) {
                 stepScale[i] *= 0.5;
             }
         }
+        console.log( 'step = ' + step + ' f = ' + f(parameters));
     }
     console.log( 'final f = ' + f(parameters));
     return parameters;
@@ -226,7 +227,12 @@ function getRandomSkeleton(numPoints, scale) {
             let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
             let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
             skel.rotate(rotAmount / Math.PI);
-            skel.line(lineAmount / Math.PI, 1.0);
+            if(true /*Math.random() > 0.5*/) {
+                skel.line(lineAmount / Math.PI, 1.0);
+            } else {
+                skel.move(lineAmount / Math.PI);
+                skel.line(0.0, 1.0);
+            }
 
             doNode(skel, points[thisPoint].pos, c);
             skel.pop();

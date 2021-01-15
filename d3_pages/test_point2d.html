@@ -141,6 +141,10 @@
             c = a.scaledTo(10);
             test('Point2D_scaling', c.x, 6);
             test('Point2D_scaling', c.y, 8);
+
+            c = a.scaledTo(-10);
+            test('Point2D_scaling', c.x, -6);
+            test('Point2D_scaling', c.y, -8);
         };
 
         var Point2D_invStereographicToSphere = function() {

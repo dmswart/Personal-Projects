@@ -6,6 +6,7 @@ let gridSize = 100;
 let programSkeletons;
 
 function setupPreview() {
+    let transformString = 'scale(1, -1) translate(' + size/2 + ',' + (-size / 2) + ')';
     svg = d3.select('#output').append('svg')
         .attr('width', size)
         .attr('height',size)
@@ -16,7 +17,7 @@ function setupPreview() {
         .attr('opacity', '0.4')
         .attr('fill', 'silver');
     svg.append('g').attr('id', 'grid')
-        .attr('transform', 'translate(' + size/2 + ',' + size/2 + ')')
+        .attr('transform', transformString)
         .attr('stroke', 'none');
     svg.append('rect')
         .attr('width', '100%')
@@ -25,17 +26,17 @@ function setupPreview() {
         .attr('opacity', '0.4')
         .attr('fill', 'silver');
     svg.append('g').attr('id', 'lines')
-        .attr('transform', 'translate(' + size/2 + ',' + size/2 + ')')
+        .attr('transform', transformString)
         .attr('stroke', 'blue')
         .attr('stroke-width', 2)
         .attr('fill', 'none');
     svg.append('g').attr('id', 'moves')
-        .attr('transform', 'translate(' + size/2 + ',' + size/2 + ')')
+        .attr('transform', transformString)
         .attr('stroke', 'gray')
         .attr('stroke-width', 1)
         .attr('fill', 'none');
     svg.append('g').attr('id', 'move_on_plane')
-        .attr('transform', 'translate(' + size/2 + ',' + size/2 + ')')
+        .attr('transform', transformString)
         .attr('stroke', 'gray')
         .attr('stroke-width', 1)
         .attr('fill', 'none');
@@ -180,7 +181,10 @@ function onTargetSelected(ev) {
             c.getContext('2d').drawImage(imgdata, 0, 0);
 
             target = c.getContext('2d').getImageData(0, 0, c.width, c.height);
-            target.pixel = function(x, y) { x = Math.floor(x); y = Math.floor(y); return this.data[y*this.width*4 + x*4]; };
+            target.pixel = function(x, y) {
+                x = Math.floor(x);
+                y = c.height - 1 - Math.floor(y); // we work in up is positive Y
+                return this.data[y*this.width*4 + x*4]; };
 
             let count = 0;
             for(let y = 0; y < target.width; y++) {
@@ -221,12 +225,12 @@ function TheProgram() {
     let candidates = [];
 
     // A) take top 10 of 500 random tests
-    for(let i = 0; i<100; i++) {
+    for(let i = 0; i<500; i++) {
         console.log('A ' + i);
-        let skel = getRandomSkeleton(10, scaleFromTarget());
+        let skel = getRandomSkeleton(12, scaleFromTarget());
         let cost = optimizeSkeleton(skel, target, size, 2, 3);
         candidates.push({skeleton: skel, cost: cost});
-        if (candidates.length > 10) {
+        if (candidates.length > 20) {
             let maxCost = Math.max(...candidates.map(c => c.cost));
             candidates = candidates.filter(c => c.cost < maxCost);
         }
