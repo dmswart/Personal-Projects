@@ -27,8 +27,10 @@ function setupPreview() {
         .attr('fill', 'silver');
     svg.append('g').attr('id', 'lines')
         .attr('transform', transformString)
-        .attr('stroke', 'blue')
-        .attr('stroke-width', 2)
+        // .attr('stroke', 'blue')
+        // .attr('stroke-width', 2)
+        .attr('stroke', 'yellow')
+        .attr('stroke-width', 6)
         .attr('fill', 'none');
     svg.append('g').attr('id', 'moves')
         .attr('transform', transformString)
@@ -162,6 +164,7 @@ function newSkeleton(skeleton_def) {
     }
 }
 
+/* Load Target Image */
 function onTargetSelected(ev) {
     // for looks
     let img = document.getElementById('targetPicture');
@@ -180,7 +183,9 @@ function onTargetSelected(ev) {
             c.height = imgdata.height;
             c.getContext('2d').drawImage(imgdata, 0, 0);
 
+            // load into target object.  set some convenient properties
             target = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+            target.name = selectedFile.name;
             target.pixel = function(x, y) {
                 x = Math.floor(x);
                 y = c.height - 1 - Math.floor(y); // we work in up is positive Y
@@ -197,7 +202,32 @@ function onTargetSelected(ev) {
         imgdata.src = ev.target.result;
     };
     reader.readAsDataURL(selectedFile);
+}
 
+/* Save Result Image */
+function saveImage(resolution) {
+    // first get pbm image into string
+    let content = 'P1 ' + resolution + ' ' + resolution + '\n';
+
+    for(let y = 0; y<resolution; y++) {
+        for(let x = 0; x < resolution; x++) {
+            let isOut = skel.colorOfCoordinate( (x -(resolution/2)+ 0.5) * (size/resolution),
+                                                (-y +(resolution/2)+ 0.5) * (size/resolution) ) === 'white';
+            content += (isOut ? '0 ' : '1 ');
+        }
+        content += '\n';
+    }
+
+    // get filename.
+    const filename = (target && target.name) ? target.name.slice(0, -4) + '.pbm' : 'ouput.pbm';
+
+    // save the file via user download
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(content));
+    element.setAttribute('download', filename);
+    document.body.appendChild(element); // required for Firefox
+    element.click();
+    element.remove();
 }
 
 function optimizeToTarget() {
@@ -224,11 +254,11 @@ function randomize() {
 function TheProgram() {
     let candidates = [];
 
-    // A) take top 10 of 500 random tests
-    for(let i = 0; i<500; i++) {
+    // A) take top 10 of 100 random tests
+    for(let i = 0; i<100; i++) {
         console.log('A ' + i);
         let skel = getRandomSkeleton(12, scaleFromTarget());
-        let cost = optimizeSkeleton(skel, target, size, 2, 3);
+        let cost = optimizeSkeleton(skel, target, size, 2, 2);
         candidates.push({skeleton: skel, cost: cost});
         if (candidates.length > 20) {
             let maxCost = Math.max(...candidates.map(c => c.cost));
@@ -236,12 +266,12 @@ function TheProgram() {
         }
     }
 
-    // B) take top 3 after optimize at 50x50
+    // B) take top 5 after optimize at 50x50
     candidates.forEach((candidate, i) => {
         console.log('B ' + i);
         candidate.cost = optimizeSkeleton(candidate.skeleton, target, size, 2, 50);
     });
-    candidates = candidates.sort((a, b) => a.cost - b.cost).slice(0, 3);
+    candidates = candidates.sort((a, b) => a.cost - b.cost).slice(0, 5);
 
     // C) take best after optimize at 100x100
     candidates.forEach((candidate, i) => {

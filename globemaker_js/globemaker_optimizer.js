@@ -59,11 +59,12 @@ function unpackSkeleton(parameters, skeleton) {
  * returns - optimized parameters - number[]
  */
 function minimizeByGradientDescent(f, initialParams, steps) {
+    const UNDERFLOW = 0.001;
     if (steps === undefined) steps = 100;
     const parameters = initialParams.slice();
     let stepScale = initialParams.map(n => 0.1);
     for (let step = 0; step < steps; step++) {
-        if (!stepScale.some(s => s > 1e-4)) break;
+        if (!stepScale.some(s => s > UNDERFLOW)) break;
         for (let i = 0; i < parameters.length; i++) {
             const parametersCopy = parameters.slice();
             // find which way down
@@ -79,7 +80,7 @@ function minimizeByGradientDescent(f, initialParams, steps) {
             } else if (fMinus < fHere) {
                 parameters[i] -= stepScale[i];
                 stepScale[i] *= 1.1;
-            } else {
+            } else if (stepScale[i] > UNDERFLOW) {
                 stepScale[i] *= 0.5;
             }
         }
@@ -227,12 +228,12 @@ function getRandomSkeleton(numPoints, scale) {
             let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
             let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
             skel.rotate(rotAmount / Math.PI);
-            if(true /*Math.random() > 0.5*/) {
+            //if(Math.random() > 0.5) {
                 skel.line(lineAmount / Math.PI, 1.0);
-            } else {
-                skel.move(lineAmount / Math.PI);
-                skel.line(0.0, 1.0);
-            }
+            //} else {
+             //   skel.move(lineAmount / Math.PI);
+              //  skel.line(0.0, 1.0);
+            //}
 
             doNode(skel, points[thisPoint].pos, c);
             skel.pop();

@@ -63,9 +63,9 @@ function SkeletonNode(type, value, strength, scale) {
             // state information is in image coordinates, unscale before creating segments
             result.push(new Globemaker.Segment(parentState.sphere_rot,
                                                parentState.plane_pos.div(this.scale),
-                                               this.globalState.plane_pos.div(this.scale),
+                                               DMSLib.Point2D.fromPolar(1, parentState.plane_theta),
                                                this.strength,
-                                               this.length === 0));
+                                               this.length));
         }
         this.children.forEach(function(child) {result = result.concat(child.segments(type));});
         return result;
@@ -168,9 +168,12 @@ function Skeleton(scale) {
         //find if nearer segment on sphere to Q exists.
         if( this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) ) return 'white';
 
-        // return color based on Q
-        let H = Math.floor(Q.theta() * 180 / Math.PI);
-        let L = Math.floor( 10 + Q.phi() * 80 / Math.PI);
-        return 'hsl(' + H + ', 80%, ' + L + '%)';
+        // Rainbow!  return color based on Q
+        // let H = Math.floor(Q.theta() * 180 / Math.PI);
+        // let L = Math.floor( 10 + Q.phi() * 80 / Math.PI);
+        // return 'hsl(' + H + ', 80%, ' + L + '%)';
+
+        // Dark blue
+        return '#0000b8'
     }
 }

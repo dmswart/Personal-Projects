@@ -4,14 +4,14 @@ var Globemaker = Globemaker || {};
     // -----------------------------------------------------------------
     // $.Segment
     // -----------------------------------------------------------------
-    $.Segment = function(aOnSphere, aOnPlane, bOnPlane, strength, isZeroLength) {
+    $.Segment = function(aOnSphere, aOnPlane, aToBDir, strength, length) {
         this.aRot = aOnSphere;
         this.a = aOnPlane;
-        this.b = bOnPlane;
-        this.strength = strength;
+        this.b = aOnPlane.add(aToBDir.scaledTo(length));
 
-        this.aToBDir = isZeroLength ? DMSLib.Point2D.xAxis() : this.b.sub(this.a).normalized();
-        this.length = this.b.sub(this.a).R();
+        this.aToBDir = aToBDir;
+        this.strength = strength;
+        this.length = length;
     };
 
     $.Segment.prototype = {

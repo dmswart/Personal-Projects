@@ -1,10 +1,10 @@
 <html>
 <head>
 <script src='http://d3js.org/d3.v3.min.js'></script>
-<script src='./dmslib_core.js'></script>
-<script src='./dmslib_point2d.js'></script>
-<script src='./dmslib_point3d.js'></script>
-<script src='./dmslib_xfrm.js'></script>
+<script src='../d3_pages/dmslib_core.js'></script>
+<script src='../d3_pages/dmslib_point2d.js'></script>
+<script src='../d3_pages/dmslib_point3d.js'></script>
+<script src='../d3_pages/dmslib_xfrm.js'></script>
 <script src='./globemaker_segment.js'></script>
 <script src='./globemaker_relative_position.js'></script>
 <script src='./globemaker_skeleton.js'></script>
@@ -23,9 +23,10 @@
         <li> <textarea id="input" type="text" cols="40" rows="32" style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea> </li>
         <li> GridSize: <input type="number" min=25 max=200 value=100 onchange="newGridSize(this.value);"/>
         <li>
-            <button onclick="optimizeToTarget();">Optimize</button>
             <b> Target: </b>
             <input type="file" onchange="onTargetSelected(event)" value="chose target">
+            <button onclick="optimizeToTarget();">Optimize</button>
+            <button onclick="saveImage(2000)">Save Result</button>
         </li>
         <li> <button onclick="randomize();">Randomize</button> </li>
         <li/>
