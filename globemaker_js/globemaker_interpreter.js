@@ -255,10 +255,10 @@ function TheProgram() {
     let candidates = [];
 
     // A) take top 10 of 100 random tests
-    for(let i = 0; i<100; i++) {
+    for(let i = 0; i<1000; i++) {
         console.log('A ' + i);
-        let skel = getRandomSkeleton(12, scaleFromTarget());
-        let cost = optimizeSkeleton(skel, target, size, 2, 2);
+        let skel = getRandomSkeleton(8, scaleFromTarget());
+        let cost = calcQuickCost(skel, target, size);
         candidates.push({skeleton: skel, cost: cost});
         if (candidates.length > 20) {
             let maxCost = Math.max(...candidates.map(c => c.cost));
@@ -278,6 +278,8 @@ function TheProgram() {
         console.log('C ' + i);
         candidate.cost = optimizeSkeleton(candidate.skeleton, target, size, 1, 50);
     });
+
+    // final: sort and save the winners
     programSkeletons = candidates.sort((a, b) => a.cost - b.cost).map(c => c.skeleton);
     skel = programSkeletons[0];
 
@@ -291,3 +293,14 @@ function nextTheProgram() {
         updateGUI();
     }
 }
+
+function scaleUp() {
+    skel.multiplyLengths(1.05);
+    updateGUI();
+}
+
+function scaleDown() {
+    skel.multiplyLengths(1 / 1.05);
+    updateGUI();
+}
+

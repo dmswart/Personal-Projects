@@ -41,6 +41,11 @@ function SkeletonNode(type, value, strength, scale) {
         this.children.forEach(function(child) {child.calcGlobalState();});
     };
 
+    this.multiplyLengths = function(scaleFactor) {
+        this.length *= scaleFactor;
+        this.children.forEach(function(child) {child.multiplyLengths(scaleFactor);});
+    }
+
     // recursive calculation of plane info (x1, y1, x2, y2, id)
     this.list = function(type) {
         let result = [];
@@ -175,5 +180,10 @@ function Skeleton(scale) {
 
         // Dark blue
         return '#0000b8'
+    }
+
+    this.multiplyLengths = function(scaleFactor) {
+        this.parentNode.multiplyLengths(scaleFactor);
+        this.init();
     }
 }

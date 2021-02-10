@@ -180,6 +180,23 @@ function optimizeSkeleton(skeleton, targetImage, displaySize, downscaleStepsize,
     return resultCost;
 }
 
+function calcQuickCost(skeleton, targetImage, displaySize) {
+    // our skeleton is scaled to a display size.  our target image has it's own size
+    skeleton.scale *= targetImage.width / displaySize;
+    skeleton.init();
+    let error = 0;
+    for(let y=0; y<targetImage.height; y++) {
+        for(let x=0; x<targetImage.width; x++) {
+            let targetIn = targetImage.pixel(x, y) === 0;
+            let actualIn = skeleton.colorOfCoordinate(x - targetImage.width / 2, y - targetImage.height / 2) !== 'white';
+            if (targetIn != actualIn) {error++; }
+        }
+    }
+    skeleton.scale *= displaySize / targetImage.width;
+
+    return error;
+}
+
 function getRandomSkeleton(numPoints, scale) {
     /* initialize random points on sphere */
     let points = [];
@@ -215,8 +232,8 @@ function getRandomSkeleton(numPoints, scale) {
     /* descend through tree and build up skeleton*/
     let visited = [0];
     let skel = new Skeleton(scale);
-    skel.rotate(0);
-    skel.move(0);
+    skel.rotate(Math.random() * 2.0 - 1.0);
+    skel.move(Math.random());
 
     // skel has just arrived at thisPoint (from prevPos)
     let doNode = function(skel, prevPos, thisPoint) {
@@ -228,12 +245,12 @@ function getRandomSkeleton(numPoints, scale) {
             let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
             let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
             skel.rotate(rotAmount / Math.PI);
-            //if(Math.random() > 0.5) {
+            if(Math.random() > 0.5) {
                 skel.line(lineAmount / Math.PI, 1.0);
-            //} else {
-             //   skel.move(lineAmount / Math.PI);
-              //  skel.line(0.0, 1.0);
-            //}
+            } else {
+                skel.move(lineAmount / Math.PI);
+                skel.line(0.0, 1.0);
+            }
 
             doNode(skel, points[thisPoint].pos, c);
             skel.pop();

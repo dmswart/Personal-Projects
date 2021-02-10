@@ -6,12 +6,20 @@ DMSLib.HALFTAU = Math.PI;
 DMSLib.QUARTERTAU = Math.PI * 0.5;
 DMSLib.TWOTAU = Math.PI * 4.0;
 
+// put theta between -HALFTAU and HALFTAU
 DMSLib.fixAngle = function(theta) {
     while (theta < -this.HALFTAU) {theta += this.TAU;}
     while (theta > this.HALFTAU) {theta -= this.TAU;}
     return theta;
 };
 
+// difference between angles
+DMSLib.angleBetween = function(angleA, angleB) {
+    return Math.abs(DMSLib.fixAngle(angleA - angleB));
+}
+
+
+// put theta between 0 and TAU
 DMSLib.fixAnglePositive = function(theta) {
     while (theta < 0) {theta += this.TAU;}
     while (theta > this.TAU) {theta -= this.TAU;}
