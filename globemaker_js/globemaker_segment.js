@@ -10,6 +10,7 @@ var Globemaker = Globemaker || {};
         this.b = aOnPlane.add(aToBDir.scaledTo(length));
 
         this.aToBDir = aToBDir;
+        this.aToBDirTheta = aToBDir.theta();
         this.strength = strength;
         this.length = length;
     };

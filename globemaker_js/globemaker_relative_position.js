@@ -24,7 +24,10 @@ var Globemaker = Globemaker || {};
                 this.distance = ptOnSphere.phi();
             } else {
                 // point on sphere is closer to end (end of rot.) than to start (z-axis)
-                ptOnSphere = DMSLib.Rotation.fromAngleAxis( -seg.length, DMSLib.Point3D.yAxis() ).apply(ptOnSphere);
+                ptOnSphere = new DMSLib.Point3D(
+                    Math.sin(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y),
+                    ptOnSphere.y,
+                    Math.cos(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y));
     
                 // now it's same as previous case except for closest pt.
                 this.theta = ptOnSphere.theta();
@@ -40,16 +43,16 @@ var Globemaker = Globemaker || {};
 
             if (DMSLib.Point2D.dot(bToPt, seg.aToBDir) * sgn > 0.0) {
                 // beyond point B
-                this.theta = DMSLib.fixAngle(bToPt.theta() - seg.aToBDir.theta());
+                this.theta = DMSLib.fixAngle(bToPt.theta() - seg.aToBDirTheta);
                 this.distance = bToPt.R();
                 this.closestPt = seg.length;
             } else if (DMSLib.Point2D.dot(aToPt, seg.aToBDir) * sgn < 0.0) {
                 // beyond point A
-                this.theta = DMSLib.fixAngle(aToPt.theta() - seg.aToBDir.theta());
+                this.theta = DMSLib.fixAngle(aToPt.theta() - seg.aToBDirTheta);
                 this.distance = aToPt.R();
                 this.closestPt = 0.0;
             } else {
-                let anglePtAB = DMSLib.fixAngle(aToPt.theta() - seg.aToBDir.theta());
+                let anglePtAB = DMSLib.fixAngle(aToPt.theta() - seg.aToBDirTheta);
                 this.distance = Math.sin(anglePtAB) * aToPt.R();
                 this.closestPt = Math.cos(anglePtAB) * aToPt.R();
                 this.theta = this.distance > 0.0 ? DMSLib.QUARTERTAU : -DMSLib.QUARTERTAU;
@@ -91,7 +94,7 @@ var Globemaker = Globemaker || {};
         pointOnPlane: function() {
             return this.seg.a
                 .add(this.seg.aToBDir.scaledTo(this.closestPt))
-                .add(new DMSLib.Point2D.fromPolar(this.distance, seg.aToBDir.theta() + this.theta()));
+                .add(new DMSLib.Point2D.fromPolar(this.distance, seg.aToBDirTheta + this.theta()));
         }
     };
 
@@ -110,8 +113,11 @@ var Globemaker = Globemaker || {};
         } else {
             // ptOnSphere is closer to end of rotation then to z axis
             //rotate ptOnSphere about y (from x to z) by grSegments[dtCurrent.nIdx].length
-            ptOnSphere = DMSLib.Rotation.fromAngleAxis( -seg.length, DMSLib.Point3D.yAxis() ).apply(ptOnSphere);
- 
+            ptOnSphere = new DMSLib.Point3D(
+                Math.sin(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y),
+                ptOnSphere.y,
+                Math.cos(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y));
+
             return (ptOnSphere.phi() * seg.strength < criteria - DMSLib.EPSILON);
         } // else if
     };
