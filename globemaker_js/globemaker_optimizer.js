@@ -135,7 +135,7 @@ function calcCost(skeleton, targetPixels, width, height, parameters, stepsize) {
     let actualPixels = [];
     for(let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            actualPixels.push(skeleton.colorOfCoordinate(x - width / 2, y - height / 2) === 'white' ? 255 : 0);
+            actualPixels.push(skeleton.colorOfCoordinate(x - width / 2, y - height / 2).r);
         }
     }
     calcDistanceMap(actualPixels, width, height);
@@ -188,7 +188,7 @@ function calcQuickCost(skeleton, targetImage, displaySize) {
     for(let y=0; y<targetImage.height; y++) {
         for(let x=0; x<targetImage.width; x++) {
             let targetIn = targetImage.pixel(x, y) === 0;
-            let actualIn = skeleton.colorOfCoordinate(x - targetImage.width / 2, y - targetImage.height / 2) !== 'white';
+            let actualIn = skeleton.colorOfCoordinate(x - targetImage.width / 2, y - targetImage.height / 2).r !== 0;
             if (targetIn != actualIn) {error++; }
         }
     }
@@ -245,7 +245,7 @@ function getRandomSkeleton(numPoints, scale) {
             let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
             let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
             skel.rotate(rotAmount / Math.PI);
-            if(Math.random() > 0.5) {
+            if (Math.random() > 0.0) {   // higher number means more breaks in the tree.
                 skel.line(lineAmount / Math.PI, 1.0);
             } else {
                 skel.move(lineAmount / Math.PI);

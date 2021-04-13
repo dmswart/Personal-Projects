@@ -160,8 +160,8 @@ function Skeleton(scale) {
         return false;
     }
 
-    // returns "white" for empty, or a hex color (i.e., "#FF00CC") for valid pixel
-    this.colorOfCoordinate = function(x, y) {
+    // returns d3.color object "white" for empty.
+    this.colorOfCoordinate = function(x, y, spherePixelFunction) {
         const P = new DMSLib.Point2D( x / this.scale, y / this.scale);
 
         //given P, find nearest relative position to segment S on plane
@@ -171,15 +171,19 @@ function Skeleton(scale) {
         const Q = rpS.pointOnSphere();
 
         //find if nearer segment on sphere to Q exists.
-        if( this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) ) return 'white';
+        if( this.nearerSegmentOnSphereExists( Q, rpS.distance * rpS.seg.strength ) )
+            return (spherePixelFunction === undefined)  ?
+                d3.rgb(0xff, 0xff, 0xff) : // white
+                spherePixelFunction();  // function's blank pixel
 
         // Rainbow!  return color based on Q
         // let H = Math.floor(Q.theta() * 180 / Math.PI);
         // let L = Math.floor( 10 + Q.phi() * 80 / Math.PI);
         // return 'hsl(' + H + ', 80%, ' + L + '%)';
 
-        // Dark blue
-        return '#0000b8'
+        return (spherePixelFunction === undefined) ?
+            d3.rgb(0, 0, 0xb8) : // dark blue
+            spherePixelFunction(Q); // function's pixel
     }
 
     this.multiplyLengths = function(scaleFactor) {

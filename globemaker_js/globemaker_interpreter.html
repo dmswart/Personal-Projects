@@ -1,39 +1,37 @@
 <html>
 <head>
-<!--script src='http://d3js.org/d3.v3.min.js'></script-->
 <script src='../d3_pages/d3.v3.min.js'></script>
 <script src='../d3_pages/dmslib_core.js'></script>
 <script src='../d3_pages/dmslib_point2d.js'></script>
 <script src='../d3_pages/dmslib_point3d.js'></script>
 <script src='../d3_pages/dmslib_xfrm.js'></script>
-<script src='./globemaker_segment.js'></script>
-<script src='./globemaker_relative_position.js'></script>
-<script src='./globemaker_skeleton.js'></script>
-<script src='./globemaker_parse.js'></script>
-<script src='./globemaker_optimizer.js'></script>
-<script src='./globemaker_interpreter.js'></script>
+<script src='globemaker_segment.js'></script>
+<script src='globemaker_relative_position.js'></script>
+<script src='globemaker_skeleton.js'></script>
+<script src='globemaker_parse.js'></script>
+<script src='globemaker_optimizer.js'></script>
+<script src='globemaker_interpreter.js'></script>
 </head>
 
 <body>
-<div style='width: 100%; height: 100%; overflow: hidden; position:relative;'>
-    <img id='targetPicture' style='position:absolute; width:720px;' src=""/>
-    <div id='output' style='width: 720px; position: absolute;'></div>
+<div style='width: 100%; height: 100%; overflow: hidden; position:relative; margin-top: 1em'>
+    <b> Target: </b>
+    <input type="file" onchange="onTargetSelected(event)" value="chose target">
+    <img id='targetPicture' style='position:absolute; width:720px; top:30px; left: 0px' src=""/>
+    <div id='grid' style='width: 720px; position: absolute; top:30px; left: 0px'></div>
 </div>
 <div id='controls' style='position: absolute; left: 740px; top: 0px;'>
     <ul style="list-style: none;">
-        <li> <textarea id="input" type="text" cols="40" rows="32" style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea> </li>
-        <li> GridSize: <input type="number" min=25 max=200 value=100 onchange="newGridSize(this.value);"/>
-        <li>
-            <b> Target: </b>
-            <input type="file" onchange="onTargetSelected(event)" value="chose target">
-            <button onclick="optimizeToTarget();">Optimize</button>
-            <button onclick="saveImage(2000)">Save Result</button>
+        <li style='margin-bottom:10px'>
+            <b>Skeleton:</b>
         </li>
-        <li> <button onclick="randomize();">Randomize</button> </li>
-        <li/>
+        <li> <textarea id="input" type="text" cols="40" rows="32" style="overflow:scroll" onchange="newSkeleton(this.value);">l 0</textarea> </li>
         <li>
+            <button onclick="randomize();">Randomize</button>
+            <button onclick="optimizeToTarget();">Optimize</button>
             <button onclick="TheProgram();">TheProgram</button>
             <button onclick="nextTheProgram();">(next)</button>
+        </li>
         </li>
         <li>
             <b> Scale: </b>
@@ -42,9 +40,23 @@
         </li>
     </ul>
 </div>
+<div id='output' style='width: 500px; position: absolute; left: 1150px; top: 0px'>
+    <ul style="list-style: none;">
+        <li style='margin-bottom:10px'>
+            <b> Equirectangular Source:</b>
+            <input type="file" onchange="onSourceSelected(event)" value="chose source">
+        </li>
+        <li><img id='sourcePicture' style='width:200px; height:100px' src=""/></li>
+        <li>
+            <button onclick="updateGUI(250);">Preview</button>
+            <button onclick="saveImage(1500)">Save Result</button>
+        </li>
+    </ul>
+</div>
 
 <div hidden>
     <img id='targetData' src=""/>
+    <img id='sourceData' src=""/>
 </div>
 </body>
 

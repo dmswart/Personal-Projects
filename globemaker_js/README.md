@@ -1,28 +1,37 @@
 # Globemaker JS
-use this tool to unwrap spheres.
+Use this tool to unwrap spheres.
 
 ### Instructions
 
-1. download the directories: d3_pages and globemaker_js.
-2. open globemaker_interpreter.html in a browser (only tested with Chrome)
+* To setup
+    * download the directories: ```d3_pages``` and ```globemaker_js``` from this repository.
+* To start
+    * open globemaker_interpreter.html in a browser (only tested with Chrome)
 
-3. To input your own skeleton enter it into the text box on the right:
+* To input your own skeleton enter it into the text box.
+  * The following table describes the syntax for the language
 
-| Command | description |
-| ------- | ----------- |
-| L X Y   | draw a line X * PI radians with a strength Y |
-| R X     | rotate X * PI radians |
-| M X     | move the turtle X * PI radians forward |
-| {       | push state of the turtle onto a stack |
-| }       | pop the  state of the turtle off the stack |
+  | Command | description |
+  | ------- | ----------- |
+  | l X Y   | draw a line X * PI radians with a strength Y (Y optional defaults to 1) |
+  | r X     | rotate X * PI radians |
+  | m X     | move the turtle X * PI radians forward |
+  | {       | push state of the turtle onto a stack |
+  | }       | pop the  state of the turtle off the stack |
+  
+  * to get started, try inputting ```{m -1 l 2} r 0.5 m -1 l 2```
 
 
-4. to optimize to a target image
-a) click target button to input a 100x100 black and white image (the image must be in the same directory as globemaker_interpreter.html)
-b) click The Program button and wait (be patient) about 10 minutes.
-c) you can click next to cycle through several candidate results. 
+* To optimize to a target image
+  * click target button to input a *100x100* black and white image
+  * click The Program button and wait (be patient) about 10 minutes.
+  * you can click next to cycle through several candidate results. 
 
-5. output the result will download a 2000x2000 black and white image of the resulting orange peel (in PBM) format
+* To save the result
+  * specify the spherical imagery as an equirectangular image.
+  * Leaving the source imagery blank results in a silhouette.
+  * Click Save Result to download a 1500x1500 image of the resulting orange peel (in PPM) format
+
 
 
 Feel free to message the author (David Swart) dmswart1@gmail.com with questions
