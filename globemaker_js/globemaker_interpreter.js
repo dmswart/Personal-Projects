@@ -298,7 +298,7 @@ function checkTarget() {
 
 function optimizeToTarget() {
     if (!checkTarget()) return;
-    await optimizeSkeleton(skel, target, size);
+    optimizeSkeleton(skel, target, size);
     updateGUI();
 }
 
