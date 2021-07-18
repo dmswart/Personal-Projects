@@ -1,0 +1,223 @@
+<html>
+<head>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="./connection_strings.js"></script>
+    <style type="text/css">
+        .board { fill: #3c0096 }
+        .board.endgame { fill: #aad0fb }
+
+        .tile { fill: #aad0fb; stroke: #aad0fb; stroke-width: 0 }
+        .tile.hover { stroke-width: 10px }
+        .tile.selected0 { fill: #161a64; stroke: #161a64 }
+        .tile.selected1 { fill: #00735e; stroke: #00735e }
+        .tile.selected2 { fill: #5b0030; stroke: #5b0030 }
+        .tile.matched0 { fill: #161a64; stroke: #161a64 }
+        .tile.matched1 { fill: #00735e; stroke: #00735e }
+        .tile.matched2 { fill: #5b0030; stroke: #5b0030 }
+        .tile.matched3 { fill: #005e7a; stroke: #005e7a }
+
+        text { fill: #360089; font-size: 33px; font-family: sans-serif; text-anchor: middle; pointer-events:none }
+        svg text{
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        text.selected { fill: white }
+        text.matched { fill: white }
+
+        .life { fill: #3c0096 }
+    </style>
+</head>
+
+
+<body>
+<div id="output"></div>
+</body>
+</html>
+
+<script>
+    const boardwidth = 1500;
+    const boardheight = 750
+    const padding = 20;
+    const lifeSize = 60;
+
+    const cellToCellX = (boardwidth - padding ) / 4;
+    const cellToCellY = (boardheight - padding ) / 4;
+    const cellWidth = cellToCellX - padding;
+    const cellHeight = cellToCellY - padding;
+
+    let phase = 0;
+    let lives = 3;
+    let cellData = [];
+
+    let svg = d3.select("#output")
+        .append("svg")
+        .attr("width", boardwidth + padding)
+        .attr("height",boardheight + 2 * padding + lifeSize);
+
+    let setupCellData = function(boardNum) {
+        if(boardNum !== 1 && boardNum !== 2) boardNum = 0;
+        cellData = [];
+        for(i=0; i<4; i++) {
+            for(j = 0; j<4; j++) {
+                cellData.push({
+                    category: i, // cat
+                    item: j, // item
+                    text: connectionStrings[boardNum][i*4 + j],
+                    selected: false,
+                    matched: false
+                });
+            }
+        }
+    }
+
+    let matchCategory = function(category) {
+        for(let item = 0; item < 4; item++) {
+            // find item that goes here
+            let idx = cellData.findIndex(c => c.category === category && c.item === item);
+            let newIdx = phase * 4 + item;
+            [cellData[idx], cellData[newIdx]] = [cellData[newIdx], cellData[idx]];
+            cellData[newIdx].matched = true;
+            cellData[newIdx].selected = false;
+        }
+        phase++;
+        shuffleUnmatchedCells();
+    }
+
+    let checkCells = function () {
+        let selectedCells = cellData.filter(c => c.selected);
+        if (selectedCells.length === 4) {
+            setTimeout(() => {
+                let category = selectedCells[0].category;
+                let success = (selectedCells.filter(c => c.category === category).length === 4)
+                if (success) {
+                    matchCategory(category);
+                    if(phase === 3) {
+                        // endgame
+                        matchCategory(cellData[12].category);
+                        d3.select('.board').classed('endgame', true);
+                    }
+                } else if (phase === 2) {
+                    lives--;
+                }
+                // deselect all.
+                for(let idx = 0; idx<16; idx++) {
+                    cellData[idx].selected = false;
+                }
+                drawCells();
+            }, 750);
+        }
+    }
+
+    let drawBoard = function() {
+        d3.selectAll('board').remove();
+        svg.append('rect')
+            .attr('x', padding)
+            .attr('y', padding)
+            .attr('width', boardwidth)
+            .attr('height', boardheight)
+            .attr('rx', padding + 15)
+            .classed('board', 'true')
+            .on('contextmenu', () => {
+                d3.event.preventDefault();
+                if(window.confirm('Press OK to solve board')) {
+                    while(!cellData[15].matched) {
+                        // find first non matched element
+                        let category = cellData.find(c => !c.matched).category;
+                        matchCategory(category);
+                    }
+                    drawCells();
+                }
+            });
+    }
+
+    let drawCells = function() {
+        d3.selectAll('.cell').remove();
+        let frozenBoard = (phase === 2) && (lives <= 0);
+
+        cellData.forEach((cell, idx) => {
+            let row = Math.floor(idx/4);
+            let col = idx % 4;
+            let rect = svg.append('rect')
+                .attr('x', 2*padding + cellToCellX * col)
+                .attr('y', 2*padding + cellToCellY * row)
+                .attr('width', cellWidth)
+                .attr('height', cellHeight)
+                .attr('rx', 15)
+                .classed('tile', true)
+                .classed('cell', true)
+                .classed('matched' + row, cell.matched)
+                .classed('selected' + phase, cell.selected);
+            let text = svg.append('text')
+                .attr('x', 2*padding + cellToCellX * col + cellWidth / 2)
+                .attr('y', 10 + 2*padding + cellToCellY * row + cellHeight / 2)
+                .text(cell.text)
+                .classed('cell', true)
+                .classed('matched', cell.matched)
+                .classed('selected', cell.selected);
+
+            // setup interaction
+            if (!cell.matched && !frozenBoard) {
+                rect.on('mouseover', () => rect.classed('hover', true))
+                    .on('mouseout', () => rect.classed('hover', false))
+                    .on('click', () => {
+                        cell.selected = !cell.selected;
+                        checkCells();
+                        drawCells();
+                    })
+            }
+        });
+
+        drawLives();
+    }
+
+    drawLives = function() {
+        d3.selectAll('.life').remove();
+
+        if (phase === 2) {
+            let rect = svg.append('rect')
+            for(let l = 0; l < lives; l++) {
+                svg.append('circle')
+                    .attr('cx', (padding + lifeSize/2) + l * (padding + lifeSize))
+                    .attr('cy', boardheight + 2 * padding + lifeSize/2)
+                    .attr('r', lifeSize/2)
+                    .classed('life', true);
+            }
+        }
+    }
+
+    let boardHasAlignment = function() {
+        let result = false;
+        for(let row=phase; row<4; row++) {
+            let category = cellData[row*4].category;
+            let notHomogenous = cellData.filter((x, i) => (Math.floor(i/4) === row)).some(c => c.category !== category);
+            if (!notHomogenous) result = true;
+        }
+        for(let col=0; col<4; col++) {
+            let category = cellData[col].category;
+            let notHomogenous = cellData.filter((x, i) => ((i%4) === col)).some(c => c.category !== category);
+            if (!notHomogenous) result = true;
+        }
+
+        return result;
+    }
+
+    let shuffleUnmatchedCells = function() {
+        if(phase >= 3) return;
+        while(boardHasAlignment()) {
+            for (let idx = 0; idx < 16; idx++) {
+                let newIdx = Math.floor(Math.random() * 16);
+                if (!cellData[idx].matched && !cellData[newIdx].matched) {
+                    [cellData[idx], cellData[newIdx]] = [cellData[newIdx], cellData[idx]];
+                }
+            }
+        }
+    }
+
+    // go!
+    setupCellData(parseInt(window.location.search[1]));
+    shuffleUnmatchedCells();
+    drawBoard();
+    drawCells();
+</script>

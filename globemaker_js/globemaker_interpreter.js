@@ -269,11 +269,6 @@ function saveImage(resolution) {
     element.remove();
 }
 
-function optimizeToTarget() {
-    optimizeSkeleton(skel, target, size);
-    updateGUI();
-}
-
 function scaleFromTarget() {
     let resultSquared = 5184;  // 72 * 72
     if (target && target.fractionIn) {
@@ -289,11 +284,31 @@ function randomize() {
     updateGUI();
 }
 
+function checkTarget() {
+    if( !target.width ) {
+        alert('You must specify a target image');
+        return false;
+    } else if (target.width > 100) {
+        alert('You must specify a target image with resolution <= 100x100');
+        return false;
+    } else {
+        return true;
+    }
+}
+
+function optimizeToTarget() {
+    if (!checkTarget()) return;
+    await optimizeSkeleton(skel, target, size);
+    updateGUI();
+}
 
 function TheProgram() {
+    // check target
+    if (!checkTarget()) return;
+
     let candidates = [];
 
-    // A) take top 10 of 100 random tests
+    // A) take top 20 of 1000 random tests
     for(let i = 0; i<1000; i++) {
         console.log('A ' + i);
         let skel = getRandomSkeleton(8, scaleFromTarget());

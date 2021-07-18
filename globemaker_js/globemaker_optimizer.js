@@ -148,6 +148,13 @@ function calcCost(skeleton, targetPixels, width, height, parameters, stepsize) {
             if (target === 0 || actual === 0) error += actual + target;
         }
     }
+
+    // punish values over 2
+    parameters.slice(1).map(p => Math.abs(p) - 2.0).forEach(a => {
+        if (a > 0.0) {
+            error += a * width;
+        }
+    });
     return error;
 }
 
@@ -188,8 +195,8 @@ function calcQuickCost(skeleton, targetImage, displaySize) {
     for(let y=0; y<targetImage.height; y++) {
         for(let x=0; x<targetImage.width; x++) {
             let targetIn = targetImage.pixel(x, y) === 0;
-            let actualIn = skeleton.colorOfCoordinate(x - targetImage.width / 2, y - targetImage.height / 2).r !== 0;
-            if (targetIn != actualIn) {error++; }
+            let actualIn = skeleton.colorOfCoordinate(x - targetImage.width / 2, y - targetImage.height / 2).r === 0;
+            if (targetIn !== actualIn) {error++; }
         }
     }
     skeleton.scale *= displaySize / targetImage.width;
@@ -233,7 +240,7 @@ function getRandomSkeleton(numPoints, scale) {
     let visited = [0];
     let skel = new Skeleton(scale);
     skel.rotate(Math.random() * 2.0 - 1.0);
-    skel.move(Math.random());
+    skel.move(0);
 
     // skel has just arrived at thisPoint (from prevPos)
     let doNode = function(skel, prevPos, thisPoint) {
