@@ -132,4 +132,14 @@ var DMSLib = DMSLib || {};
         if ( dot_product >= 1 ) { return 0.0; }
         return Math.acos(dot_product);
     };
+    $.Point2D.deflection = function(a, b, c) {
+        // returns the signed angle a path from a to b needs to turn at point b in order to head towards c
+        let unsignedDeflection = Math.PI - $.Point2D.angle(a, b, c);
+
+        let ab = b.sub(a);
+        let bc = c.sub(b);
+        let goesLeft = ab.x * bc.y > ab.y * bc.x;
+
+        return goesLeft ? unsignedDeflection : -unsignedDeflection;
+    }
 })(DMSLib);
