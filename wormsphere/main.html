@@ -5,14 +5,20 @@
 <script src='../d3_pages/dmslib_point2d.js'></script>
 <script src='../d3_pages/dmslib_point3d.js'></script>
 <script src='../d3_pages/dmslib_xfrm.js'></script>
+
+<script src='../d3_pages/tsp_solver.js'></script>
+<script src='../d3_pages/tsp_tour_generation.js'></script>
 <script src='wormsphere.js'></script>
 </head>
 
 <body>
-    <div id="sphere"> </div>
-    <div id="plane"> </div>
-    <button onclick="go();">Go</button>
-    <button onclick="pushSphereToPlane();">push S to P</button>
+    <div id="container" style="display:grid; grid-template-columns:1fr 1fr; grid-gap:20px;">
+        <div id="sphere"> </div>
+        <div id="plane"> </div>
+    </div>
+    <button onclick="goSphere();">GoSphere</button>
+    <button onclick="goPlane();">GoPlane</button>
+    <button onclick="getRandomPlane();">Random Plane</button>
 </body>
 </html>
 

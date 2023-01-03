@@ -36,42 +36,50 @@ function initialize() {
 }
 
 function drawPath(path) {
-    planar = toPlanarPath(path, 50, 50, 750, 550);
     drawPathOnSphere(path);
+
+    planar = toPlanarPath(path, 50, 50, 750, 550);
     drawPathOnPlane(planar.path);
 }
 
 function toPlanarPath(spherePath, x, y, w, h) {
-    let planePath = [];
-
-    let pos = new DMSLib.Point2D();
-    let dir = 0;
+    let result = {path: [], scale: 0}
     let o = new DMSLib.Point3D(); // origin
 
-    for (let i=0; i<spherePath.length; i++) {
-        planePath.push(pos); 
+    for(let startdir=0; startdir<DMSLib.HALFTAU; startdir+=DMSLib.HALFTAU/90) {
+        let planePath = [];
+        let pos = new DMSLib.Point2D();
+        let dir = startdir;
 
-        let p = i>0 ? spherePath[i-1] : null;
-        let q = spherePath[i]
-        let r = i < spherePath.length-1 ? spherePath[i+1] : null;
+        for (let i=0; i<spherePath.length; i++) {
+            planePath.push(pos); 
 
-        deflectionAngle = (p && q && r) ? -DMSLib.Point3D.sphereDeflection(p, q, r) : 0;
-        dir += deflectionAngle;
+            let p = i>0 ? spherePath[i-1] : null;
+            let q = spherePath[i]
+            let r = i < spherePath.length-1 ? spherePath[i+1] : null;
 
-        distanceToMove = (q && r) ? DMSLib.Point3D.angle(q,o,r) : 0;
-        pos = pos.add(DMSLib.Point2D.fromPolar(distanceToMove, dir));
+            let deflectionAngle = (p && q && r) ? -DMSLib.Point3D.sphereDeflection(p, q, r) : 0;
+            dir += deflectionAngle;
+
+            let distanceToMove = (q && r) ? DMSLib.Point3D.angle(q,o,r) : 0;
+            pos = pos.add(DMSLib.Point2D.fromPolar(distanceToMove, dir));
+        }
+
+        // get values of path
+        let maxX = Math.max(...planePath.map(p => p.x))
+        let minX = Math.min(...planePath.map(p => p.x))
+        let maxY = Math.max(...planePath.map(p => p.y))
+        let minY = Math.min(...planePath.map(p => p.y))
+
+        let scale = Math.min(w / (maxX - minX), h / (maxY - minY));
+        if(scale > result.scale) {
+            result.scale = scale;
+            let offset = new DMSLib.Point2D(x - minX*result.scale, y - minY*result.scale);
+            result.path = planePath.map(p => p.mul(result.scale).add(offset));
+        }
     }
 
-    // get values of path
-    let maxX = Math.max(...planePath.map(p => p.x))
-    let minX = Math.min(...planePath.map(p => p.x))
-    let maxY = Math.max(...planePath.map(p => p.y))
-    let minY = Math.min(...planePath.map(p => p.y))
-    
-    let scale = Math.min(w / (maxX - minX), h / (maxY - minY));
-    let offset = new DMSLib.Point2D(x - minX*scale, y - minY*scale);
-    resultPath = planePath.map(p => p.mul(scale).add(offset));
-    return {path: resultPath, scale: scale};
+    return result;
 }
 
 function toSpherePath(planarPath, scale) {
@@ -180,11 +188,12 @@ function getPentagonPath() {
 }
 
 // return n equally distributed points along a path 
-function redistributePoints(path, n = 100) {
+function redistributePoints(path, n, closed=true) {
     pathdistance = 0
-    for (let i=0; i<path.length; i++) {
+    lastIdx = closed ? path.length : (path.length-1);
+    for (let i=0; i<lastIdx; i++) {
         let a = path[i]
-        let b = path[(i+1) % path.length]
+        let b = path[(i+1)%path.length]
         pathdistance += a.sub(b).R();
     }
 
@@ -192,7 +201,7 @@ function redistributePoints(path, n = 100) {
     idx = 0;
     stepdist = pathdistance / n;
     result = [];
-    while (idx < path.length - 1e-5) {
+    while (idx < lastIdx - 1e-5) {
         idxI = Math.floor(idx)
         idxF = idx - idxI
         let a = path[idxI]
@@ -202,7 +211,7 @@ function redistributePoints(path, n = 100) {
 
         if(distToNextStep <= 0) {
             // push current location to result
-            result.push(currentPos.normalized())
+            result.push(currentPos)
             distToNextStep = stepdist
         }
         
@@ -211,10 +220,9 @@ function redistributePoints(path, n = 100) {
 
         // go to next step location
         distToNextStep -= toTravel 
-        if(b.sub(a).R() <= 0) 
-            console.log('hey!')
         idx += toTravel / b.sub(a).R();
     }
+    if (!closed) result.push(path[path.length-1]);
     return result;
 }
 
@@ -236,20 +244,16 @@ function windMultiplier(az, bz, bound) {
     let top = Math.min(bound, Math.max(az, bz))
     let bottom = Math.max(-bound, Math.min(az, bz))
 
-    if(bound === 0) 
-        console.log('hey!')
     return Math.max((top-bottom) / (2*bound), 0)
 }
 
-// wind acts by increasing theta (in spherical coordinates)
-const MAXWIND = 5 * Math.PI / 180;
-function windBlownTheta(theta, multiplier) {
-    let absTheta = Math.abs(theta);
-    let sign = Math.sign(theta);
-    // effect starts at MAXWIND when theta = 0, then decreases by half every 30 degrees
-    deltaTheta = Math.pow(0.2, absTheta/(DMSLib.HALFTAU/6)) * MAXWIND;
-    deltaTheta *= multiplier;
-    return (absTheta + deltaTheta) * sign;
+// wind acts with exponential decay
+function windBlownValue(value, halfstrength, maxeffect) {
+    let absValue = Math.abs(value);
+    let sign = Math.sign(value);
+    let base = Math.pow(0.5, 1/halfstrength)
+    delta = Math.pow(base, absValue) * maxeffect;
+    return (absValue + delta) * sign;
 }
 
 // fiven points A = [a_0, ... a_4] calculate smoother value for a_2 assuming all points should be on an arc
@@ -291,7 +295,7 @@ function smoothPath(path) {
     return result;
 }
 
-function applyWind(path) {
+function applySphereWind(path) {
     let resultPath = path.slice();
 
     // iterate over each segment
@@ -315,7 +319,9 @@ function applyWind(path) {
             if (k <= 0) continue;
 
             // calculate the affected point and add to accumulator (wind acts upon spherical coordinates theta)
-            let newTheta = windBlownTheta(p.theta(), k);
+            const MAXWIND = 10 * Math.PI / 180;
+            const HALFSTRENGTH = 13 * Math.PI / 180;
+            let newTheta = windBlownValue(p.theta(), HALFSTRENGTH, k * MAXWIND);
             p.setTheta(newTheta);
             resultPath[j] = resultPath[j].add(RInv.apply(p));
         }
@@ -323,10 +329,52 @@ function applyWind(path) {
     return resultPath.map(p => p.normalized());
 }
 
-function go() {
-    for(let i=0; i<1000; i++) {
-        globalPath = applyWind(globalPath); 
-        globalPath = redistributePoints(globalPath, PATHLENGTH);
+function transform2DPoint(pt, offset, rotation)  {
+    let result = pt.add(offset);
+    result.setTheta(result.theta() + rotation);
+    return result;
+}
+
+function applyPlanarWind(path) {
+    let resultPath = path.slice();
+    let count = resultPath.map(p => 1);
+
+    // iterate over each segment
+    for(let i=0; i<path.length - 1; i++) {
+        let a = path[i];
+        let b = path[i+1];
+        let offset = a.add(b).mul(-0.5);
+        let rotation = -Math.atan2(a.sub(b).y, a.sub(b).x);
+        let xBound = transform2DPoint(a, offset, rotation).x; 
+        // transform path s.t. a is on positive x-axis, b is on negative x-axis 
+        let reorientedPath = path.map(p => transform2DPoint(p, offset, rotation))
+        
+        // calculate effect it has on the rest of the points
+        for (let j=0; j<path.length; j++) {
+            if(j == i || j == i+1) continue;
+
+            // calculate multiplier for this point.
+            let p = new DMSLib.Point2D(reorientedPath[j]);
+            let xbefore = j==0 ? p.x : reorientedPath[j-1].x;
+            let xafter = (j==path.length-1) ? p.x : reorientedPath[j+1].x;
+            let k = windMultiplier(xbefore, p.x, xBound) + windMultiplier(xafter, p.x, xBound);
+            if (k <= 0) continue;
+
+            // calculate the affected point undo transform, add to accumulator (wind acts y value)
+            p.y = windBlownValue(p.y, 20, k * 25)
+            p.setTheta(p.theta() - rotation);
+            p = p.sub(offset);
+            resultPath[j] = resultPath[j].add(p);
+            count[j]++;
+        }
+    }
+    return resultPath.map((p, i) => p.div(count[i]));
+}
+
+function goSphere() {
+    for(let i=0; i<10; i++) {
+        globalPath = applySphereWind(globalPath); 
+        globalPath = redistributePoints(globalPath, PATHLENGTH).map(p => p.normalized());
         if(i%10) {
             globalPath = smoothPath(globalPath);
         }
@@ -334,8 +382,23 @@ function go() {
     drawPath(globalPath);
 }
 
-function pushSphereToPlane() {
+function goPlane() {
     planar = toPlanarPath(globalPath, 50, 50, 750, 550);
+    for(let i=0; i<10; i++) {
+        planar.path = applyPlanarWind(planar.path); 
+        planar.path = redistributePoints(planar.path, PATHLENGTH, false);
+    }
     globalPath = toSpherePath(planar.path, planar.scale);
+    drawPath(globalPath);
+}
+
+function getRandomPlane() {
+    let planarPath = getRandomPts(STARTINGPOINTS, {width:750, height:550})
+    doInsertionHeuristic(planarPath, 0, planarPath.length);
+    while(doTwoOpt(planarPath, 0, planarPath.length, false)) {}
+    while(doTwoOpt(planarPath, 0, planarPath.length, true)) {}
+    while(doTwoOpt(planarPath, 0, planarPath.length, false)) {}
+
+    globalPath = toSpherePath(planarPath, 30);
     drawPath(globalPath);
 }
