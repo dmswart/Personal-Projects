@@ -37,3 +37,11 @@ DMSLib.smooth = function(x) {
 
     return x;
 };
+
+DMSLib.cross = function(a, b) {
+    if(a instanceof DMSLib.Point2D) {
+        return DMSLib.Point2D.cross(a, b);
+    } else {
+        return DMSLib.Point3D.cross(a, b);
+    }
+}

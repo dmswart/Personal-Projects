@@ -213,6 +213,16 @@
             test('Point2D_dot', val, 11);
         };
 
+        var Point2D_cross = function() {
+            var a = new DMSLib.Point2D(1, 2);
+            var b = new DMSLib.Point2D(3, 4);
+
+            var val = DMSLib.Point2D.cross(a, b);
+            test('Point2D_cross', val.x, 0);
+            test('Point2D_cross', val.y, 0);
+            test('Point2D_cross', val.z, -2);
+        }
+
         var Point2D_angle = function () {
             var a = new DMSLib.Point2D(1, 1);
             var b = new DMSLib.Point2D(4, 2);
@@ -239,6 +249,7 @@
     Point2D_staticValues();
     Point2D_fromPolar();
     Point2D_dot();
+    Point2D_cross();
     Point2D_angle();
     document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
 </script>
