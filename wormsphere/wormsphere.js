@@ -5,7 +5,7 @@ let PLANE_WIDTH = 700;
 let PLANE_HEIGHT = 500;
 let PLANE_BUFFER = 50;
 let gPlanarPath = [];
-const PLANE_SCALE = 100
+const PLANE_SCALE = 75;
 const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
                   w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
                   h:(PLANE_HEIGHT-2*PLANE_BUFFER)/PLANE_SCALE};
@@ -382,7 +382,7 @@ function calcStep(edges, ptData) {
     // k(p, q, Tp) = |Tp x (p-q)| ^ alpha) / |p-q|^beta
     const alpha = 2; // common alpha, beta values are (2, 4.5) and (3, 6)
     const beta = 4.5;
-    function k(p, q, Tp) {
+    function k(p, q, Tp, Tq) {
         let pq = p.sub(q).mul(localScale);
         return Math.pow(DMSLib.cross(Tp, pq).R(), alpha) / Math.pow(pq.R(), beta);
     }
@@ -393,9 +393,9 @@ function calcStep(edges, ptData) {
         let T = edge.T;
         if(a.equals(pt) || b.equals(pt)) return;
 
-        E += k(a, pt, T) + k(b, pt, T);
-        E_T += k(a, pt_T, T) + k(b, pt_T, T);
-        E_N += k(a, pt_N, T) + k(b, pt_N, T);
+        E += k(a, pt, T, ptData.T) + k(b, pt, T, ptData.T);
+        E_T += k(a, pt_T, T, ptData.T) + k(b, pt_T, T, ptData.T);
+        E_N += k(a, pt_N, T, ptData.T) + k(b, pt_N, T, ptData.T);
     });
 
     // not (E_T - E) because positive change means we'd want to step in opposite direction
@@ -417,13 +417,11 @@ function buildEdges(path) {
     return result;
 }
 
-function doEnergy(n, doSphere, doPlane) {
+function doEnergy(doSphere, doPlane) {
+    let n = parseInt(document.getElementById("iterations").value);
     for(let iter = 0; iter<n; iter++) {
         if(doPlane) {
-            for(let pi = 0; pi<100; pi++) {
-                result = doPlaneStep();
-                if(result > 50) break;
-            }
+            doPlaneStep();
         }
         if(doSphere) {
             doSphereStep('wind');
@@ -448,7 +446,7 @@ function doSphereStep(type = 'wind') {
         }
         let mags = step.map(s => s.R()).sort((a, b) => b-a);
 
-        let stepscale = (1 * DMSLib.TAU/360) / mags[0];  // max 1 degree per step
+        let stepscale = (5 * DMSLib.TAU/360) / mags[0];  // max 1 degree per step
     
         for(let i=0; i<spherePath.length; i++) {
             spherePath[i] = spherePath[i]
@@ -479,9 +477,6 @@ function doPlaneStep() {
             .add(edges[i].N.mul(step[i].y * stepscale));
     }
     gPlanarPath = redistributePoints(gPlanarPath, PATHLENGTH, false);
-    
-    // a measure of how localized vs. general the movement is.  (width of half peak of histogram)
-    return mags.filter(m => m>(mags[0]*0.5)).length;
 }
 
 function getRandomPath() {
@@ -500,5 +495,9 @@ function getRandomPath() {
     drawPath(gPlanarPath);
 }
 
-// TODO try old wind based sphere.
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.
+// TODO - calc energy for sphere
+//      - start by trying 1/x version of wind get it to work.
+//      - calculate T and N movement - using wind - keep it working
+//      - run at same time as plane
+// TODO - try redistributing lower/higher for plane/sphere

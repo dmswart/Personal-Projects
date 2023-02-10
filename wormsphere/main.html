@@ -16,10 +16,18 @@
         <div id="sphere"> </div>
         <div id="plane"> </div>
     </div>
-    <button onclick="doEnergy(100, true, true);">Energy</button>
-    <button onclick="doEnergy(1, false, true);">Energy Plane</button>
-    <button onclick="doEnergy(1, true, false);">Energy Sphere</button>
+    <button onclick="doEnergy(true, true);">Energy</button>
+    <button onclick="doEnergy(false, true);">Energy Plane</button>
+    <button onclick="doEnergy(true, false);">Energy Sphere</button>
     <button onclick="increasePoints();">Increase Points</button>
+    <p></p>
+    Iterations: 
+    <select name="iterations" id="iterations" value=10>
+      <option value=1000>1000</option>
+      <option value=100>100</option>
+      <option value=10 selected="selected">10</option>
+      <option value=1>1</option>
+    </select>
 </body>
 </html>
 
