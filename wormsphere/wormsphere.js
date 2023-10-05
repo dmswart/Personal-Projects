@@ -5,6 +5,7 @@ let PLANE_WIDTH = 700;
 let PLANE_HEIGHT = 500;
 let PLANE_BUFFER = 50;
 let gPlanarPath = [];
+let gSpherePath = [];
 const PLANE_SCALE = 75;
 const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
                   w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
@@ -46,11 +47,12 @@ function initialize() {
         .attr('fill', 'silver');
 
     getRandomPath();
+    // getPolygonPath();
 }
 
-function drawPath(planarPath) {
-    drawPathOnPlane(planarPath);
-    drawPathOnSphere(toSpherePath(planarPath));
+function drawPath() {
+    drawPathOnPlane(gPlanarPath);
+    drawPathOnSphere(gSpherePath);
 }
 
 function toPlanarPath(spherePath) {
@@ -96,6 +98,24 @@ function toPlanarPath(spherePath) {
 function toSpherePath(planarPath, scale = 1) {
     let result = [];
     let orientation = new DMSLib.Rotation();
+
+    // get original orientation by working backwards from the middle
+    /*
+    for (let i=Math.floor(planarPath.length/2); i>0; i--) {
+        let p = planarPath[i-1]; 
+        let q = planarPath[i];
+        let r = planarPath[i+1];
+
+        let deflectionAngle = DMSLib.Point2D.deflection(p, q, r);
+        let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
+
+        let distanceToMove = -p.sub(q).R() / scale;
+        let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
+
+        orientation = orientation.combine(deflection).combine(move);
+    }
+    */
+
     for(let i=0; i<planarPath.length; i++) {
         result.push(orientation.apply(DMSLib.Point3D.xAxis()));
 
@@ -240,27 +260,7 @@ function orientSegment(a, b) {
     return orientingR.combine(centeringR);
 }
 
-// given z values of two points, what percentage of the range -bound..bound does it take up?
-function windMultiplier(az, bz, bound) {
-    bound = Math.abs(bound)
-
-    // we have to calculate overlap
-    let top = Math.min(bound, Math.max(az, bz))
-    let bottom = Math.max(-bound, Math.min(az, bz))
-
-    return Math.max((top-bottom) / (2*bound), 0)
-}
-
 // wind acts with exponential decay
-function windBlownValue(value, halfstrength, maxeffect) {
-    let absValue = Math.abs(value);
-    let sign = Math.sign(value);
-    let base = Math.pow(0.5, 1/halfstrength)
-    delta = Math.pow(base, absValue) * maxeffect;
-    // delta = Math.min(1/absValue/328, maxeffect);  // 1/x
-    return (absValue + delta) * sign;
-}
-
 // fiven points A = [a_0, ... a_4] calculate smoother value for a_2 assuming all points should be on an arc
 function smoothPoint(A) {
     // rotations that orient a_0, a_1.  and a_3, a_4 so their midpoint goes to x axis
@@ -294,8 +294,7 @@ function smoothPath(path) {
     result = path.slice();
     if(path[0] instanceof DMSLib.Point3D) {
         for(let i=2; i<path.length-2; i++) {
-            let idxs = [-2, -1, 0, 1, 2].map(t => (i + path.length + t) % path.length);
-            let pts = idxs.map(idx => path[idx]);
+            let pts = [-2, -1, 0, 1, 2].map(t => path[i + t]);
             result[i] = smoothPoint(pts);
         }
     } else if (path[0] instanceof DMSLib.Point2D) {
@@ -310,8 +309,9 @@ function smoothPath(path) {
     return result;
 }
 
-function applySphereWind(path) {
-    let resultPath = path.slice();
+function applySphereWind(path, edges) {
+    deltas = [];
+    for(let i=0; i<path.length; i++) deltas[i]=new DMSLib.Point3D();
 
     // iterate over each segment
     for(let i=0; i<path.length-1; i++) {
@@ -319,29 +319,35 @@ function applySphereWind(path) {
         let bi = path[i+1];
         let R = orientSegment(ai, bi);
         let RInv = R.inverse();
-        let zBound = R.apply(ai).z; 
+        let zBound = R.apply(ai).z / 2; 
         let reorientedPath = path.map(p => R.apply(p));
 
         // calculate effect it has on the rest of the edges
         for (let j=0; j<path.length-1; j++) {
-            if(j == i || j == i+1) continue;
-            let aj = reorientedPath[j];
-            let bj = reorientedPath[j+1];
+            if(j == i) continue;
+            let aj = new DMSLib.Point3D(reorientedPath[j]);
+            let bj = new DMSLib.Point3D(reorientedPath[j+1]);
 
             // calculate multiplier for this point.
-            let k = windMultiplier(aj.z, bj.z, zBound);
-            if (k <= 0) continue;
+            let k = Math.abs(DMSLib.erf(aj.z/zBound) - DMSLib.erf(bj.z/zBound)) * DMSLib.EPSILON;
 
             // calculate the affected point and add to accumulator (wind acts upon spherical coordinates theta)
-            const MAXWIND = 1 * Math.PI / 180;
-            const HALFSTRENGTH = 13 * Math.PI / 180;
-            aj.setTheta(windBlownValue(aj.theta(), HALFSTRENGTH, k * MAXWIND));
-            resultPath[j] = resultPath[j].add(RInv.apply(aj));
-            bj.setTheta(windBlownValue(bj.theta(), HALFSTRENGTH, k * MAXWIND));
-            resultPath[j+1] = resultPath[j+1].add(RInv.apply(bj));
+            let theta = aj.theta();
+            if (Math.abs(theta) > DMSLib.EPSILON) {
+                aj.setTheta(theta + 1/theta*k);
+                deltas[j] = deltas[j].add(RInv.apply(aj)).sub(path[j]);
+            }
+            theta = bj.theta();
+            if (Math.abs(theta) > DMSLib.EPSILON) {
+                bj.setTheta(theta + 1/theta*k);
+                deltas[j+1] = deltas[j+1].add(RInv.apply(bj)).sub(path[j+1]);
+            }
         }
     }
-    return resultPath.map(p => p.normalized());
+    return deltas.map((d,i) => new DMSLib.Point2D(
+            DMSLib.Point3D.dot(d.normalized(), edges[i].T),
+            DMSLib.Point3D.dot(d.normalized(), edges[i].N))
+        )
 }
 /******************************************************************************************
 *  end of wind code
@@ -420,44 +426,69 @@ function buildEdges(path) {
 function doEnergy(doSphere, doPlane) {
     let n = parseInt(document.getElementById("iterations").value);
     for(let iter = 0; iter<n; iter++) {
-        if(doPlane) {
+        if(doPlane && doSphere) {
+            doBothStep();
+        } else if(doPlane) {
             doPlaneStep();
-        }
-        if(doSphere) {
+        } else if(doSphere) {
             doSphereStep('wind');
         }
     }
-    gPlanarPath = smoothPath(gPlanarPath);
     drawPath(gPlanarPath);
 }
 
+function doBothStep() {
+    sEdges = buildEdges(gSpherePath);
+    pEdges = buildEdges(gPlanarPath);
+    let pSteps = [];
+    for(let i=0; i<gPlanarPath.length; i++) {
+        pSteps[i] = calcStep(pEdges, pEdges[i]); 
+    }
+    let sSteps = applySphereWind(gSpherePath, sEdges);
+
+    let max = sSteps.map(s => s.R()).sort((a, b) => b-a)[0];
+    sSteps = sSteps.map(s => s.mul((1/360 * DMSLib.TAU) / max));
+    max = pSteps.map(s => s.R()).sort((a, b) => b-a)[0];
+    pSteps = pSteps.map(s => s.mul((5/PLANE_SCALE) / max));
+
+    for(let i=0; i<gSpherePath.length; i++) {
+        let step = sSteps[i].add(pSteps[i]);
+        gSpherePath[i] = gSpherePath[i]
+            .add(sEdges[i].T.mul(step.x))
+            .add(sEdges[i].N.mul(step.y))
+            .normalized();
+    }
+
+    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath).path;
+}
+
 function doSphereStep(type = 'wind') {
-    result = 0
-    let spherePath = toSpherePath(gPlanarPath)
+    edges = buildEdges(gSpherePath);
+    let step = [];
 
     if(type === 'wind') {
-        spherePath = applySphereWind(spherePath);
+        step = applySphereWind(gSpherePath, edges);
     } else if (type === 'energy') {
-        edges = buildEdges(spherePath);
-
-        let step = [];
         for(let i=0; i<gPlanarPath.length; i++) {
             step[i] = calcStep(edges, edges[i]); 
         }
-        let mags = step.map(s => s.R()).sort((a, b) => b-a);
-
-        let stepscale = (5 * DMSLib.TAU/360) / mags[0];  // max 1 degree per step
-    
-        for(let i=0; i<spherePath.length; i++) {
-            spherePath[i] = spherePath[i]
-                .add(edges[i].T.mul(step[i].x * stepscale))
-                .add(edges[i].N.mul(step[i].y * stepscale))
-                .normalized();
-        }
     }
 
-    spherePath = redistributePoints(spherePath, PATHLENGTH, false);
-    gPlanarPath = toPlanarPath(spherePath).path;
+    let mags = step.map(s => s.R()).sort((a, b) => b-a);
+    let stepscale = (1/360 * DMSLib.TAU) / mags[0];  // max 1 degree per step
+
+    for(let i=0; i<gSpherePath.length; i++) {
+        gSpherePath[i] = gSpherePath[i]
+            .add(edges[i].T.mul(step[i].x * stepscale))
+            .add(edges[i].N.mul(step[i].y * stepscale))
+            .normalized();
+    }
+
+    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath).path;
 }
 
 function doPlaneStep() {
@@ -469,7 +500,7 @@ function doPlaneStep() {
     }
     let mags = step.map(s => s.R()).sort((a, b) => b-a);
 
-    let stepscale = 5 / (PLANE_SCALE * mags[0]);  // max 5 pixels per step
+    let stepscale = (1 / PLANE_SCALE) / mags[0];  // max 5 pixels per step
     
     for(let i=0; i<gPlanarPath.length; i++) {
         gPlanarPath[i] = gPlanarPath[i]
@@ -477,22 +508,93 @@ function doPlaneStep() {
             .add(edges[i].N.mul(step[i].y * stepscale));
     }
     gPlanarPath = redistributePoints(gPlanarPath, PATHLENGTH, false);
+    gSpherePath = toSpherePath(gPlanarPath)
+}
+
+function getPolygonPath() {
+    const numsides = 5;
+    gSpherePath = [];
+    for(let i=0; i<numsides+1; i++) {
+        let p = DMSLib.Point3D.fromSphericalCoordinates(1, DMSLib.TAU/36, i*DMSLib.TAU/numsides);
+        p = new DMSLib.Point3D(p.x, p.z, p.y);
+        gSpherePath[i] = p;
+    }
+    gPlanarPath = toPlanarPath(gSpherePath).path;
+    drawPath();
 }
 
 function getRandomPath() {
-    let spherePath = [];
+    gSpherePath = [];
     for(let i=0; i<STARTINGPOINTS; i++) {
-        spherePath[i] = DMSLib.Point3D.random(1).normalized();
+        gSpherePath[i] = DMSLib.Point3D.random(1).normalized();
     }
-    doInsertionHeuristic(spherePath, 0, spherePath.length-1);
-    while(doTwoOpt(spherePath, 0, spherePath.length-1, false)) {}
-    while(doTwoOpt(spherePath, 0, spherePath.length-1, true)) {}
-    while(doTwoOpt(spherePath, 0, spherePath.length-1, false)) {}
+    doInsertionHeuristic(gSpherePath, 0, STARTINGPOINTS-1);
+    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
+    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, true)) {}
+    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
 
-    spherePath = redistributePoints(spherePath, PATHLENGTH, false);
-    gPlanarPath = toPlanarPath(spherePath).path;
+    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
 
-    drawPath(gPlanarPath);
+    gPlanarPath = toPlanarPath(gSpherePath).path;
+    drawPath();
+}
+
+
+let gRandomVec = DMSLib.Point2D.random(0.4);
+function scratch() {
+    gPlanarPath = [];
+    let segLength = 0.5;
+    let N = 8;
+    for(let i=0; i<N;i++) {
+        gPlanarPath[i] = new DMSLib.Point2D(i*segLength+2, 3);
+    }
+    gSpherePath = toSpherePath(gPlanarPath);
+    originalSpherePath = gSpherePath.map(x=>x.copy());
+    originalPlanarPath = gPlanarPath.map(x=>x.copy());
+
+    // initial perturbation
+    gPlanarPath[2] = originalPlanarPath[2].add(gRandomVec);
+    
+    closestDist = 100000;
+    closestPath = gPlanarPath.map(x=>x.copy());
+
+    if(true) {
+        // BRUTE FORCE
+        for(let i=0; i<100000; i++) {
+            for(p=3; p<N-2; p++)
+                gPlanarPath[p] = originalPlanarPath[p].add(DMSLib.Point2D.random(segLength));
+    
+            gSpherePath = toSpherePath(gPlanarPath);
+            dist = gSpherePath[N-2].sub(originalSpherePath[N-2]).R();
+            if(dist < closestDist) {
+                closestDist = dist;
+                closestPath = gPlanarPath.map(x=>x.copy());
+            }
+        }
+    } else {
+        // HILL CLIMBING
+        let delta = segLength * 0.01;
+
+        for(let i=0; i<100000; i++) {
+            for(p=3; p<N-2; p++)
+                gPlanarPath[p] = closestPath[p].add(DMSLib.Point2D.random(delta));
+
+            gSpherePath = toSpherePath(gPlanarPath);
+            dist = gSpherePath[N-2].sub(originalSpherePath[N-2]).R();
+            if(dist < closestDist) {
+                closestDist = dist;
+                closestPath = gPlanarPath.map(x=>x.copy());
+                delta *= 1.2;
+            } else {
+                delta *= 0.9;
+            }
+        }
+
+    }
+    console.log('initialoffset = ' + gRandomVec.R() + '; closestDist = ' + closestDist);
+    gPlanarPath = closestPath;
+    gSpherePath = toSpherePath(gPlanarPath);
+    drawPath();
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.
