@@ -44,14 +44,40 @@ function setupPreview() {
         .attr('fill', 'none');
 }
 
+function pathString(d) {
+    let s = new DMSLib.Point2D(d.x1, d.y1);
+    let sdir = d.startdir;
+    let e = new DMSLib.Point2D(d.x2, d.y2);
+    
+    // get rotation point
+    let sdirPlus90 = DMSLib.Point2D.fromPolar(1.0, sdir + DMSLib.QUARTERTAU);
+    let seMidpoint = s.add(e).mul(0.5);
+    let sToE = e.sub(s);
+    let sToEPlus90 = DMSLib.Point2D.fromPolar(1.0, sToE.theta()+DMSLib.QUARTERTAU);
+    let c = DMSLib.Point2D.intersect2Lines(s, sdirPlus90, seMidpoint, sToEPlus90);
+
+    result = 'M' + s.x + ',' + s.y;
+
+    // c is null means a line
+    if (c == null)
+        return result + 'L' + e.x + ',' + e.y;
+
+    // arc around c
+    let radius = s.sub(c).R();
+    let large_sweep_flag = DMSLib.angleBetween(e.sub(s).theta(), sdir) > DMSLib.QUARTERTAU ? 1 : 0;
+    let sweep_flag = DMSLib.fixAngle(sdir - c.sub(s).theta()) > 0 ? 0 : 1;  // +ve angle means center to the right, so curve is clockwise
+
+    return result + 'A' + radius + ',' + radius + ',' + 0 + ',' + large_sweep_flag + ',' + sweep_flag + ',' + e.x + ',' + e.y;
+}
+
 function updateLines(skel) {
     let selection = svg.select('#lines').selectAll('path')
         .data(skel.list('line'), d => d.id);
     selection.enter().append('path')
-        .attr('d', d => 'M' + d.x1 + ',' + d.y1 + 'L' + d.x2 + ',' + d.y2);
+        .attr('d', d => pathString(d));
     selection.exit().remove();
     selection
-        .attr('d', d => 'M' + d.x1 + ',' + d.y1 + 'L' + d.x2 + ',' + d.y2);
+        .attr('d', d => pathString(d));
 
     selection = svg.select('#lines').selectAll('circle')
         .data(skel.list('line'), d => d.id);

@@ -55,6 +55,7 @@ function SkeletonNode(type, value, strength, scale) {
             let parentState = this.parent.globalState;
             result.push({x1: parentState.plane_pos.x, y1: parentState.plane_pos.y,
                          x2: this.globalState.plane_pos.x, y2: this.globalState.plane_pos.y,
+                         startdir: parentState.plane_theta,
                          id: this.id});
         }
         this.children.forEach(function(child) {result = result.concat(child.list(type));});

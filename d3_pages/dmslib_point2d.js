@@ -142,5 +142,17 @@ var DMSLib = DMSLib || {};
         let goesLeft = ab.x * bc.y > ab.y * bc.x;
 
         return goesLeft ? unsignedDeflection : -unsignedDeflection;
+    };
+    $.Point2D.intersect2Lines = function(a, adir, b, bdir) {
+        // using https://en.wikipedia.org/w/index.php?title=Line%E2%80%93line_intersection
+        let [x1, y1, x2, y2] = [a.x, a.y, a.add(adir).x, a.add(adir).y];
+        let [x3, y3, x4, y4] = [b.x, b.y, b.add(bdir).x, b.add(bdir).y];
+
+        denom =  (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+        if (Math.abs(denom) < 1e-5) return null;
+
+        numer1 = (x1*y2-y1*x2)*(x3-x4) - (x1-x2)*(x3*y4-y3*x4);
+        numer2 = (x1*y2-y1*x2)*(y3-y4) - (y1-y2)*(x3*y4-y3*x4);
+        return new $.Point2D(numer1/denom, numer2/denom);
     }
 })(DMSLib);
