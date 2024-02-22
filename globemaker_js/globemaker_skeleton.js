@@ -1,19 +1,18 @@
 var uniqueId = 0;
 
-// type:  'line', 'move', 'moveOnPlane', 'rotate', or 'none'
+// type:  'line', 'move', 'moveOnPlane', 'rotate', 'arc' or 'none'
 // value: amount to move, or rotate
-// strength: (for line only, how strong the new segment is)
-// scale: how many pixels we're scaling up the plane by.
-function SkeletonNode(type, value, strength, scale) {
+// strength: for line only, how strong the new segment is
+// radius (on sphere): for arc only, how far is our turning radius to the left, +ve radius means turning ccw
+function SkeletonNode(type, value, strength, radius= null) {
     this.parent = null;
     this.children = [];
 
     // set local node values
     this.type = type;
-    this.length = ['line', 'move', 'moveOnPlane'].includes(this.type) ? value : 0;
-    this.theta = 'rotate' === this.type ? value : 0;
+    this.value = value;
+    this.radius = radius;
     this.strength = strength;
-    this.scale = scale;
     this.id = uniqueId++;
 
     // global state has positions in *image* coordinates
@@ -30,48 +29,76 @@ function SkeletonNode(type, value, strength, scale) {
                            {plane_pos: new DMSLib.Point2D(0, 0), plane_theta: 0, sphere_rot: new DMSLib.Rotation()};
 
         // calculate global state from parent state + local values
+
         // first plane values
-        this.globalState.plane_theta = parentState.plane_theta + this.theta;
-        this.globalState.plane_pos = parentState.plane_pos.add(DMSLib.Point2D.fromPolar(this.length * this.scale, this.globalState.plane_theta));
+        this.globalState.plane_theta = parentState.plane_theta;
+        this.globalState.plane_pos = parentState.plane_pos;
+
+        switch(this.type) {
+            case 'line':
+            case 'move':
+            case 'moveOnPlane':
+                this.globalState.plane_pos = parentState.plane_pos.add(DMSLib.Point2D.fromPolar(this.value, this.globalState.plane_theta));
+                break;
+            case 'rotate':
+                this.globalState.plane_theta = parentState.plane_theta + this.value;
+                break;
+            case 'arc':
+                calcs = Globemaker.arcValues(this.value, this.radius, parentState.plane_pos, parentState.plane_theta);
+                this.globalState.plane_theta = calcs.endPlanarTheta;
+                this.globalState.plane_pos = calcs.endPlanarPos;
+                break;
+        }
+
         // for sphere value, each line, move, starts locally at z axis and rotates/moves towards x axis
-        const local_rotation = new DMSLib.Rotation.fromAngleAxis(this.theta, DMSLib.Point3D.zAxis());
-        const local_move = DMSLib.Rotation.fromAngleAxis( (this.type === 'move' || this.type === 'line') ? this.length : 0, DMSLib.Point3D.yAxis());
-        this.globalState.sphere_rot = parentState.sphere_rot.combine(local_rotation).combine(local_move);
+        let local_rotation = new DMSLib.Rotation();
+        switch(this.type) {
+            case 'line': 
+            case 'move':
+                local_rotation = DMSLib.Rotation.fromAngleAxis(this.value, DMSLib.Point3D.yAxis());
+                break;
+            case 'rotate':
+                local_rotation = new DMSLib.Rotation.fromAngleAxis(this.value, DMSLib.Point3D.zAxis());
+                break;
+            case 'arc':
+                calcs = Globemaker.arcValues(this.value, this.radius, parentState.plane_pos, parentState.plane_theta);
+                local_rotation = new DMSLib.Rotation.fromAngleAxis(calcs.rotateAngleOnSphere, calcs.rotateAxisOnSphere);
+                break;
+        }
+        this.globalState.sphere_rot = parentState.sphere_rot.combine(local_rotation);
 
         this.children.forEach(function(child) {child.calcGlobalState();});
     };
 
-    this.multiplyLengths = function(scaleFactor) {
-        this.length *= scaleFactor;
-        this.children.forEach(function(child) {child.multiplyLengths(scaleFactor);});
-    }
-
     // recursive calculation of plane info (x1, y1, x2, y2, id)
-    this.list = function(type) {
+    this.list = function(types) {
         let result = [];
         let valid = false;
+        let typeList = types.split(',');
 
-        if (this.parent !== null && this.type === type) {
+        if (this.parent !== null && typeList.includes(this.type)) {
             let parentState = this.parent.globalState;
+            let startdir = parentState.plane_theta;
+            if (this.type === 'arc' && this.value < 0) startdir += DMSLib.HALFTAU;
             result.push({x1: parentState.plane_pos.x, y1: parentState.plane_pos.y,
                          x2: this.globalState.plane_pos.x, y2: this.globalState.plane_pos.y,
-                         startdir: parentState.plane_theta,
-                         id: this.id});
+                         startdir, id: this.id});
         }
-        this.children.forEach(function(child) {result = result.concat(child.list(type));});
+        this.children.forEach(function(child) {result = result.concat(child.list(types));});
         return result;
     };
 
     this.segments = function() {
         let result = [];
-        if (this.parent !== null && this.type === 'line') {
+        if (this.parent !== null && ['line', 'arc'].includes(this.type)) {
             let parentState = this.parent.globalState;
-            // state information is in image coordinates, unscale before creating segments
+            // state information is in image coordinates,
             result.push(new Globemaker.Segment(parentState.sphere_rot,
-                                               parentState.plane_pos.div(this.scale),
+                                               parentState.plane_pos,
                                                DMSLib.Point2D.fromPolar(1, parentState.plane_theta),
                                                this.strength,
-                                               this.length));
+                                               this.value,
+                                               this.radius));
         }
         this.children.forEach(function(child) {result = result.concat(child.segments(type));});
         return result;
@@ -83,7 +110,7 @@ function Skeleton(scale) {
     // private
     this.idCounter;
     this.scale = scale;
-    this.parentNode = new SkeletonNode('none', 0, 0, this.scale);
+    this.parentNode = new SkeletonNode('none', 0, 0);
     this.currentNode = this.parentNode;
 
     this.nodeStack = [];
@@ -97,26 +124,31 @@ function Skeleton(scale) {
     };
 
     this.line = function(length, strength) {
-        let newNode = new SkeletonNode('line', length * Math.PI, strength, this.scale);
+        let newNode = new SkeletonNode('line', length * Math.PI, strength);
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
 
     this.move = function(length) {
-        var newNode = new SkeletonNode('move', length * Math.PI, 0, this.scale);
+        var newNode = new SkeletonNode('move', length * Math.PI, 0);
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
     this.moveInPlane = function(length) {
-        var newNode = new SkeletonNode('moveInPlane', length * Math.PI, 0, this.scale);
+        var newNode = new SkeletonNode('moveInPlane', length * Math.PI, 0);
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
     this.rotate = function(theta) {
-        var newNode = new SkeletonNode('rotate', theta * Math.PI, 0, this.scale);
+        var newNode = new SkeletonNode('rotate', theta * Math.PI, 0);
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
+    this.arc = function(theta, radius) {
+        var newNode = new SkeletonNode('arc', theta * Math.PI, 0, radius * Math.PI)
+        this.currentNode.addChild(newNode);
+        this.currentNode = newNode;
+    }
     this.save = function(label) {
         //TODO
     };
@@ -185,10 +217,5 @@ function Skeleton(scale) {
         return (spherePixelFunction === undefined) ?
             d3.rgb(0, 0, 0xb8) : // dark blue
             spherePixelFunction(Q); // function's pixel
-    }
-
-    this.multiplyLengths = function(scaleFactor) {
-        this.parentNode.multiplyLengths(scaleFactor);
-        this.init();
     }
 }

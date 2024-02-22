@@ -58,6 +58,11 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         return false;
     };
 
+    var arc = function() {
+        if (terminal('a') || terminal('arc')) {return true;}
+        return false;
+    }
+
     var rotate = function() {
         if (terminal('r') || terminal('rotate')) {return true;}
         return false;
@@ -141,6 +146,27 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         return false;
     };
 
+    var arcCmd = function() {
+        if (arc()) {
+            var length;
+            if (!value()) { /*TODO error*/ return false; }
+            else { length = __value; }
+
+            var radius;
+            if (!value()) { /*TODO error*/ return false; }
+            else { radius = __value; }
+
+            // var strength;
+            // if (!value()) { strength = 1.0; }
+            // else { strength = 1.0 / __value; }  // invert strength before multiplying to distance.
+           
+            skeletonObj.arc(length, radius /*, strength*/);
+            return true;
+        }
+        return false;
+    };
+
+
     // big stuff
     var statement = function() {
         if (stackCmd()) { return true; }
@@ -149,6 +175,7 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         if (moveCmd()) { return true; }
         if (moveInPlaneCmd()) { return true; }
         if (rotateCmd()) { return true; }
+        if (arcCmd()) { return true; }
         return false;
     };
 
@@ -171,15 +198,19 @@ let serializeSkeletonNode = function( node, initialSpace ) {
     if (initialSpace === undefined) initialSpace = '';
 
     if(node.type === 'line') {
-        result += initialSpace + 'l ' + (node.length / Math.PI).toFixed(3);
+        result += initialSpace + 'l ' + (node.value / Math.PI).toFixed(3);
         if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(3);
         result += '\n';
     } else if (node.type === 'move') {
-        result += initialSpace + 'm ' + (node.length / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'm ' + (node.value / Math.PI).toFixed(3) + '\n';
     } else if (node.type === 'moveOnPlane') {
-        result += initialSpace + 'o ' + (node.length / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'o ' + (node.value / Math.PI).toFixed(3) + '\n';
     } else if (node.type === 'rotate') {
-        result += initialSpace + 'r ' + (node.theta / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'r ' + (node.value / Math.PI).toFixed(3) + '\n';
+    } else if (node.type === 'arc') {
+        result += initialSpace + 'a ' + (node.value / Math.PI).toFixed(3);
+        result += ' ' + (node.radius / Math.PI).toFixed(3);
+        result += '\n';
     }
 
     if (node.children.length === 0) {

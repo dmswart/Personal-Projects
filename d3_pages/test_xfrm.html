@@ -112,6 +112,10 @@
 
             var c = rotation.apply(DMSLib.Point3D.zAxis());
             test('RotationFromVectorToVector', c.equals(DMSLib.Point3D.xAxis().negate()));
+
+            var identRotation = DMSLib.Rotation.fromVectorToVector(DMSLib.Point3D.zAxis(), DMSLib.Point3D.zAxis());
+            var d = identRotation.apply(new DMSLib.Point3D(1, 2, 3));
+            test('RotationFromVectorToVector identity', d.equals(new DMSLib.Point3D(1, 2, 3)));
         }
 
         var RotationToString = function() {

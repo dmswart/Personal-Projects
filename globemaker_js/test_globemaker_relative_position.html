@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Testing Relative Positions</title>
+    <script src='./globemaker_relative_position.js'></script>
+    <script src='./globemaker_segment.js'></script>
+    <script src='../d3_pages/dmslib_core.js'></script>
+    <script src='../d3_pages/dmslib_point2d.js'></script>
+    <script src='../d3_pages/dmslib_point3d.js'></script>
+    <script src='../d3_pages/dmslib_xfrm.js'></script>
+    <script>
+        // ==========================================================
+        // TEST HARNESS
+        // ==========================================================
+        var results = {
+            total: 0,
+            bad: 0
+        };
+
+        var test = function(name, actual, expected) {
+            results.total++;
+            if (actual !== expected) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+
+        function test_near(name, actual, expected, bIsAngle=false) {
+            results.total++;
+            diff = bIsAngle ? DMSLib.angleBetween(actual, expected) : Math.abs(actual-expected);
+            if(isNaN(actual)) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was not a number");
+            } else if (diff > DMSLib.EPSILON) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+
+        function test_point(name, actual, expected) {
+            if(actual instanceof DMSLib.Point2D) {
+                test_near(name + ' (x)', actual.x, expected.x);
+                test_near(name + ' (y)', actual.y, expected.y);
+            } else {
+                test_near(name + ' (x)', actual.x, expected.x);
+                test_near(name + ' (y)', actual.y, expected.y);
+                test_near(name + ' (z)', actual.z, expected.z);
+            }
+        }
+
+        function test_relativePosition(name, pt, seg, expected) {
+            bIs3D = pt instanceof DMSLib.Point3D;
+            if(bIs3D) pt.normalize();
+
+            actual = new Globemaker.RelativePosition(pt, seg);
+            test_near(name + ' (theta)', actual.theta, expected.theta, true);
+            test_near(name + ' (closestPt)', actual.closestPt, expected.closestPt);
+            test_near(name + ' (distance)', actual.distance, expected.distance);
+
+            // test roundtrip
+            if(pt instanceof DMSLib.Point2D)
+                test_point(name, actual.pointOnPlane(), pt);
+            else
+                test_point(name, actual.pointOnSphere(), pt);
+        }
+
+
+        function createPlanarArcSegment(bPosLen, bPosRad) {
+            return {
+                a : new DMSLib.Point2D(bPosLen ? 2 : 8,2),
+                aDir: bPosLen === bPosRad ? DMSLib.Point2D.yAxis().negate() : DMSLib.Point2D.yAxis(),
+                b: new DMSLib.Point2D(bPosLen ? 8 : 2,2),
+                radiusOnPlane: bPosRad ? 3 : -3,
+                rotateAngleOnPlane: bPosLen ? DMSLib.HALFTAU : -DMSLib.HALFTAU,
+                centerPt: new DMSLib.Point2D(5, 2),
+                rotateAngleOnSphere: bPosLen = bPosLen ? 100 : -100 // bogus, but different magnitude
+            }
+        }
+
+        function createSphericalArcSegment(bPosLen, bPosRad) {
+            let lenSign = bPosLen ? 1 : -1;
+            let radSign = bPosRad ? 1 : -1;
+
+            // segment starts at (0,-1,1) and rotates if +ve east for quarter turn
+            return {
+                aRot: DMSLib.Rotation.fromAngleAxis(DMSLib.TAU * 0.125, DMSLib.Point3D.xAxis()),
+                length: DMSLib.QUARTERTAU * lenSign,
+                rotateAngleOnSphere: DMSLib.QUARTERTAU * lenSign * radSign,
+                radiusOnPlane: 100 * radSign, // bogus magnitude
+                rotateAxisOnSphere: bPosRad ? DMSLib.Point3D.zAxis() : DMSLib.Point3D.yAxis().negate(),
+                radiusOnSphere: DMSLib.TAU * 0.125 * radSign
+            };
+        }
+
+        // ==========================================================
+        // TESTS
+        // ==========================================================
+        var TEST_calcRelative2DPointToLine = function() {
+            // test positive length
+            let seg = new Globemaker.Segment(new DMSLib.Rotation(), // a on sphere
+                                             new DMSLib.Point2D(2, 2), // a on plane
+                                             DMSLib.Point2D.xAxis(), // adir
+                                             1, // strength
+                                             3, // length
+                                             null); // radius
+
+            test_relativePosition('2DPt +veLength PtAtA', new DMSLib.Point2D(0,4), seg, {theta: DMSLib.TAU * 0.375, closestPt: 0, distance: Math.sqrt(8)});
+            test_relativePosition('2DPt +veLength PtAtB', new DMSLib.Point2D(7,0), seg, {theta: DMSLib.TAU * -0.125, closestPt: 3, distance: Math.sqrt(8)});
+            test_relativePosition('2DPt +veLength PtAt2', new DMSLib.Point2D(4,4), seg, {theta: DMSLib.TAU * 0.25, closestPt: 2, distance: 2});
+
+            // test negative length
+            seg = new Globemaker.Segment(new DMSLib.Rotation(), // a on sphere
+                                         new DMSLib.Point2D(2, 2), // a on plane
+                                         DMSLib.Point2D.xAxis(), // adir
+                                         1, // strength
+                                         -3, // length
+                                         null); // radius
+
+            test_relativePosition('2DPt +veLength PtAtA', new DMSLib.Point2D(4,4), seg, {theta: DMSLib.TAU * 0.125, closestPt: 0, distance: Math.sqrt(8)});
+            test_relativePosition('2DPt +veLength PtAtB', new DMSLib.Point2D(-3,0), seg, {theta: DMSLib.TAU * -0.375, closestPt: -3, distance: Math.sqrt(8)});
+            test_relativePosition('2DPt +veLength PtAt2', new DMSLib.Point2D(0,0), seg, {theta: DMSLib.TAU * -0.25, closestPt: -2, distance: 2});
+        }
+
+        var TEST_calcRelative3DPointToLine = function() {
+            // test positive length
+            let seg = new Globemaker.Segment(DMSLib.Rotation.fromAngleAxis(DMSLib.TAU * 0.125, DMSLib.Point3D.xAxis()), // a on sphere
+                                             new DMSLib.Point2D(), // a on plane
+                                             DMSLib.Point2D.xAxis(), // adir
+                                             1, // strength
+                                             DMSLib.QUARTERTAU, // length
+                                             null); // radius
+
+            test_relativePosition('3DPt +veLength PtAtAright', new DMSLib.Point3D(0,0,1), seg, {theta: DMSLib.TAU * 0.25, closestPt: 0, distance: DMSLib.TAU*0.125});
+            test_relativePosition('3DPt +veLength PtAtAback', new DMSLib.Point3D(-1,0,0), seg, {theta: DMSLib.TAU * 0.5, closestPt: 0, distance: DMSLib.TAU*0.25});
+            test_relativePosition('3DPt +veLength PtAtB', new DMSLib.Point3D(1,1,0), seg, {theta: DMSLib.TAU * 0.125, closestPt: DMSLib.QUARTERTAU, distance: DMSLib.TAU*0.125});
+            test_relativePosition('3DPt +veLength PtAlongSeg', new DMSLib.Point3D(1,-1,0), seg, {theta: DMSLib.TAU * -0.25, closestPt: Math.acos(1/Math.sqrt(3)), distance: DMSLib.TAU / 12});
+
+            // test negative length
+            seg = new Globemaker.Segment(DMSLib.Rotation.fromAngleAxis(DMSLib.TAU * 0.125, DMSLib.Point3D.xAxis()), // a on sphere
+                                         new DMSLib.Point2D(), // a on plane
+                                         DMSLib.Point2D.xAxis(), // adir
+                                         1, // strength
+                                         -DMSLib.QUARTERTAU, // length
+                                         null); // radius
+
+            test_relativePosition('3DPt -veLength PtAtAright', new DMSLib.Point3D(0,0,1), seg, {theta: DMSLib.TAU * 0.25, closestPt: 0, distance: DMSLib.TAU*0.125});
+            test_relativePosition('3DPt -veLength PtAtAback', new DMSLib.Point3D(1,0,0), seg, {theta: 0, closestPt: 0, distance: DMSLib.TAU*0.25});
+            test_relativePosition('3DPt -veLength PtAtB', new DMSLib.Point3D(-1,1,0), seg, {theta: DMSLib.TAU * 0.375, closestPt: -DMSLib.QUARTERTAU, distance: DMSLib.TAU*0.125});
+            test_relativePosition('3DPt -veLength PtAlongSeg', new DMSLib.Point3D(-1,-1,0), seg, {theta: DMSLib.TAU * -0.25, closestPt: -Math.acos(1/Math.sqrt(3)), distance: DMSLib.TAU / 12});
+        }
+
+        var TEST_calcRelative2DPointToArc = function() {
+            // test positive length, positive radius (seg is at 2,2 arcs to 5,-1 then 8,2)
+            let seg = createPlanarArcSegment(true, true);
+            test_relativePosition('2DPtArc +Len+Rad PtAtA', new DMSLib.Point2D(2,4), seg, {theta: DMSLib.TAU * 0.5, closestPt: 0, distance: 2});
+            test_relativePosition('2DPtArc +Len+Rad PtAtB', new DMSLib.Point2D(8,4), seg, {theta: 0, closestPt: 100, distance: 2});
+            test_relativePosition('2DPtArc +Len+Rad PtAlongSegOutside', new DMSLib.Point2D(2,-1), seg, {theta: DMSLib.TAU * -0.25, closestPt: 25, distance: Math.sqrt(18)-3});
+            test_relativePosition('2DPtArc +Len+Rad PtAlongSegInside', new DMSLib.Point2D(6,1), seg, {theta: DMSLib.TAU * 0.25, closestPt: 75, distance: 3 - Math.sqrt(2)});
+
+
+            // test positive length, negative radius (seg is at 2,2 arcs to 5,5 then 8,2)
+            seg = createPlanarArcSegment(true, false);
+            test_relativePosition('2DPtArc +Len-Rad PtAtA', new DMSLib.Point2D(2,0), seg, {theta: DMSLib.TAU * 0.5, closestPt: 0, distance: 2});
+            test_relativePosition('2DPtArc +Len-Rad PtAtB', new DMSLib.Point2D(8,0), seg, {theta: 0, closestPt: 100, distance: 2});
+            test_relativePosition('2DPtArc +Len-Rad PtAlongSegOutside', new DMSLib.Point2D(2,5), seg, {theta: DMSLib.TAU * 0.25, closestPt: 25, distance: Math.sqrt(18)-3});
+            test_relativePosition('2DPtArc +Len-Rad PtAlongSegInside', new DMSLib.Point2D(6,3), seg, {theta: DMSLib.TAU * -0.25, closestPt: 75, distance: 3 - Math.sqrt(2)});
+
+            // test negative length, positive radius (seg is at 8,2 arcs back to 5,-1 then 2,2)
+            seg = createPlanarArcSegment(false, true);
+            test_relativePosition('2DPtArc -Len+Rad PtAtA', new DMSLib.Point2D(8,4), seg, {theta: 0, closestPt: 0, distance: 2});
+            test_relativePosition('2DPtArc -Len+Rad PtAtB', new DMSLib.Point2D(2,4), seg, {theta: DMSLib.TAU * 0.5, closestPt: -100, distance: 2});
+            test_relativePosition('2DPtArc -Len+Rad PtAlongSegOutside', new DMSLib.Point2D(2,-1), seg, {theta: DMSLib.TAU * -0.25, closestPt: -75, distance: Math.sqrt(18)-3});
+            test_relativePosition('2DPtArc -Len+Rad PtAlongSegInside', new DMSLib.Point2D(6,1), seg, {theta: DMSLib.TAU * 0.25, closestPt: -25, distance: 3 - Math.sqrt(2)});
+
+            // test negative length, negative radius (seg is at 8,2 arcs back to 5,5 then 2,2)
+            seg = createPlanarArcSegment(false, false);
+            test_relativePosition('2DPtArc -Len-Rad PtAtA', new DMSLib.Point2D(8,0), seg, {theta: 0, closestPt: 0, distance: 2});
+            test_relativePosition('2DPtArc -Len-Rad PtAtB', new DMSLib.Point2D(2,0), seg, {theta: DMSLib.TAU * 0.5, closestPt: -100, distance: 2});
+            test_relativePosition('2DPtArc -Len-Rad PtAlongSegOutside', new DMSLib.Point2D(2,5), seg, {theta: DMSLib.TAU * 0.25, closestPt: -75, distance: Math.sqrt(18)-3});
+            test_relativePosition('2DPtArc -Len-Rad PtAlongSegInside', new DMSLib.Point2D(6,3), seg, {theta: DMSLib.TAU * -0.25, closestPt: -25, distance: 3 - Math.sqrt(2)});
+        }
+
+        var TEST_calcRelative3DPointToArc = function() {
+            let weirdDist = Math.acos(7/9)/4;
+            // test positive length, positive radius (seg is at (0,-1,1) arcs east to (1,0,1))
+            let seg = createSphericalArcSegment(true, true);
+            test_relativePosition('3DPtArc +Len+Rad PtAtA', DMSLib.Point3D.xAxis().negate(), seg, {theta: DMSLib.HALFTAU, closestPt: 0, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc +Len+Rad PtAtB', DMSLib.Point3D.yAxis(), seg, {theta: 0, closestPt: DMSLib.QUARTERTAU, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc +Len+Rad PtAlongSegInside', new DMSLib.Point3D(1,-1,2), seg, {theta: DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * 0.125, distance: weirdDist});
+            test_relativePosition('3DPtArc +Len+Rad PtAlongSegOutside', new DMSLib.Point3D(1,-1,1), seg, {theta: -DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * 0.125, distance: weirdDist});
+
+            // test positive length negative radius (seg is at (0, -1,1) arcs east to (1, -1, 0))
+            seg = createSphericalArcSegment(true, false);
+            test_relativePosition('3DPtArc +Len-Rad PtAtA', DMSLib.Point3D.xAxis().negate(), seg, {theta: DMSLib.HALFTAU, closestPt: 0, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc +Len-Rad PtAtB', DMSLib.Point3D.zAxis().negate(), seg, {theta: 0, closestPt: DMSLib.QUARTERTAU, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc +Len-Rad PtAlongSegInside', new DMSLib.Point3D(1,-2,1), seg, {theta: -DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * 0.125, distance: weirdDist});
+            test_relativePosition('3DPtArc +Len-Rad PtAlongSegOutside', new DMSLib.Point3D(1,-1,1), seg, {theta: DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * 0.125, distance: weirdDist});
+
+            // test negative length, positive radius (seg is at (0,-1,1) arcs back west to (-1,0,1))
+            seg = createSphericalArcSegment(false, true);
+            test_relativePosition('3DPtArc -Len+Rad PtAtA', DMSLib.Point3D.xAxis(), seg, {theta: 0, closestPt: 0, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc -Len+Rad PtAtB', DMSLib.Point3D.yAxis(), seg, {theta: DMSLib.HALFTAU, closestPt: -DMSLib.QUARTERTAU, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc -Len+Rad PtAlongSegInside', new DMSLib.Point3D(-1,-1,2), seg, {theta: DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
+            test_relativePosition('3DPtArc -Len+Rad PtAlongSegOutside', new DMSLib.Point3D(-1,-1,1), seg, {theta: -DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
+
+            // test negative length negative radius (seg is at (0, -1,1) arcs back west to (-1, -1, 0))
+            seg = createSphericalArcSegment(false, false);
+            test_relativePosition('3DPtArc -Len-Rad PtAtA', DMSLib.Point3D.xAxis(), seg, {theta: 0, closestPt: 0, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc -Len-Rad PtAtB', DMSLib.Point3D.zAxis().negate(), seg, {theta: DMSLib.HALFTAU, closestPt: -DMSLib.QUARTERTAU, distance: DMSLib.QUARTERTAU});
+            test_relativePosition('3DPtArc -Len-Rad PtAlongSegInside', new DMSLib.Point3D(-1,-2,1), seg, {theta: -DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
+            test_relativePosition('3DPtArc -Len-Rad PtAlongSegOutside', new DMSLib.Point3D(-1,-1,1), seg, {theta: DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
+        }
+    </script>
+</head>
+
+<body>
+    <div id="results">Catastrophic failure</div>
+</body>
+
+<script>
+    // run!
+    TEST_calcRelative2DPointToLine();
+    TEST_calcRelative3DPointToLine();
+    TEST_calcRelative2DPointToArc();
+    TEST_calcRelative3DPointToArc();
+    document.getElementById('results').innerHTML = 'TOTAL: <b>' + results.total + '</b> tests.<br>FAILED: <b>' + results.bad + '</b><br>PASSED: <b>' + (results.total - results.bad) + '</b>';
+</script>
