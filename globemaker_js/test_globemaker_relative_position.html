@@ -26,26 +26,42 @@
             }
         }
 
-        function test_near(name, actual, expected, bIsAngle=false) {
+        function test_near_angle(name, actual, expected, epsilon = DMSLib.EPSILON) {
             results.total++;
-            diff = bIsAngle ? DMSLib.angleBetween(actual, expected) : Math.abs(actual-expected);
             if(isNaN(actual)) {
                 results.bad++;
                 console.log(name + ": Expected " + expected + ", but was not a number");
-            } else if (diff > DMSLib.EPSILON) {
+                return;
+            }
+            
+            if (DMSLib.angleBetween(actual, expected) > epsilon) {
                 results.bad++;
                 console.log(name + ": Expected " + expected + ", but was " + actual);
             }
         }
 
-        function test_point(name, actual, expected) {
+        function test_near(name, actual, expected, epsilon = DMSLib.EPSILON) {
+            results.total++;
+            if(isNaN(actual)) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was not a number");
+                return;
+            }
+
+            if (Math.abs(actual-expected) > epsilon) {
+                results.bad++;
+                console.log(name + ": Expected " + expected + ", but was " + actual);
+            }
+        }
+
+        function test_point(name, actual, expected, epsilon = DMSLib.EPSILON) {
             if(actual instanceof DMSLib.Point2D) {
-                test_near(name + ' (x)', actual.x, expected.x);
-                test_near(name + ' (y)', actual.y, expected.y);
+                test_near(name + ' (x)', actual.x, expected.x, epsilon);
+                test_near(name + ' (y)', actual.y, expected.y, epsilon);
             } else {
-                test_near(name + ' (x)', actual.x, expected.x);
-                test_near(name + ' (y)', actual.y, expected.y);
-                test_near(name + ' (z)', actual.z, expected.z);
+                test_near(name + ' (x)', actual.x, expected.x, epsilon);
+                test_near(name + ' (y)', actual.y, expected.y, epsilon);
+                test_near(name + ' (z)', actual.z, expected.z, epsilon);
             }
         }
 
@@ -54,7 +70,7 @@
             if(bIs3D) pt.normalize();
 
             actual = new Globemaker.RelativePosition(pt, seg);
-            test_near(name + ' (theta)', actual.theta, expected.theta, true);
+            test_near_angle(name + ' (theta)', actual.theta, expected.theta);
             test_near(name + ' (closestPt)', actual.closestPt, expected.closestPt);
             test_near(name + ' (distance)', actual.distance, expected.distance);
 
@@ -65,16 +81,17 @@
                 test_point(name, actual.pointOnSphere(), pt);
         }
 
-
         function createPlanarArcSegment(bPosLen, bPosRad) {
+            let lenSign = bPosLen ? 1 : -1;
+            let radSign = bPosRad ? 1 : -1;
             return {
                 a : new DMSLib.Point2D(bPosLen ? 2 : 8,2),
-                aDir: bPosLen === bPosRad ? DMSLib.Point2D.yAxis().negate() : DMSLib.Point2D.yAxis(),
+                aDir: new DMSLib.Point2D(0, -1 * lenSign * radSign),
                 b: new DMSLib.Point2D(bPosLen ? 8 : 2,2),
-                radiusOnPlane: bPosRad ? 3 : -3,
-                rotateAngleOnPlane: bPosLen ? DMSLib.HALFTAU : -DMSLib.HALFTAU,
+                radiusOnPlane: 3 * radSign,
+                rotateAngleOnPlane: DMSLib.HALFTAU * lenSign,
                 centerPt: new DMSLib.Point2D(5, 2),
-                rotateAngleOnSphere: bPosLen = bPosLen ? 100 : -100 // bogus, but different magnitude
+                length: 100 * lenSign  // bogus, but different magnitude
             }
         }
 
@@ -211,6 +228,84 @@
             test_relativePosition('3DPtArc -Len-Rad PtAlongSegInside', new DMSLib.Point3D(-1,-2,1), seg, {theta: -DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
             test_relativePosition('3DPtArc -Len-Rad PtAlongSegOutside', new DMSLib.Point3D(-1,-1,1), seg, {theta: DMSLib.QUARTERTAU, closestPt: DMSLib.TAU * -0.125, distance: weirdDist});
         }
+
+        function test_specialCase1() {
+            let seg = { 
+            //    aRot: new DMSLib.Rotation(),
+                a: new DMSLib.Point2D(0, 0),
+                aDir: new DMSLib.Point2D(1, 0),
+                length: DMSLib.QUARTERTAU,
+                b: new DMSLib.Point2D(1.5358910417835068, 0.18965999863524985),
+                radiusOnPlane: 6.313751514675041,
+                rotateAngleOnPlane: 0.24572668306931938,
+                centerPt: new DMSLib.Point2D(0, 6.313751514675041),
+            //    endPlanarPos: new DMSLib.Point2D(1.5358910417835068, 0.18965999863524985),
+            //    endPlanarTheta: 0.24572668306931938
+            }
+            let pt = seg.b.add(new DMSLib.Point2D(0, 0.1));
+
+            test_relativePosition('specialCase1', pt, seg, {theta: DMSLib.QUARTERTAU - seg.rotateAngleOnPlane, closestPt: DMSLib.QUARTERTAU, distance: 0.1 });
+        }
+        function test_specialCase2() {
+            let sega = new Globemaker.Segment(new DMSLib.Rotation(), new DMSLib.Point2D(0, 0), new DMSLib.Point2D(1, 0), 1, 1, DMSLib.QUARTERTAU * 0.99999);
+            let segl = new Globemaker.Segment(new DMSLib.Rotation(), new DMSLib.Point2D(0, 0), new DMSLib.Point2D(1, 0), 1, 1, null);
+            let pt = new DMSLib.Point2D(0.5, 0.5);
+            rpa = new Globemaker.RelativePosition(pt, sega);
+            rpl = new Globemaker.RelativePosition(pt, segl);
+
+            test_near('specialCase2 distance', rpa.distance, rpl.distance, 1e-4);
+            test_near('specialCase2 closestPt', rpa.closestPt, rpl.closestPt, 1e-4);
+            test_near_angle('specialCase2 theta', rpa.theta, rpl.theta);
+
+            pta = rpa.pointOnPlane();
+            ptl = rpl.pointOnPlane();
+            test_point('specialCase2 pointOnPlane', pta, ptl);
+
+            pta = rpa.pointOnSphere();
+            ptl = rpl.pointOnSphere();
+            test_point('specialCase2 pointOnSphere', pta, ptl, 1e-4);
+        }
+
+        function test_roundTrips() {
+            let seg = new Globemaker.Segment(new DMSLib.Rotation(0.3009, -0.1381, -0.9071, -0.2596), // aOnSPhere
+                                             new DMSLib.Point2D(4, 5), // aOnPlane
+                                             new DMSLib.Point2D(6, 7).normalized(), // aDir
+                                             1, //length
+                                             1, //strength
+                                             DMSLib.QUARTERTAU * 0.99); // radius
+            
+            for(i=30; i<180; i+=30) {
+                for(j=30; j<360; j+=30) {
+                    phi = i*DMSLib.TAU/360;
+                    theta = j*DMSLib.TAU/360;
+                    name = 'roundtrips ' + i + ' ' + j;
+
+                    pt1 = DMSLib.Point3D.fromSphericalCoordinates(1.0, phi, theta);
+                    rp1 = new Globemaker.RelativePosition(pt1, seg);
+                    pt2 = rp1.pointOnSphere();
+                    test_point(name, pt1, pt2 );
+
+                    rp2 = new Globemaker.RelativePosition(pt2, seg);
+                    test_near(name + ' dist', rp1.distance, rp2.distance );
+                    test_near(name + ' theta', rp1.theta, rp2.theta );
+                }
+            }
+        }
+
+        function test_roundTripBug() {
+            let seg = new Globemaker.Segment(new DMSLib.Rotation(1,0,1,0), // aOnSphere
+                                             new DMSLib.Point2D(DMSLib.QUARTERTAU, 0), // aonPlane
+                                             new DMSLib.Point2D(1, 0), // aDir
+                                             1, // strength
+                                             DMSLib.QUARTERTAU, // length
+                                             -DMSLib.TAU * 0.15); // radius
+            let P = new DMSLib.Point2D(170/72, -50/72);
+            let RP = new Globemaker.RelativePosition(P, seg);
+            let Q = RP.pointOnSphere();
+            let newRP = new Globemaker.RelativePosition(Q, seg);
+
+            test_near('roundtrip bug dist', newRP.distance, RP.distance);
+        }
     </script>
 </head>
 
@@ -220,6 +315,10 @@
 
 <script>
     // run!
+    test_roundTripBug();
+    test_roundTrips();
+    test_specialCase1();
+    test_specialCase2();
     TEST_calcRelative2DPointToLine();
     TEST_calcRelative3DPointToLine();
     TEST_calcRelative2DPointToArc();

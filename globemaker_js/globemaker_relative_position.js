@@ -69,26 +69,27 @@ function calcRelative2DPointToArc(pt, seg) {
 
     // arc goes from a to b around center c.
     let p_withCAsOrigin = pt.sub(seg.centerPt);
+    lengthOnPlane = Math.abs(seg.rotateAngleOnPlane) * Math.sign(seg.length);
     angleAlongArc = DMSLib.fixAnglePositive((p_withCAsOrigin.theta() - seg.a.sub(seg.centerPt).theta()) * signRadius);
 
-    if (angleAlongArc < seg.rotateAngleOnPlane || angleAlongArc > DMSLib.TAU + seg.rotateAngleOnPlane) {   // closest orthoganally
+    if (angleAlongArc < lengthOnPlane || angleAlongArc > DMSLib.TAU + lengthOnPlane) {   // closest orthoganally
         let Rdist = p_withCAsOrigin.R() - Math.abs(seg.radiusOnPlane);  // how far out from center wrt. arc, (closer values -ve, farther +ve).
-        result.closestPt = (seg.rotateAngleOnPlane > 0) ? angleAlongArc : angleAlongArc - DMSLib.TAU;
+        result.closestPt = (lengthOnPlane > 0) ? angleAlongArc : angleAlongArc - DMSLib.TAU;
         result.theta = ((Rdist < 0) ? DMSLib.QUARTERTAU : -DMSLib.QUARTERTAU) * signRadius;
         result.distance = Math.abs(Rdist);
-    } else if (DMSLib.angleBetween(angleAlongArc, 0) < DMSLib.angleBetween(angleAlongArc, seg.rotateAngleOnPlane)) {
+    } else if (DMSLib.angleBetween(angleAlongArc, 0) < DMSLib.angleBetween(angleAlongArc, lengthOnPlane)) {
         let aToPt = pt.sub(seg.a);
         result.closestPt = 0;
         result.theta = DMSLib.fixAngle(aToPt.theta() - seg.aDir.theta());
         result.distance = aToPt.R();
     } else {
         let bToPt = pt.sub(seg.b);
-        result.closestPt = seg.rotateAngleOnPlane;
-        result.theta = DMSLib.fixAngle(bToPt.theta() - seg.aDir.theta() + seg.rotateAngleOnPlane);
+        result.closestPt = lengthOnPlane;
+        result.theta = DMSLib.fixAngle(bToPt.theta() - seg.aDir.theta() - seg.rotateAngleOnPlane);
         result.distance = bToPt.R();
     }
 
-    result.closestPt *= seg.rotateAngleOnSphere / seg.rotateAngleOnPlane 
+    result.closestPt *= seg.length / lengthOnPlane; 
 
     return result;
 }
@@ -97,35 +98,27 @@ function calcRelative3DPointToArc(pt, seg) {
     let result = {};
     let signRadius = Math.sign(seg.radiusOnSphere);
 
-    let aOnSphere = seg.aRot.apply(DMSLib.Point3D.zAxis());
+    let a = seg.aRot.apply(DMSLib.Point3D.zAxis());
     rotateSuchThatArcAxisIsAtZ = DMSLib.Rotation.fromVectorToVector(seg.rotateAxisOnSphere, DMSLib.Point3D.zAxis());
-    aOnSphere = rotateSuchThatArcAxisIsAtZ.apply(aOnSphere);
+    a_ = rotateSuchThatArcAxisIsAtZ.apply(a);
     pt_ = rotateSuchThatArcAxisIsAtZ.apply(pt);
-    angleAlongArc = DMSLib.fixAnglePositive((pt_.theta() - aOnSphere.theta()) * signRadius);
+    angleAlongArc = DMSLib.fixAnglePositive((pt_.theta() - a_.theta()) * signRadius);
 
     if (angleAlongArc < seg.length || angleAlongArc > DMSLib.TAU + seg.length) {   // closest orthoganally
         result.closestPt = (seg.length > 0) ? angleAlongArc : angleAlongArc - DMSLib.TAU;
-        phiDiff = pt_.phi() - aOnSphere.phi();
-        result.theta = (phiDiff < 0 ? DMSLib.QUARTERTAU : -DMSLib.QUARTERTAU) * signRadius;
-        result.distance = Math.abs(phiDiff);
     } else if (DMSLib.angleBetween(angleAlongArc, 0) < DMSLib.angleBetween(angleAlongArc, seg.length)) {
-        // same as implementation for line 
-        pt_ = seg.aRot.inverse().apply(pt);
-        result.theta = pt_.theta();
         result.closestPt = 0.0;
-        result.distance = pt_.phi();
     } else {
         result.closestPt = seg.length;
-
-        let aToZ = seg.aRot.inverse();  // a rot takes zaxis to a
-        let aToB = DMSLib.Rotation.fromAngleAxis(seg.rotateAngleOnSphere, seg.rotateAxisOnSphere);
-        let bToA = aToB.inverse();
-        let bToZ = aToZ.combine(bToA);
-        pt_ = bToZ.apply(pt);
-
-        result.theta = pt_.theta();
-        result.distance = pt_.phi();
     }
+
+    let aToZ = seg.aRot.inverse();  // a rot takes zaxis to a
+    let aToB = DMSLib.Rotation.fromAngleAxis(result.closestPt * signRadius, seg.rotateAxisOnSphere);
+    let bToA = aToB.inverse();
+    let bToZ = aToZ.combine(bToA);
+    pt_ = bToZ.apply(pt);
+    result.theta = pt_.theta();
+    result.distance = pt_.phi();
 
     return result;
 }
@@ -159,39 +152,13 @@ function calcRelative3DPointToArc(pt, seg) {
         // accessors
         pointOnSphere: function() {
             var result;
-            if (this.closestPt === 0) { //  ********************* if closest point is at pt a...
-                atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
-                return this.seg.aRot.apply(atZ);
-            } else if (this.closestPt === this.seg.length) { // **************** closest point is at b...
-                var atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
+            let atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
+            let zToA = this.seg.aRot;  // a rot takes zaxis to a
+            let aToCP = (this.seg.rotateAngleOnSphere === undefined) ?
+                        DMSLib.Rotation.fromAngleAxis(this.closestPt, zToA.apply(DMSLib.Point3D.yAxis())) :
+                        DMSLib.Rotation.fromAngleAxis(this.closestPt * Math.sign(this.seg.radiusOnSphere), this.seg.rotateAxisOnSphere);
 
-                // this is as if b is at z-axis, we need to rotate around y axis by closestPt
-                if(this.seg.rotateAngleOnSphere === undefined) {
-
-                    result = new DMSLib.Point3D(Math.sin(Math.atan2(atZ.x, atZ.z) + this.closestPt) * Math.sqrt(1.0 - atZ.y * atZ.y),
-                                                atZ.y,
-                                                Math.cos(Math.atan2(atZ.x, atZ.z) + this.closestPt) * Math.sqrt(1.0 - atZ.y * atZ.y));
-                    return this.seg.aRot.apply(result);
-                } else {
-                    let zToA = this.seg.aRot;  // a rot takes zaxis to a
-                    let aToB = DMSLib.Rotation.fromAngleAxis(this.seg.rotateAngleOnSphere, this.seg.rotateAxisOnSphere);
-                    let zToB  = aToB.combine(zToA)
-                    return zToB.apply(atZ);
-                }
-            } else if(this.seg.rotateAngleOnSphere === undefined) { // ************** closest point is along the line segment.
-                result = new DMSLib.Point3D(Math.cos(this.distance) * Math.sin(this.closestPt),
-                                            Math.sin(this.distance) * Math.sign(this.theta),
-                                            Math.cos(this.distance) * Math.cos(this.closestPt));
-                return this.seg.aRot.apply(result);
-            } else { // *********************** closest point is along the arc.
-                atZ = new DMSLib.Point3D(0, Math.sin(this.distance) * Math.sign(this.theta), Math.cos(this.distance));
-                // this is as if closest pt is at z axis pointing to x.
-
-                let zToA = this.seg.aRot;  // a rot takes zaxis to a
-                let aToCP = DMSLib.Rotation.fromAngleAxis(this.closestPt * Math.sign(this.seg.radiusOnSphere), this.seg.rotateAxisOnSphere);
-                let zToCP  = aToCP.combine(zToA)
-                return zToCP.apply(atZ);
-            }
+            return aToCP.combine(zToA).apply(atZ);
         },
 
         pointOnPlane: function() {
@@ -201,15 +168,15 @@ function calcRelative3DPointToArc(pt, seg) {
                     .add(DMSLib.Point2D.fromPolar(this.distance, this.seg.aDir.theta() + this.theta));
             } else {
                 // calc closest point (cp)
-                cpAngle = this.closestPt * this.seg.rotateAngleOnPlane / this.seg.rotateAngleOnSphere;
-                var signDueToRadius = this.seg.radiusOnPlane > 0 ? 1.0: -1.0;
+                cpAngle = this.closestPt * this.seg.rotateAngleOnPlane / this.seg.length;
+                let radSign = Math.sign(this.seg.radiusOnPlane);
                 
                 var cpOnPlane = this.seg.centerPt
                     .add(DMSLib.Point2D.fromPolar(
                         Math.abs(this.seg.radiusOnPlane),
-                        this.seg.aDir.theta() + (cpAngle - DMSLib.QUARTERTAU) * signDueToRadius)); // TODO check that this didn't change, then delete previous
+                        this.seg.aDir.theta() + (cpAngle - DMSLib.QUARTERTAU) * radSign));
 
-                var cpDirTheta = this.seg.aDir.theta() + cpAngle * signDueToRadius;
+                var cpDirTheta = this.seg.aDir.theta() + cpAngle * radSign;
                 return cpOnPlane.add(DMSLib.Point2D.fromPolar(this.distance, cpDirTheta + this.theta));
             }
         }

@@ -62,7 +62,7 @@ function SkeletonNode(type, value, strength, radius= null) {
                 break;
             case 'arc':
                 calcs = Globemaker.arcValues(this.value, this.radius, parentState.plane_pos, parentState.plane_theta);
-                local_rotation = new DMSLib.Rotation.fromAngleAxis(calcs.rotateAngleOnSphere, calcs.rotateAxisOnSphere);
+                local_rotation = new DMSLib.Rotation.fromAngleAxis(calcs.rotateAngleOnSphere, calcs.rotationAxisAtZ);
                 break;
         }
         this.globalState.sphere_rot = parentState.sphere_rot.combine(local_rotation);
@@ -70,7 +70,7 @@ function SkeletonNode(type, value, strength, radius= null) {
         this.children.forEach(function(child) {child.calcGlobalState();});
     };
 
-    // recursive calculation of plane info (x1, y1, x2, y2, id)
+    // recursive calculation of plane info (x1, y1, x2, y2, startdir, id)
     this.list = function(types) {
         let result = [];
         let valid = false;
@@ -145,7 +145,7 @@ function Skeleton(scale) {
         this.currentNode = newNode;
     };
     this.arc = function(theta, radius) {
-        var newNode = new SkeletonNode('arc', theta * Math.PI, 0, radius * Math.PI)
+        var newNode = new SkeletonNode('arc', theta * Math.PI, 1.0, radius * Math.PI)
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     }
@@ -160,7 +160,7 @@ function Skeleton(scale) {
         this.lastCloserSegment = undefined;
     };
 
-    // access list of drawing info as an array of {x1, y1, x2, y2, id}
+    // access list of drawing info as an array of {x1, y1, x2, y2, startdir, id}
     this.list = function(type) {return this.parentNode.list(type); };
 
 

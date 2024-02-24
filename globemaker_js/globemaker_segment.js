@@ -37,7 +37,7 @@ Globemaker.arcValues = function(sweep, radius, startPlanarPos, startPlanarTheta)
 
     // spherical stuff () axis of rotation for arc is radius from zaxis to yaxis)
     r.rotateAngleOnSphere = sweep * Math.sign(radius)
-    r.rotateAxisOnSphere = new DMSLib.Point3D(0, Math.sin(radius), Math.cos(radius));
+    r.rotationAxisAtZ = new DMSLib.Point3D(0, Math.sin(radius), Math.cos(radius));
     r.radiusOnSphere = radius;
 
     return r;
@@ -62,6 +62,7 @@ Globemaker.arcValues = function(sweep, radius, startPlanarPos, startPlanarTheta)
         this.b = arcCalcs.endPlanarPos;
         if (arcCalcs.radiusOnPlane !== undefined) {
             Object.assign(this, arcCalcs);
+            this.rotateAxisOnSphere = this.aRot.apply(this.rotationAxisAtZ);
         }
     };
 
