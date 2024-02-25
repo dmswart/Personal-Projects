@@ -306,6 +306,33 @@
 
             test_near('roundtrip bug dist', newRP.distance, RP.distance);
         }
+
+        function test_zeros() {
+            let P = new DMSLib.Point2D(-360/72, 0/72);
+
+            let seg_L0len = new Globemaker.Segment(new DMSLib.Rotation(), // aOnSphere
+                                                     new DMSLib.Point2D(0, 0), // aonPlane
+                                                     new DMSLib.Point2D(1, 0), // aDir
+                                                     1, // strength
+                                                     0); // length
+            test_relativePosition('2Dline with 0 length', P, seg_L0len, {theta: DMSLib.HALFTAU, closestPt: 0, distance: 5});
+
+            let seg_A0len = new Globemaker.Segment(new DMSLib.Rotation(), // aOnSphere
+                                                     new DMSLib.Point2D(0, 0), // aonPlane
+                                                     new DMSLib.Point2D(1, 0), // aDir
+                                                     1, // strength
+                                                     0, // length
+                                                     -DMSLib.TAU * 0.15) // radius
+            test_relativePosition('2Darc with 0 length', P, seg_A0len, {theta: DMSLib.HALFTAU, closestPt: 0, distance: 5});
+
+            let seg_A0rad = new Globemaker.Segment(new DMSLib.Rotation(), // aOnSphere
+                                                     new DMSLib.Point2D(0, 0), // aonPlane
+                                                     new DMSLib.Point2D(1, 0), // aDir
+                                                     1, // strength
+                                                     DMSLib.QUARTERTAU, // length
+                                                     0) // radius
+            test_relativePosition('2Darc with 0 radius', P, seg_A0rad, {theta: DMSLib.HALFTAU, closestPt: 0, distance: 5});
+        }
     </script>
 </head>
 
@@ -315,6 +342,7 @@
 
 <script>
     // run!
+    test_zeros();
     test_roundTripBug();
     test_roundTrips();
     test_specialCase1();

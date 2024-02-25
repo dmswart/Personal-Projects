@@ -42,7 +42,7 @@ function calcRelative2DPointToLine(pt, seg) {
     let aToPt = pt.sub(seg.a);
     let sgn = Math.sign(seg.length);
 
-    if (DMSLib.Point2D.dot(bToPt, seg.aDir) * sgn > 0.0) {
+    if (DMSLib.Point2D.dot(bToPt, seg.aDir) * sgn >= 0.0) {
         // beyond point B
         result.theta = DMSLib.fixAngle(bToPt.theta() - seg.aDir.theta());
         result.distance = bToPt.R();
@@ -89,7 +89,7 @@ function calcRelative2DPointToArc(pt, seg) {
         result.distance = bToPt.R();
     }
 
-    result.closestPt *= seg.length / lengthOnPlane; 
+    if(lengthOnPlane != 0) result.closestPt *= seg.length / lengthOnPlane; 
 
     return result;
 }
@@ -168,7 +168,9 @@ function calcRelative3DPointToArc(pt, seg) {
                     .add(DMSLib.Point2D.fromPolar(this.distance, this.seg.aDir.theta() + this.theta));
             } else {
                 // calc closest point (cp)
-                cpAngle = this.closestPt * this.seg.rotateAngleOnPlane / this.seg.length;
+                cpAngle = this.seg.length != 0 ? 
+                          this.closestPt * this.seg.rotateAngleOnPlane / this.seg.length :
+                          0.0;
                 let radSign = Math.sign(this.seg.radiusOnPlane);
                 
                 var cpOnPlane = this.seg.centerPt
