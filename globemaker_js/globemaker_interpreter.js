@@ -267,29 +267,49 @@ function sourceColor(Q) {
 
 
 /* Save Result Image */
+function getDateString() {
+    date = new Date();
+    var mm = date.getMonth() + 1; // getMonth() is zero-based
+    var dd = date.getDate();
+    return '' + date.getFullYear() +
+           (mm>9 ? '' : '0') + mm +
+           (dd>9 ? '' : '0') + dd;
+}
+
 function saveImage(resolution) {
-    // first get ppm image into string
-    let content = 'P3 ' + resolution + ' ' + resolution + ' 255\n';
+    // get filename.
+    let filename = getDateString();
+    if (target && target.name) filename += '_' + target.name.slice(0, -4);
+
+
+    // Build ppm image into string
+    let ppmContent = 'P3 ' + resolution + ' ' + resolution + ' 255\n';
 
     for(let y = 0; y<resolution; y++) {
         for(let x = 0; x < resolution; x++) {
             let c = skel.colorOfCoordinate( (x -(resolution/2)+ 0.5) * (size/resolution),
                                             (-y +(resolution/2)+ 0.5) * (size/resolution),
                                             sourceColor);
-            content += c.r + ' ';
-            content += c.g + ' ';
-            content += c.b + ' ';
+            ppmContent += c.r + ' ';
+            ppmContent += c.g + ' ';
+            ppmContent += c.b + ' ';
         }
-        content += '\n';
+        ppmContent += '\n';
     }
-
-    // get filename.
-    const filename = (target && target.name) ? target.name.slice(0, -4) + '.pbm' : 'ouput.ppm';
 
     // save the file via user download
     const element = document.createElement('a');
-    element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(content));
-    element.setAttribute('download', filename);
+    element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(ppmContent));
+    element.setAttribute('download', filename + '.ppm');
+    document.body.appendChild(element); // required for Firefox
+    element.click();
+
+    // build skl into a string
+    sklContent = serializeSkeleton(skel);
+
+    // save the skeleton via user download
+    element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(sklContent));
+    element.setAttribute('download', filename + '.skl');
     document.body.appendChild(element); // required for Firefox
     element.click();
     element.remove();
@@ -383,4 +403,3 @@ function scaleDown() {
     skel.multiplyLengths(1 / 1.05);
     updateGUI();
 }
-

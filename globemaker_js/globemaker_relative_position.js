@@ -188,28 +188,6 @@ function calcRelative3DPointToArc(pt, seg) {
     $.RelativePosition.isNearerOnSphere = function(pt3d, seg, criteria) {
         rp = new $.RelativePosition(pt3d, seg);
         return rp.distance * seg.strength < criteria - DMSLib.EPSILON;
-        /*
-        var ptOnSphere = seg.aRot.inverse().apply(pt3d);  // we think of our segment starting at z and rotating towards x
-        var angle = DMSLib.fixAnglePositive(Math.atan2(ptOnSphere.x, ptOnSphere.z));
-
-        if (angle < seg.length || angle > DMSLib.TAU + seg.length) {
-            // closest orthogonally
-            return (Math.abs(Math.asin(ptOnSphere.y)) * seg.strength < criteria - DMSLib.EPSILON);
-        } else if (DMSLib.angleBetween(angle, 0) < DMSLib.angleBetween(angle, seg.length)) {
-            // angle to A (z-axis) is TWO_PI-angle, angle to B (end of rot.) is angle-length
-            // point on sphere is closer to z axis then to end of rot.
-            return (ptOnSphere.phi() * seg.strength < criteria - DMSLib.EPSILON);
-        } else {
-            // ptOnSphere is closer to end of rotation then to z axis
-            //rotate ptOnSphere about y (from x to z) by grSegments[dtCurrent.nIdx].length
-            ptOnSphere = new DMSLib.Point3D(
-                Math.sin(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y),
-                ptOnSphere.y,
-                Math.cos(Math.atan2(ptOnSphere.x, ptOnSphere.z) - seg.length) * Math.sqrt(1.0 - ptOnSphere.y * ptOnSphere.y));
-
-            return (ptOnSphere.phi() * seg.strength < criteria - DMSLib.EPSILON);
-        } // else if
-        */
     };
 
 })(Globemaker);

@@ -29,7 +29,6 @@ function SkeletonNode(type, value, strength, radius= null) {
                            {plane_pos: new DMSLib.Point2D(0, 0), plane_theta: 0, sphere_rot: new DMSLib.Rotation()};
 
         // calculate global state from parent state + local values
-
         // first plane values
         this.globalState.plane_theta = parentState.plane_theta;
         this.globalState.plane_pos = parentState.plane_pos;
@@ -69,6 +68,25 @@ function SkeletonNode(type, value, strength, radius= null) {
 
         this.children.forEach(function(child) {child.calcGlobalState();});
     };
+
+    this.multiplyLengths = function(scaleFactor) {
+        switch(this.type) {
+            case 'line':
+            case 'move':
+                this.value *= scaleFactor;
+                break;
+            case 'arc':
+                if (this.radius != 0) {
+                    let newRadius = Math.atan(Math.tan(this.radius) * scaleFactor);
+                    let newValue = this.value * Math.cos(this.radius) / Math.cos(newRadius);
+                    this.radius = newRadius;
+                    this.value = newValue;
+                }
+                break;
+        }
+
+        this.children.forEach(function(child) {child.multiplyLengths(scaleFactor);});
+    }
 
     // recursive calculation of plane info (x1, y1, x2, y2, startdir, id)
     this.list = function(types) {
@@ -217,5 +235,10 @@ function Skeleton(scale) {
         return (spherePixelFunction === undefined) ?
             d3.rgb(0, 0, 0xb8) : // dark blue
             spherePixelFunction(Q); // function's pixel
+    }
+
+    this.multiplyLengths = function(scaleFactor) {
+        this.parentNode.multiplyLengths(scaleFactor);
+        this.init();
     }
 }
