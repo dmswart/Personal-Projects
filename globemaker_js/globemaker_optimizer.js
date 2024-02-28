@@ -3,12 +3,16 @@ function packSkeletonNode(node) {
     result = [];
 
     if(node.type === 'line') {
-        result.push(node.length);
+        result.push(node.value);
         result.push(node.strength);
     } else if(node.type === 'move' || node.type === 'moveOnPlane') {
-        result.push(node.length);
+        result.push(node.value);
     } else if(node.type === 'rotate') {
         result.push(node.theta);
+    } else if(node.type === 'arc') {
+        result.push(node.value);
+        result.push(node.radius);
+        result.push(node.strength);
     }
 
     node.children.forEach(c => result = result.concat(packSkeletonNode(c)));
@@ -24,7 +28,6 @@ function packSkeleton(skeleton) {
     return result;
 }
 
-
 /* takes parameters and updates relevant parts of the skeleton
  * returns number of parameters used up
  */
@@ -32,12 +35,16 @@ function unpackSkeletonNode(parameters, node) {
     idx = 0;
 
     if(node.type === 'line') {
-        node.length = parameters[idx++];
+        node.value = parameters[idx++];
         node.strength = parameters[idx++];
     } else if(node.type === 'move' || node.type === 'moveOnPlane') {
-        node.length = parameters[idx++];
+        node.value = parameters[idx++];
     } else if(node.type === 'rotate') {
         node.theta = parameters[idx++];
+    } else if(node.type === 'arc') {
+        node.value = parameters[idx++];
+        node.radius = parameters[idx++];
+        node.strength = parameters[idx++];
     }
 
     node.children.forEach(c => idx += unpackSkeletonNode(parameters.slice(idx), c));
@@ -204,7 +211,7 @@ function calcQuickCost(skeleton, targetImage, displaySize) {
     return error;
 }
 
-function getRandomSkeleton(numPoints, scale) {
+function getRandomSkeleton(numPoints, scale, useArcs = true) {
     /* initialize random points on sphere */
     let points = [];
     for (let i = 0; i < numPoints; i++) {
@@ -251,12 +258,12 @@ function getRandomSkeleton(numPoints, scale) {
 
             let rotAmount = DMSLib.Point3D.sphereDeflection(prevPos, points[thisPoint].pos, points[c].pos);
             let lineAmount = DMSLib.Point3D.angle(points[thisPoint].pos, DMSLib.Point3D.origin(), points[c].pos);
-            skel.rotate(rotAmount / Math.PI);
-            if (Math.random() > 0.0) {   // higher number means more breaks in the tree.
-                skel.line(lineAmount / Math.PI, 1.0);
+            if(useArcs) {
+                skel.arc(Math.abs(rotAmount/Math.PI), Math.sign(rotAmount) * 0.2, 1.0);
+                skel.arc(lineAmount / Math.PI, 0.5, 1.0);
             } else {
-                skel.move(lineAmount / Math.PI);
-                skel.line(0.0, 1.0);
+                skel.rotate(rotAmount / Math.PI);
+                skel.line(lineAmount / Math.PI, 1.0);
             }
 
             doNode(skel, points[thisPoint].pos, c);

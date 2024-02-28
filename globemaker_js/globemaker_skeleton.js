@@ -162,8 +162,8 @@ function Skeleton(scale) {
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
-    this.arc = function(theta, radius) {
-        var newNode = new SkeletonNode('arc', theta * Math.PI, 1.0, radius * Math.PI)
+    this.arc = function(theta, radius, strength) {
+        var newNode = new SkeletonNode('arc', theta * Math.PI, strength, radius * Math.PI)
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     }

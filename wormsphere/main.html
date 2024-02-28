@@ -12,15 +12,17 @@
 </head>
 
 <body>
-    <div id="container" style="display:grid; grid-template-columns:1fr 1fr; grid-gap:20px;">
+    <div id="container" style="display:grid; grid-template-columns:1fr 1fr 1fr; grid-gap:10px;">
         <div id="sphere"> </div>
         <div id="plane"> </div>
+        <div id="output"> <textarea id="skel" type="text" cols="30" rows="32" style="overflow:scroll"></textarea> </div>
     </div>
     <button onclick="doEnergy(true, true);">Energy</button>
     <button onclick="doEnergy(false, true);">Energy Plane</button>
     <button onclick="doEnergy(true, false);">Energy Sphere</button>
     <button onclick="increasePoints();">Increase Points</button>
     <button onclick="scratch();">Scratch</button>
+    <button onclick="outputSkeleton();">Output</button>
     <p></p>
     Iterations: 
     <select name="iterations" id="iterations" value=10>

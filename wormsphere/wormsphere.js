@@ -53,6 +53,7 @@ function initialize() {
 function drawPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
+    d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
 }
 
 function toPlanarPath(spherePath) {
@@ -205,6 +206,101 @@ function drawPathOnSphere(path) {
         .attr('stroke', 'black')
         .attr('fill', 'none')
         .attr('d', pathString);
+}
+
+
+// returns:
+//    n (num points arc uses).
+//    a, m, and b (points arc goes through)
+//    c, axis of arc's rotation (to a's left)
+function findLongestArc(path, tolerance) {
+    let a = path[0];
+
+    if(path.length < 2)
+        return null;
+    else if(path.length == 2) {
+        let b = path[1];
+        let m = a.add(b).mul(0.5);
+        let c = DMSLib.Point3D.equidistantFrom3Points(a, m, b)
+        return {n: 2, a, m, b, c};
+    }
+
+    let best = {n:3, error: 0, midIdx: 1};
+    for(let n=4; n<=path.length; n++) {
+        let b = path[n-1];
+
+        bestErrorForNumPoints = 10000;
+        bestIdxForNumPoints = -1;
+        for(i=1; i<n-2; i++) {
+            // find c equidistant from a, b, p[i]
+            let c = DMSLib.Point3D.equidistantFrom3Points(a, path[i], b);
+            let radius = c.sub(a).R();
+            //find worst error for this arc
+            worstErrorForArc = 0;
+            for(j=1; j<n-2; j++) {
+                error = Math.abs(path[j].sub(c).R() - radius);
+                worstErrorForArc = Math.max(worstErrorForArc, error) 
+            }
+
+            if(worstErrorForArc < bestErrorForNumPoints) {
+                bestIdxForNumPoints = i;
+                bestErrorForNumPoints = worstErrorForArc;
+            }
+        }
+        if(bestErrorForNumPoints < tolerance) {
+            best = {n, error: bestErrorForNumPoints, midIdx: bestIdxForNumPoints}
+        } else {
+            break;
+        }
+    }
+
+    let n = best.n;
+    let m = path[best.midIdx];
+    let b = path[n-1];
+    let c = DMSLib.Point3D.equidistantFrom3Points(a, m, b);
+
+    return {n, a, m, b, c};
+}
+
+function calcArcString(a, m, b, c, previous_c) {
+    let result = '';
+
+    if(previous_c !== null) {
+        deflection = DMSLib.fixAngle(DMSLib.Point3D.signedSphereAngle(previous_c, arcData.a, arcData.c));
+        if(Math.abs(deflection) > 0.0001) 
+            result += 'r ' + (deflection/DMSLib.HALFTAU).toFixed(3) + '\n';
+    }
+
+    // calculate sweep and radius.
+    let sweep = DMSLib.Point3D.signedSphereAngle(a, c, b);
+    let am = DMSLib.Point3D.signedSphereAngle(a, c, m);
+    if(am/sweep > 1.0 || am/sweep < 0.0 ) {
+        // m is not in between a and b. fix it
+        sweep += (sweep < 0) ? DMSLib.TAU : -DMSLib.TAU;
+    }
+    radius = DMSLib.Point3D.angle(a, DMSLib.Point3D.origin(), c);
+
+    result += 'a ' + (sweep / DMSLib.HALFTAU).toFixed(3) + ' ' + (radius / DMSLib.HALFTAU).toFixed(3) + '\n';
+
+    return result;
+}
+
+function turnPathToArcs(givenPath) {
+    path = givenPath.map(p => p.normalized());
+
+    outputString = '';
+    let previous_c = null;
+    while(true) {
+        arcData = findLongestArc(path, 1*DMSLib.TAU/360, previous_c);
+        if(arcData==null) break;
+
+        outputString += calcArcString(arcData.a, arcData.m, arcData.b, arcData.c, previous_c);
+        previous_c = arcData.c;
+
+        path = path.slice(arcData.n-1);
+    }
+
+    return outputString;
 }
 
 // return n equally distributed points along a path 
@@ -431,7 +527,7 @@ function doEnergy(doSphere, doPlane) {
         } else if(doPlane) {
             doPlaneStep();
         } else if(doSphere) {
-            doSphereStep('wind');
+            doSphereStep('energy');
         }
     }
     drawPath(gPlanarPath);
@@ -603,3 +699,4 @@ function scratch() {
 //      - calculate T and N movement - using wind - keep it working
 //      - run at same time as plane
 // TODO - try redistributing lower/higher for plane/sphere
+

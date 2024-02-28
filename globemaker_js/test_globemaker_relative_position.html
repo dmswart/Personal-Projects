@@ -91,7 +91,8 @@
                 radiusOnPlane: 3 * radSign,
                 rotateAngleOnPlane: DMSLib.HALFTAU * lenSign,
                 centerPt: new DMSLib.Point2D(5, 2),
-                length: 100 * lenSign  // bogus, but different magnitude
+                length: 100 * lenSign,  // bogus, but different magnitude
+                isArc: () => true
             }
         }
 
@@ -106,7 +107,8 @@
                 rotateAngleOnSphere: DMSLib.QUARTERTAU * lenSign * radSign,
                 radiusOnPlane: 100 * radSign, // bogus magnitude
                 rotateAxisOnSphere: bPosRad ? DMSLib.Point3D.zAxis() : DMSLib.Point3D.yAxis().negate(),
-                radiusOnSphere: DMSLib.TAU * 0.125 * radSign
+                radiusOnSphere: DMSLib.TAU * 0.125 * radSign,
+                isArc: () => true
             };
         }
 
@@ -239,6 +241,7 @@
                 radiusOnPlane: 6.313751514675041,
                 rotateAngleOnPlane: 0.24572668306931938,
                 centerPt: new DMSLib.Point2D(0, 6.313751514675041),
+                isArc: () => true
             //    endPlanarPos: new DMSLib.Point2D(1.5358910417835068, 0.18965999863524985),
             //    endPlanarTheta: 0.24572668306931938
             }

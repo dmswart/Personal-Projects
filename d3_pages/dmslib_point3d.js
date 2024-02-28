@@ -140,7 +140,7 @@
         var latitude = Math.atan(Math.sinh(pos.y));
         return $.Point3D.fromSphericalCoordinates(1.0, $.QUARTERTAU - latitude, pos.x);
     };
-    $.Point3D.random = function(maxRadius) {
+    $.Point3D.random = function(maxRadius = 1.0) {
         var result = new $.Point3D(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
         while (result.R() > 1.0) {
             result = new $.Point3D(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
@@ -166,12 +166,18 @@
         return Math.acos(dotProduct);
     };
     $.Point3D.sphereAngle = function(a, b, c) {
-        // returns the angle between the plane containing points ABO and the plane containing points CBO
+        // returns the positive angle between the plane containing points ABO and the plane containing points CBO
         var normal1 = $.Point3D.cross(a.sub(b), b);
         var normal2 = $.Point3D.cross(c.sub(b), b);
 
         return $.Point3D.angle(normal1, $.Point3D.origin(), normal2);
     };
+
+    $.Point3D.signedSphereAngle = function(a, b, c) {
+        let angle = $.Point3D.sphereAngle(a, b, c);
+        if($.Point3D.dot($.Point3D.cross(a.sub(b), c.sub(b)), c) < 0) angle *= -1;
+        return angle;
+    }
 
     $.Point3D.sphereDeflection = function(a, b, c) {
         // returns the signed angle a path from a to b needs to turn at point b in order to head towards c
@@ -186,6 +192,14 @@
     $.Point3D.average = function(arrayOfPoints) {
         let sum = arrayOfPoints.reduce((a, p) => a.add(p), $.Point3D.origin());
         return sum.div(arrayOfPoints.length);
+    };
+    $.Point3D.equidistantFrom3Points = function(a, b, c) {
+        function planeNormal(a, b) {
+            midAB = a.add(b).normalized();
+            midABDir = DMSLib.Point3D.cross(a, b.sub(a));
+            return DMSLib.Point3D.cross(midAB, midABDir);
+        }
+        return DMSLib.Point3D.cross(planeNormal(a, b),planeNormal(b, c)).normalized();
     };
 
 })(DMSLib);

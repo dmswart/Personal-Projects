@@ -4,6 +4,7 @@ let skel = {scale: 72.0}; // dummy skeleton object, with how many pixels corresp
 let target = {};       // target image object
 let source = {};       // source image object
 let programSkeletons;
+let outputResolution = 1500;
 
 function setupPreview() {
     let transformString = 'scale(1, -1) translate(' + size/2 + ',' + (-size / 2) + ')';
@@ -184,6 +185,10 @@ function newSkeleton(skeleton_def) {
     }
 }
 
+function newOutputResolution(value) {
+    outputResolution = value;
+}
+
 /* Takes a file from file dialog event, a (typically hidden) html element id to store it in and
    an object {x: imgObject} to populate with an image (extends ImageArray) with the following fields
   name : filename
@@ -266,7 +271,6 @@ function sourceColor(Q) {
 }
 
 
-/* Save Result Image */
 function getDateString() {
     date = new Date();
     var mm = date.getMonth() + 1; // getMonth() is zero-based
@@ -276,19 +280,20 @@ function getDateString() {
            (dd>9 ? '' : '0') + dd;
 }
 
-function saveImage(resolution) {
+/* Save Result Image */
+function saveImage() {
     // get filename.
     let filename = getDateString();
     if (target && target.name) filename += '_' + target.name.slice(0, -4);
 
 
     // Build ppm image into string
-    let ppmContent = 'P3 ' + resolution + ' ' + resolution + ' 255\n';
+    let ppmContent = 'P3 ' + outputResolution + ' ' + outputResolution + ' 255\n';
 
-    for(let y = 0; y<resolution; y++) {
-        for(let x = 0; x < resolution; x++) {
-            let c = skel.colorOfCoordinate( (x -(resolution/2)+ 0.5) * (size/resolution),
-                                            (-y +(resolution/2)+ 0.5) * (size/resolution),
+    for(let y = 0; y<outputResolution; y++) {
+        for(let x = 0; x < outputResolution; x++) {
+            let c = skel.colorOfCoordinate( (x -(outputResolution/2)+ 0.5) * (size/outputResolution),
+                                            (-y +(outputResolution/2)+ 0.5) * (size/outputResolution),
                                             sourceColor);
             ppmContent += c.r + ' ';
             ppmContent += c.g + ' ';
@@ -326,7 +331,7 @@ function scaleFromTarget() {
 
 function randomize() {
     // get fraction of pixels *in* in target
-    skel = getRandomSkeleton(10, scaleFromTarget());
+    skel = getRandomSkeleton(5, scaleFromTarget());
     updateGUI();
 }
 
@@ -357,7 +362,7 @@ function TheProgram() {
     // A) take top 20 of 1000 random tests
     for(let i = 0; i<1000; i++) {
         console.log('A ' + i);
-        let skel = getRandomSkeleton(8, scaleFromTarget());
+        let skel = getRandomSkeleton(5, scaleFromTarget());
         let cost = calcQuickCost(skel, target, size);
         candidates.push({skeleton: skel, cost: cost});
         if (candidates.length > 20) {

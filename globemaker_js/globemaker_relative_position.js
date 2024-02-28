@@ -138,13 +138,13 @@ function calcRelative3DPointToArc(pt, seg) {
     $.RelativePosition = function(pt, seg) {
         this.seg = seg;
 
-        if (pt instanceof DMSLib.Point3D && seg.radiusOnPlane === undefined )
+        if (pt instanceof DMSLib.Point3D && !seg.isArc())
             Object.assign(this, calcRelative3DPointToLine(pt, seg));
-        else if (pt instanceof DMSLib.Point2D && seg.radiusOnPlane === undefined )
+        else if (pt instanceof DMSLib.Point2D && !seg.isArc())
             Object.assign(this, calcRelative2DPointToLine(pt, seg));
-        else if (pt instanceof DMSLib.Point3D && seg.radiusOnPlane !== undefined) 
+        else if (pt instanceof DMSLib.Point3D && seg.isArc()) 
             Object.assign(this, calcRelative3DPointToArc(pt, seg));
-        else if (pt instanceof DMSLib.Point2D && seg.radiusOnPlane !== undefined) 
+        else if (pt instanceof DMSLib.Point2D && seg.isArc()) 
             Object.assign(this, calcRelative2DPointToArc(pt, seg));
     }; 
 
@@ -154,7 +154,7 @@ function calcRelative3DPointToArc(pt, seg) {
             var result;
             let atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
             let zToA = this.seg.aRot;  // a rot takes zaxis to a
-            let aToCP = (this.seg.rotateAngleOnSphere === undefined) ?
+            let aToCP = (!this.seg.isArc()) ?
                         DMSLib.Rotation.fromAngleAxis(this.closestPt, zToA.apply(DMSLib.Point3D.yAxis())) :
                         DMSLib.Rotation.fromAngleAxis(this.closestPt * Math.sign(this.seg.radiusOnSphere), this.seg.rotateAxisOnSphere);
 
@@ -162,7 +162,7 @@ function calcRelative3DPointToArc(pt, seg) {
         },
 
         pointOnPlane: function() {
-            if(this.seg.rotateAngleOnPlane === undefined) {
+            if(!this.seg.isArc()) {
                 return this.seg.a
                     .add(this.seg.aDir.scaledTo(this.closestPt))
                     .add(DMSLib.Point2D.fromPolar(this.distance, this.seg.aDir.theta() + this.theta));

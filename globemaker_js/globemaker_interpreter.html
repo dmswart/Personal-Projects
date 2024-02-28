@@ -49,7 +49,8 @@
         <li><img id='sourcePicture' style='width:200px; height:100px' src=""/></li>
         <li>
             <button onclick="updateGUI(250);">Preview</button>
-            <button onclick="saveImage(1500)">Save Result</button>
+            <button onclick="saveImage()">Save Result</button>
+            <input type="number" value="1500" min="100" max="5000" onchange="newOutputResolution(this.value);">px resolution
         </li>
     </ul>
 </div>
@@ -68,5 +69,4 @@
 
 
 <!--- BUG LIST
-    l 0.4 a 0.5 0.01 l 0.4 is much different from l 0.4 a 0.5 0.0 l 0.4
 -->

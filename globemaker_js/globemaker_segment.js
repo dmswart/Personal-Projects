@@ -12,16 +12,16 @@ var Globemaker = Globemaker || {};
 //  radiusOnSphere       +ve means arcing ccw.
 //
 //  NOTE!  radius on sphere is _different_ from radius on plane  
-Globemaker.arcValues = function(sweep, radius, startPlanarPos, startPlanarTheta) {
+Globemaker.arcValues = function(sweep, radiusOnSphere, startPlanarPos, startPlanarTheta) {
     let r = {};
 
     // all values HALFTAU apart are equivalent. We want |radius| < QUARTERTAU
-    radius = 0.5 * DMSLib.fixAngle(radius*2); 
+    radiusOnSphere = 0.5 * DMSLib.fixAngle(radiusOnSphere*2); 
 
     // planar stuff
-    if(Math.abs(radius) < DMSLib.QUARTERTAU - 1e-5) {
-        r.radiusOnPlane = Math.tan(radius);
-        r.rotateAngleOnPlane = sweep * Math.cos(radius) * Math.sign(radius);
+    if(Math.abs(radiusOnSphere) < DMSLib.QUARTERTAU - 1e-5) {
+        r.radiusOnPlane = Math.tan(radiusOnSphere);
+        r.rotateAngleOnPlane = sweep * Math.cos(radiusOnSphere) * Math.sign(radiusOnSphere);
 
         let startToCenter = DMSLib.Point2D.fromPolar(r.radiusOnPlane, startPlanarTheta + DMSLib.QUARTERTAU);
         let centerToStart = startToCenter.negate();
@@ -35,10 +35,10 @@ Globemaker.arcValues = function(sweep, radius, startPlanarPos, startPlanarTheta)
         r.endPlanarTheta = startPlanarTheta;
     }
 
-    // spherical stuff () axis of rotation for arc is radius from zaxis to yaxis)
-    r.rotateAngleOnSphere = sweep * Math.sign(radius)
-    r.rotationAxisAtZ = new DMSLib.Point3D(0, Math.sin(radius), Math.cos(radius));
-    r.radiusOnSphere = radius;
+    // spherical stuff () axis of rotation for arc is radiusOnSphere from zaxis to yaxis)
+    r.rotateAngleOnSphere = sweep * Math.sign(radiusOnSphere)
+    r.rotationAxisAtZ = new DMSLib.Point3D(0, Math.sin(radiusOnSphere), Math.cos(radiusOnSphere));
+    r.radiusOnSphere = radiusOnSphere;
 
     return r;
 };
@@ -47,23 +47,34 @@ Globemaker.arcValues = function(sweep, radius, startPlanarPos, startPlanarTheta)
     // -----------------------------------------------------------------
     // $.Segment
     // -----------------------------------------------------------------
-    $.Segment = function(aOnSphere, aOnPlane, aDir, strength, length, radius) {
-        this.aRot = aOnSphere;      // rotates z-axis-towards-x to the position and location of a
-        this.a = aOnPlane;
+    $.Segment = function(aRot, a, aDir, strength, length, radius) {
+        this.aRot = aRot;      // rotates z-axis-towards-x to the position and location of a
+        this.a = a;
         this.aDir = aDir;           // Point2D vector
         this.strength = strength;
         this.length = length;       // length as given
+        this.radiusOnSphere = radius;
 
-        this.b = aOnPlane.add(aDir.scaledTo(length));  // value of end point if going in a straight line
-
-        if(radius === null || radius === undefined) return;
-
-        arcCalcs = Globemaker.arcValues(length, radius, aOnPlane, aDir.theta());
-        this.b = arcCalcs.endPlanarPos;
-        if (arcCalcs.radiusOnPlane !== undefined) {
-            Object.assign(this, arcCalcs);
-            this.rotateAxisOnSphere = this.aRot.apply(this.rotationAxisAtZ);
-        }
+        this.initialize();
     };
+
+    $.Segment.prototype = {
+        initialize: function() {
+            if (this.radiusOnSphere === null || this.radiusOnSphere===undefined) {
+                // boring line segment
+                this.b = this.a.add(this.aDir.scaledTo(this.length));  // value of end point if going in a straight line
+                return;
+            }
+
+            arcCalcs = Globemaker.arcValues(this.length, this.radiusOnSphere, this.a, this.aDir.theta());
+            this.b = arcCalcs.endPlanarPos;
+            delete this.radiusOnPlane;
+            if (arcCalcs.radiusOnPlane !== undefined) {
+                Object.assign(this, arcCalcs);
+                this.rotateAxisOnSphere = this.aRot.apply(this.rotationAxisAtZ);
+            }
+        },
+        isArc: function() {return this.radiusOnPlane !== null && this.radiusOnPlane !== undefined;},
+    }
 
 })(Globemaker);

@@ -156,11 +156,11 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
             if (!value()) { /*TODO error*/ return false; }
             else { radius = __value; }
 
-            // var strength;
-            // if (!value()) { strength = 1.0; }
-            // else { strength = 1.0 / __value; }  // invert strength before multiplying to distance.
+            var strength;
+            if (!value()) { strength = 1.0; }
+            else { strength = 1.0 / __value; }  // invert strength before multiplying to distance.
            
-            skeletonObj.arc(length, radius /*, strength*/);
+            skeletonObj.arc(length, radius , strength);
             return true;
         }
         return false;
@@ -210,6 +210,7 @@ let serializeSkeletonNode = function( node, initialSpace ) {
     } else if (node.type === 'arc') {
         result += initialSpace + 'a ' + (node.value / Math.PI).toFixed(3);
         result += ' ' + (node.radius / Math.PI).toFixed(3);
+        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(3);
         result += '\n';
     }
 
