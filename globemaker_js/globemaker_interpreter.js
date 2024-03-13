@@ -331,7 +331,7 @@ function scaleFromTarget() {
 
 function randomize() {
     // get fraction of pixels *in* in target
-    skel = getRandomSkeleton(5, scaleFromTarget());
+    skel = getRandomSkeleton(10, scaleFromTarget());
     updateGUI();
 }
 
@@ -362,7 +362,7 @@ function TheProgram() {
     // A) take top 20 of 1000 random tests
     for(let i = 0; i<1000; i++) {
         console.log('A ' + i);
-        let skel = getRandomSkeleton(5, scaleFromTarget());
+        let skel = getRandomSkeleton(8, scaleFromTarget());
         let cost = calcQuickCost(skel, target, size);
         candidates.push({skeleton: skel, cost: cost});
         if (candidates.length > 20) {
@@ -408,3 +408,4 @@ function scaleDown() {
     skel.multiplyLengths(1 / 1.05);
     updateGUI();
 }
+
