@@ -291,7 +291,7 @@ function turnPathToArcs(givenPath) {
     outputString = '';
     let previous_c = null;
     while(true) {
-        arcData = findLongestArc(path, 1*DMSLib.TAU/360, previous_c);
+        arcData = findLongestArc(path, 0.5*DMSLib.TAU/360);
         if(arcData==null) break;
 
         outputString += calcArcString(arcData.a, arcData.m, arcData.b, arcData.c, previous_c);
