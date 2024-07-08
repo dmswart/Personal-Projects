@@ -1,44 +1,56 @@
-let WIDTH = 1000;
-let HEIGHT = WIDTH/2;
+const SPHERE_WIDTH = 500;
+const PLANE_WIDTH = 700;
+const PLANE_HEIGHT = 500;
+const PLANE_BUFFER = 50;
 
-let PLANE_WIDTH = 700;
-let PLANE_HEIGHT = 500;
-let PLANE_BUFFER = 50;
-let gPlanarPath = [];
-let gSpherePath = [];
 const PLANE_SCALE = 75;
 const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
                   w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
                   h:(PLANE_HEIGHT-2*PLANE_BUFFER)/PLANE_SCALE};
 
-const STARTINGPOINTS = 20;
-let PATHLENGTH = STARTINGPOINTS * 10;
-let PATHLENGTH_MULTIPLIER = 1;
+
+// ---- get your global variables here ----
+let gPlanarPath = [];
+let gSpherePath = [];
+let gSphereSvg = null;
+let gPlaneSvg = null;
+let gSphereRotation = new DMSLib.Rotation();
 
 function increasePoints() {
-    PATHLENGTH_MULTIPLIER *= 2;
-    PATHLENGTH = STARTINGPOINTS * 10 * PATHLENGTH_MULTIPLIER;
+    gSpherePath = redistributePoints(gSpherePath, 1.3);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath).path;
 }
 
+function onSphereSvgClicked() {
+    let coordinates= d3.mouse(this);
+    var x = coordinates[0] - SPHERE_WIDTH/2; // subtract off x,y of top left of image
+    var y = coordinates[1] - SPHERE_WIDTH/2;
+
+    incrementalRotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/12.0, new DMSLib.Point3D(y, x, 0))
+    gSphereRotation = incrementalRotation.combine(gSphereRotation);
+    drawPathOnSphere(gSpherePath);
+}
 
 function initialize() {
-    sphere_svg = d3.select('#sphere').append('svg')
+    gSphereSvg = d3.select('#sphere').append('svg')
         .style('margin', '5px')
-        .attr('width', WIDTH)
-        .attr('height', HEIGHT);
-    sphere_svg.append('rect')
-        .attr('id', 'canvas')
-        .attr('width', '100%')
-        .attr('height', '100%')
-        .attr('stroke-width', 1)
-        .attr('opacity', '0.4')
-        .attr('fill', 'silver');
+        .attr('width', SPHERE_WIDTH)
+        .attr('height', SPHERE_WIDTH);
+    gSphereSvg.append('image')
+        .attr('id', 'sphereImage')
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', SPHERE_WIDTH)
+        .attr('height', SPHERE_WIDTH)
+        .attr('xlink:href', 'sphere.png')
+        .on('click', onSphereSvgClicked);
 
-    plane_svg = d3.select('#plane').append('svg')
+    gPlaneSvg = d3.select('#plane').append('svg')
         .style('margin', '5px')
         .attr('width', PLANE_WIDTH)
         .attr('height', PLANE_HEIGHT)
-    plane_svg.append('rect')
+    gPlaneSvg.append('rect')
         .attr('id', 'canvas')
         .attr('width', '100%')
         .attr('height', '100%')
@@ -47,10 +59,9 @@ function initialize() {
         .attr('fill', 'silver');
 
     getRandomPath();
-    // getPolygonPath();
 }
 
-function drawPath() {
+function outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
@@ -96,7 +107,7 @@ function toPlanarPath(spherePath) {
     return result;
 }
 
-function toSpherePath(planarPath, scale = 1) {
+function toSpherePath(planarPath) {
     let result = [];
     let orientation = new DMSLib.Rotation();
 
@@ -110,7 +121,7 @@ function toSpherePath(planarPath, scale = 1) {
         let deflectionAngle = DMSLib.Point2D.deflection(p, q, r);
         let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
 
-        let distanceToMove = -p.sub(q).R() / scale;
+        let distanceToMove = -p.sub(q).R();
         let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
 
         orientation = orientation.combine(deflection).combine(move);
@@ -127,7 +138,7 @@ function toSpherePath(planarPath, scale = 1) {
         let deflectionAngle = (p && q && r) ? -DMSLib.Point2D.deflection(p, q, r) : 0;
         let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
 
-        let distanceToMove = (q && r) ? r.sub(q).R() / scale : 0;
+        let distanceToMove = (q && r) ? r.sub(q).R() : 0;
         let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
 
         orientation = orientation.combine(deflection).combine(move);
@@ -136,25 +147,28 @@ function toSpherePath(planarPath, scale = 1) {
     return result;
 }
 
+function colorRamp(idx, total) {
+    gray = Math.floor(idx/total * 255)
+    return 'rgb(255,' + (255-gray) + ',' + gray + ')';
+}
+
 function drawPathOnPlane(path) {
-    plane_svg.selectAll('circle').remove();
-    plane_svg.selectAll('path').remove();
+    gPlaneSvg.selectAll('circle').remove();
+    gPlaneSvg.selectAll('path').remove();
     pathString = '';
     for(let i=0; i<path.length; i++) {
         let x = path[i].x * PLANE_SCALE;
         let y = path[i].y * PLANE_SCALE;
         pathString += (i?'L':'M') + x + ' ' + y;
 
-        gray = Math.floor(i/path.length * 255)
-        color = 'rgb(255,' + (255-gray) + ',' + gray + ')'
-        plane_svg.append('circle')
+        gPlaneSvg.append('circle')
             .attr('cx', x)
             .attr('cy', y)
             .attr('r', 3)
-            .attr('fill', color)
+            .attr('fill', colorRamp(i, path.length));
     }
      
-    plane_svg.append('path')
+    gPlaneSvg.append('path')
         .attr('stroke-width', 1)
         .attr('stroke', 'black')
         .attr('fill', 'none')
@@ -162,46 +176,34 @@ function drawPathOnPlane(path) {
 }
 
 function drawPathOnSphere(path) {
-    sphere_svg.selectAll('circle').remove();
-    sphere_svg.selectAll('path').remove();
+    gSphereSvg.selectAll('circle').remove();
+    gSphereSvg.selectAll('path').remove();
 
-    // move to first point
-    let p = path[0];
-    let theta = ((p.theta() / DMSLib.TAU) + 0.5) * WIDTH;
-    let phi = p.phi() / DMSLib.HALFTAU * HEIGHT;
-    pathString = 'M' + theta + ' ' + phi;
+    let pathString = '';
 
-    for (let i=1; i<path.length; i++) {
+    let p = {z:-1}; // fake previous point with negative z
+
+    for (let i=0; i<path.length; i++) {
         let lastP = p;
-        let lastTheta = theta;
-        let lastPhi = phi;
 
-        p = path[i % path.length];
-        theta = ((p.theta() / DMSLib.TAU) + 0.5) * WIDTH;
-        phi = p.phi() / DMSLib.HALFTAU * HEIGHT;
+        p = path[i % path.length].normalized();
+        p = gSphereRotation.apply(p)
+        x = -p.x * SPHERE_WIDTH/2 + SPHERE_WIDTH/2;
+        y = p.y * SPHERE_WIDTH/2 + SPHERE_WIDTH/2;
 
-        if (p.theta() < -DMSLib.QUARTERTAU && lastP.theta() > DMSLib.QUARTERTAU) {
-            pathString += 'L' + (theta+WIDTH) + ' ' + phi;
-            pathString += 'M' + (lastTheta-WIDTH) + ' ' + lastPhi;
-            pathString += 'L' + theta + ' ' + phi;
-        } else if (p.theta() > DMSLib.QUARTERTAU && lastP.theta() < -DMSLib.QUARTERTAU) {
-            pathString += 'L' + (theta-WIDTH) + ' ' + phi;
-            pathString += 'M' + (lastTheta+WIDTH) + ' ' + lastPhi;
-            pathString += 'L' + theta + ' ' + phi;
-        } else {
-            pathString += 'L' + theta + ' ' + phi;
+        if(p.z >= -0.01) {
+            pathString += (lastP.z >= 0.0) ? 'L' : 'M'; 
+            pathString += x + ' ' + y;
+
+            gSphereSvg.append('circle')
+                .attr('cx', x)
+                .attr('cy', y)
+                .attr('r', 3)
+            .attr('fill', colorRamp(i, path.length));
         }
-        gray = Math.floor(i/path.length * 255)
-        color = 'rgb(255,' + (255-gray) + ',' + gray + ')'
-
-        sphere_svg.append('circle')
-            .attr('cx', theta)
-            .attr('cy', phi)
-            .attr('r', 3)
-            .attr('fill', color)
     }
 
-    sphere_svg.append('path')
+    gSphereSvg.append('path')
         .attr('stroke-width', 1)
         .attr('stroke', 'black')
         .attr('fill', 'none')
@@ -304,9 +306,10 @@ function turnPathToArcs(givenPath) {
 }
 
 // return n equally distributed points along a path 
-function redistributePoints(path, n, closed=true) {
+function redistributePoints(path, n_multiplier = 1) {
+    let n = path.length * n_multiplier
     pathdistance = 0
-    lastIdx = closed ? path.length : (path.length-1);
+    lastIdx = path.length-1;
     for (let i=0; i<lastIdx; i++) {
         let a = path[i]
         let b = path[(i+1)%path.length]
@@ -315,7 +318,7 @@ function redistributePoints(path, n, closed=true) {
 
     distToNextStep = 0;
     idx = 0;
-    stepdist = pathdistance / n;
+    stepdist = pathdistance / (n-1);
     result = [];
     while (idx < lastIdx - 1e-5) {
         idxI = Math.floor(idx)
@@ -338,7 +341,7 @@ function redistributePoints(path, n, closed=true) {
         distToNextStep -= toTravel 
         idx += toTravel / b.sub(a).R();
     }
-    if (!closed) result.push(path[path.length-1]);
+    result.push(path[path.length-1]);
     return result;
 }
 
@@ -530,7 +533,7 @@ function doEnergy(doSphere, doPlane) {
             doSphereStep('energy');
         }
     }
-    drawPath(gPlanarPath);
+    outputPath(gPlanarPath);
 }
 
 function doBothStep() {
@@ -555,7 +558,7 @@ function doBothStep() {
             .normalized();
     }
 
-    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
+    gSpherePath = redistributePoints(gSpherePath);
     gSpherePath = smoothPath(gSpherePath);
     gPlanarPath = toPlanarPath(gSpherePath).path;
 }
@@ -582,7 +585,7 @@ function doSphereStep(type = 'wind') {
             .normalized();
     }
 
-    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
+    gSpherePath = redistributePoints(gSpherePath);
     gSpherePath = smoothPath(gSpherePath);
     gPlanarPath = toPlanarPath(gSpherePath).path;
 }
@@ -603,23 +606,12 @@ function doPlaneStep() {
             .add(edges[i].T.mul(step[i].x * stepscale))
             .add(edges[i].N.mul(step[i].y * stepscale));
     }
-    gPlanarPath = redistributePoints(gPlanarPath, PATHLENGTH, false);
+    gPlanarPath = redistributePoints(gPlanarPath);
     gSpherePath = toSpherePath(gPlanarPath)
 }
 
-function getPolygonPath() {
-    const numsides = 5;
-    gSpherePath = [];
-    for(let i=0; i<numsides+1; i++) {
-        let p = DMSLib.Point3D.fromSphericalCoordinates(1, DMSLib.TAU/36, i*DMSLib.TAU/numsides);
-        p = new DMSLib.Point3D(p.x, p.z, p.y);
-        gSpherePath[i] = p;
-    }
-    gPlanarPath = toPlanarPath(gSpherePath).path;
-    drawPath();
-}
-
 function getRandomPath() {
+    const STARTINGPOINTS = 20;
     gSpherePath = [];
     for(let i=0; i<STARTINGPOINTS; i++) {
         gSpherePath[i] = DMSLib.Point3D.random(1).normalized();
@@ -629,10 +621,10 @@ function getRandomPath() {
     while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, true)) {}
     while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
 
-    gSpherePath = redistributePoints(gSpherePath, PATHLENGTH, false);
+    gSpherePath = redistributePoints(gSpherePath, 10);
 
     gPlanarPath = toPlanarPath(gSpherePath).path;
-    drawPath();
+    outputPath();
 }
 
 
@@ -690,7 +682,7 @@ function scratch() {
     console.log('initialoffset = ' + gRandomVec.R() + '; closestDist = ' + closestDist);
     gPlanarPath = closestPath;
     gSpherePath = toSpherePath(gPlanarPath);
-    drawPath();
+    outputPath();
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.
