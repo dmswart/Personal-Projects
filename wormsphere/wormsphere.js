@@ -1,9 +1,8 @@
 const SPHERE_WIDTH = 500;
 const PLANE_WIDTH = 700;
 const PLANE_HEIGHT = 500;
-const PLANE_BUFFER = 50;
-
 const PLANE_SCALE = 75;
+const PLANE_BUFFER = 50;
 const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
                   w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
                   h:(PLANE_HEIGHT-2*PLANE_BUFFER)/PLANE_SCALE};
@@ -12,9 +11,6 @@ const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
 // ---- get your global variables here ----
 let gPlanarPath = [];
 let gSpherePath = [];
-let gSphereSvg = null;
-let gPlaneSvg = null;
-let gSphereRotation = new DMSLib.Rotation();
 
 function increasePoints() {
     gSpherePath = redistributePoints(gSpherePath, 1.3);
@@ -22,47 +18,8 @@ function increasePoints() {
     gPlanarPath = toPlanarPath(gSpherePath).path;
 }
 
-function onSphereSvgClicked() {
-    let coordinates= d3.mouse(this);
-    var x = coordinates[0] - SPHERE_WIDTH/2; // subtract off x,y of top left of image
-    var y = coordinates[1] - SPHERE_WIDTH/2;
-
-    incrementalRotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/12.0, new DMSLib.Point3D(y, x, 0))
-    gSphereRotation = incrementalRotation.combine(gSphereRotation);
-    drawPathOnSphere(gSpherePath);
-}
-
-function initialize() {
-    gSphereSvg = d3.select('#sphere').append('svg')
-        .style('margin', '5px')
-        .attr('width', SPHERE_WIDTH)
-        .attr('height', SPHERE_WIDTH);
-    gSphereSvg.append('image')
-        .attr('id', 'sphereImage')
-        .attr('x', 0)
-        .attr('y', 0)
-        .attr('width', SPHERE_WIDTH)
-        .attr('height', SPHERE_WIDTH)
-        .attr('xlink:href', 'sphere.png')
-        .on('click', onSphereSvgClicked);
-
-    gPlaneSvg = d3.select('#plane').append('svg')
-        .style('margin', '5px')
-        .attr('width', PLANE_WIDTH)
-        .attr('height', PLANE_HEIGHT)
-    gPlaneSvg.append('rect')
-        .attr('id', 'canvas')
-        .attr('width', '100%')
-        .attr('height', '100%')
-        .attr('stroke-width', 1)
-        .attr('opacity', '0.4')
-        .attr('fill', 'silver');
-
-    getRandomPath();
-}
-
 function outputPath() {
-    drawPathOnPlane(gPlanarPath);
+    drawPathOnPlane(gPlanarPath, PLANE_SCALE);
     drawPathOnSphere(gSpherePath);
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
 }
@@ -151,65 +108,6 @@ function colorRamp(idx, total) {
     gray = Math.floor(idx/total * 255)
     return 'rgb(255,' + (255-gray) + ',' + gray + ')';
 }
-
-function drawPathOnPlane(path) {
-    gPlaneSvg.selectAll('circle').remove();
-    gPlaneSvg.selectAll('path').remove();
-    pathString = '';
-    for(let i=0; i<path.length; i++) {
-        let x = path[i].x * PLANE_SCALE;
-        let y = path[i].y * PLANE_SCALE;
-        pathString += (i?'L':'M') + x + ' ' + y;
-
-        gPlaneSvg.append('circle')
-            .attr('cx', x)
-            .attr('cy', y)
-            .attr('r', 3)
-            .attr('fill', colorRamp(i, path.length));
-    }
-     
-    gPlaneSvg.append('path')
-        .attr('stroke-width', 1)
-        .attr('stroke', 'black')
-        .attr('fill', 'none')
-        .attr('d', pathString);
-}
-
-function drawPathOnSphere(path) {
-    gSphereSvg.selectAll('circle').remove();
-    gSphereSvg.selectAll('path').remove();
-
-    let pathString = '';
-
-    let p = {z:-1}; // fake previous point with negative z
-
-    for (let i=0; i<path.length; i++) {
-        let lastP = p;
-
-        p = path[i % path.length].normalized();
-        p = gSphereRotation.apply(p)
-        x = -p.x * SPHERE_WIDTH/2 + SPHERE_WIDTH/2;
-        y = p.y * SPHERE_WIDTH/2 + SPHERE_WIDTH/2;
-
-        if(p.z >= -0.01) {
-            pathString += (lastP.z >= 0.0) ? 'L' : 'M'; 
-            pathString += x + ' ' + y;
-
-            gSphereSvg.append('circle')
-                .attr('cx', x)
-                .attr('cy', y)
-                .attr('r', 3)
-            .attr('fill', colorRamp(i, path.length));
-        }
-    }
-
-    gSphereSvg.append('path')
-        .attr('stroke-width', 1)
-        .attr('stroke', 'black')
-        .attr('fill', 'none')
-        .attr('d', pathString);
-}
-
 
 // returns:
 //    n (num points arc uses).
@@ -691,4 +589,3 @@ function scratch() {
 //      - calculate T and N movement - using wind - keep it working
 //      - run at same time as plane
 // TODO - try redistributing lower/higher for plane/sphere
-

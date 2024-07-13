@@ -50,6 +50,7 @@
         },
 
         phi: function() {
+            // the angle from +z axis
             var r = this.R();
             if (r == 0) { return 0; }
             return Math.acos(this.z / r);
