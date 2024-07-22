@@ -15,7 +15,7 @@ let gSpherePath = [];
 function increasePoints() {
     gSpherePath = redistributePoints(gSpherePath, 1.3);
     gSpherePath = smoothPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath).path;
+    gPlanarPath = toPlanarPath(gSpherePath);
 }
 
 function outputPath() {
@@ -61,7 +61,7 @@ function toPlanarPath(spherePath) {
         }
     }
 
-    return result;
+    return result.path;
 }
 
 function toSpherePath(planarPath) {
@@ -458,7 +458,7 @@ function doBothStep() {
 
     gSpherePath = redistributePoints(gSpherePath);
     gSpherePath = smoothPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath).path;
+    gPlanarPath = toPlanarPath(gSpherePath);
 }
 
 function doSphereStep(type = 'wind') {
@@ -485,7 +485,7 @@ function doSphereStep(type = 'wind') {
 
     gSpherePath = redistributePoints(gSpherePath);
     gSpherePath = smoothPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath).path;
+    gPlanarPath = toPlanarPath(gSpherePath);
 }
 
 function doPlaneStep() {
@@ -521,66 +521,12 @@ function getRandomPath() {
 
     gSpherePath = redistributePoints(gSpherePath, 10);
 
-    gPlanarPath = toPlanarPath(gSpherePath).path;
+    gPlanarPath = toPlanarPath(gSpherePath);
     outputPath();
 }
 
-
-let gRandomVec = DMSLib.Point2D.random(0.4);
 function scratch() {
-    gPlanarPath = [];
-    let segLength = 0.5;
-    let N = 8;
-    for(let i=0; i<N;i++) {
-        gPlanarPath[i] = new DMSLib.Point2D(i*segLength+2, 3);
-    }
-    gSpherePath = toSpherePath(gPlanarPath);
-    originalSpherePath = gSpherePath.map(x=>x.copy());
-    originalPlanarPath = gPlanarPath.map(x=>x.copy());
-
-    // initial perturbation
-    gPlanarPath[2] = originalPlanarPath[2].add(gRandomVec);
-    
-    closestDist = 100000;
-    closestPath = gPlanarPath.map(x=>x.copy());
-
-    if(true) {
-        // BRUTE FORCE
-        for(let i=0; i<100000; i++) {
-            for(p=3; p<N-2; p++)
-                gPlanarPath[p] = originalPlanarPath[p].add(DMSLib.Point2D.random(segLength));
-    
-            gSpherePath = toSpherePath(gPlanarPath);
-            dist = gSpherePath[N-2].sub(originalSpherePath[N-2]).R();
-            if(dist < closestDist) {
-                closestDist = dist;
-                closestPath = gPlanarPath.map(x=>x.copy());
-            }
-        }
-    } else {
-        // HILL CLIMBING
-        let delta = segLength * 0.01;
-
-        for(let i=0; i<100000; i++) {
-            for(p=3; p<N-2; p++)
-                gPlanarPath[p] = closestPath[p].add(DMSLib.Point2D.random(delta));
-
-            gSpherePath = toSpherePath(gPlanarPath);
-            dist = gSpherePath[N-2].sub(originalSpherePath[N-2]).R();
-            if(dist < closestDist) {
-                closestDist = dist;
-                closestPath = gPlanarPath.map(x=>x.copy());
-                delta *= 1.2;
-            } else {
-                delta *= 0.9;
-            }
-        }
-
-    }
-    console.log('initialoffset = ' + gRandomVec.R() + '; closestDist = ' + closestDist);
-    gPlanarPath = closestPath;
-    gSpherePath = toSpherePath(gPlanarPath);
-    outputPath();
+    // do fun stuff here
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.
