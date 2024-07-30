@@ -5,16 +5,17 @@ Personal Projects
 my experiments using javascript and heavily relying on D3.
 
 ### globemaker_js
-Globemaker is the software I use to unwrap spherical imagery onto the plane.
+[Globemaker](https://dmswart.github.io/Personal-Projects/globemaker_js/globemaker_interpreter.html)
+ is the software I use to unwrap spherical imagery onto the plane.
 * Details and results can be seen in these papers:
   * [Using Turtles and Skeletons to Display the Viewable Sphere (2009)](https://archive.bridgesmathart.org/2009/bridges2009-39.html#gsc.tab=0)
   * [Orange Peel Optimization (2021)](https://archive.bridgesmathart.org/2021/bridges2021-241.pdf)
-  * Arcs on Spheres and Snakes on Planes (pending)
+  * [Arcs on Spheres and Snakes on Planes (2024)](https://archive.bridgesmathart.org/2024/bridges2024-353.html)
 * The original C# code is in the globemaker directory.
 * I recommend the latest JavaScript code in the globemaker_js directory. Read the [README](globemaker_js/README.md) there for more details.
 
 ### wormsphere
-Some initial experiments to create a meandering worm on a sphere which is simultaneously unwrapped onto the plane.  See the [README](wormsphere/README.md) there for more details
+[Wormsphere](https://dmswart.github.io/Personal-Projects/wormsphere/main.html) is software for some initial experiments to create a meandering worm on a sphere which is simultaneously unwrapped onto the plane.  See the [README](wormsphere/README.md) there for more details
 
 ### tsp_xfrmer
 to use this tool to make TSP Art:

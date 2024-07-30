@@ -3,10 +3,8 @@ Use this tool to unwrap spheres.
 
 ### Instructions
 
-* To setup
-    * download the directories: ```d3_pages``` and ```globemaker_js``` from this repository.
 * To start
-    * open globemaker_interpreter.html in a browser (only tested with Chrome)
+    * open [globemaker](https://dmswart.github.io/Personal-Projects/globemaker_js/globemaker_interpreter.html) in a browser (only tested with Chrome)
 
 * To input your own skeleton enter it into the text box.
   * The following table describes the syntax for the language

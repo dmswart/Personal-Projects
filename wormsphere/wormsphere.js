@@ -28,7 +28,7 @@ function toPlanarPath(spherePath) {
     let result = {path: [], scale: 0}
     let o = new DMSLib.Point3D(); // origin
 
-    for(let startdir=0; startdir<DMSLib.HALFTAU; startdir+=DMSLib.HALFTAU/90) {
+    for(let startdir=0; startdir<DMSLib.QUARTERTAU; startdir+=DMSLib.HALFTAU/90) {
         let planePath = [];
         let pos = new DMSLib.Point2D();
         let dir = startdir;
