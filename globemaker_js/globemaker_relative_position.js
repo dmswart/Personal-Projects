@@ -1,5 +1,81 @@
 var Globemaker = Globemaker || {};
 
+/*
+ * RelativePosition
+ *   uses segment to map between plane <==> sphere
+ * 
+ * to create, construct with:
+ *   a DMSLib.Point (either 3D on sphere or 2D on plane)
+ *   a Segment (could be a line or an arc) exists on both sphere and plane
+ * 
+ * then access pointOnSphere() or pointOnPlane() to get point from the _other_ space.
+ * 
+ * example, to map a sphere point to a plane point:
+ *  let myRelPos= new Globemaker.RelativePosition(spherePoint3D, mySegment);
+ *  let myPlanePoint2D = myRelPos.pointOnPlane();
+ */ 
+
+(function($) {
+    //    closestpoint: 'distance' along the segment that given point is closest to. (from 0..segment length)
+    //    theta: the angle towards the given point, (direction of segment at closestpoint is 0) 
+    //    distance: distance between given point and closest point
+    $.RelativePosition = function(pt, seg) {
+        this.seg = seg;
+
+        if (pt instanceof DMSLib.Point3D && !seg.isArc())
+            Object.assign(this, calcRelative3DPointToLine(pt, seg));
+        else if (pt instanceof DMSLib.Point2D && !seg.isArc())
+            Object.assign(this, calcRelative2DPointToLine(pt, seg));
+        else if (pt instanceof DMSLib.Point3D && seg.isArc()) 
+            Object.assign(this, calcRelative3DPointToArc(pt, seg));
+        else if (pt instanceof DMSLib.Point2D && seg.isArc()) 
+            Object.assign(this, calcRelative2DPointToArc(pt, seg));
+    }; 
+
+    $.RelativePosition.prototype = {
+        // accessors
+        pointOnSphere: function() {
+            var result;
+            let atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
+            let zToA = this.seg.aRot;  // a rot takes zaxis to a
+            let aToCP = (!this.seg.isArc()) ?
+                        DMSLib.Rotation.fromAngleAxis(this.closestPt, zToA.apply(DMSLib.Point3D.yAxis())) :
+                        DMSLib.Rotation.fromAngleAxis(this.closestPt * Math.sign(this.seg.radiusOnSphere), this.seg.rotateAxisOnSphere);
+
+            return aToCP.combine(zToA).apply(atZ);
+        },
+
+        pointOnPlane: function() {
+            if(!this.seg.isArc()) {
+                return this.seg.a
+                    .add(this.seg.aDir.scaledTo(this.closestPt))
+                    .add(DMSLib.Point2D.fromPolar(this.distance, this.seg.aDir.theta() + this.theta));
+            } else {
+                // calc closest point (cp)
+                cpAngle = this.seg.length != 0 ? 
+                          this.closestPt * this.seg.rotateAngleOnPlane / this.seg.length :
+                          0.0;
+                let radSign = Math.sign(this.seg.radiusOnPlane);
+                
+                var cpOnPlane = this.seg.centerPt
+                    .add(DMSLib.Point2D.fromPolar(
+                        Math.abs(this.seg.radiusOnPlane),
+                        this.seg.aDir.theta() + (cpAngle - DMSLib.QUARTERTAU) * radSign));
+
+                var cpDirTheta = this.seg.aDir.theta() + cpAngle * radSign;
+                return cpOnPlane.add(DMSLib.Point2D.fromPolar(this.distance, cpDirTheta + this.theta));
+            }
+        }
+    };
+
+    // static variables, functions
+    $.RelativePosition.isNearerOnSphere = function(pt3d, seg, criteria) {
+        rp = new $.RelativePosition(pt3d, seg);
+        return rp.distance * seg.strength < criteria - DMSLib.EPSILON;
+    };
+
+})(Globemaker);
+
 // given a point on sphere, and a line segment
 function calcRelative3DPointToLine(pt, seg) {
     let result = {};
@@ -123,71 +199,3 @@ function calcRelative3DPointToArc(pt, seg) {
     return result;
 }
 
-(function($) {
-    // -----------------------------------------------------------------
-    // RelativePosition
-    // 
-    // to create give as input, a point (either on sphere or plane)
-    // and a segment (which exists on both sphere and plane) 
-    // 
-    // will calculate 
-    //    closestpoint: 'distance' along the segment that given point is closest to. (from 0..segment length)
-    //    theta: the angle towards the given point, (direction of segment at closestpoint is 0) 
-    //    distance: distance between given point and closest point
-    // -----------------------------------------------------------------
-    $.RelativePosition = function(pt, seg) {
-        this.seg = seg;
-
-        if (pt instanceof DMSLib.Point3D && !seg.isArc())
-            Object.assign(this, calcRelative3DPointToLine(pt, seg));
-        else if (pt instanceof DMSLib.Point2D && !seg.isArc())
-            Object.assign(this, calcRelative2DPointToLine(pt, seg));
-        else if (pt instanceof DMSLib.Point3D && seg.isArc()) 
-            Object.assign(this, calcRelative3DPointToArc(pt, seg));
-        else if (pt instanceof DMSLib.Point2D && seg.isArc()) 
-            Object.assign(this, calcRelative2DPointToArc(pt, seg));
-    }; 
-
-    $.RelativePosition.prototype = {
-        // accessors
-        pointOnSphere: function() {
-            var result;
-            let atZ = DMSLib.Point3D.fromSphericalCoordinates(1.0, this.distance, this.theta);
-            let zToA = this.seg.aRot;  // a rot takes zaxis to a
-            let aToCP = (!this.seg.isArc()) ?
-                        DMSLib.Rotation.fromAngleAxis(this.closestPt, zToA.apply(DMSLib.Point3D.yAxis())) :
-                        DMSLib.Rotation.fromAngleAxis(this.closestPt * Math.sign(this.seg.radiusOnSphere), this.seg.rotateAxisOnSphere);
-
-            return aToCP.combine(zToA).apply(atZ);
-        },
-
-        pointOnPlane: function() {
-            if(!this.seg.isArc()) {
-                return this.seg.a
-                    .add(this.seg.aDir.scaledTo(this.closestPt))
-                    .add(DMSLib.Point2D.fromPolar(this.distance, this.seg.aDir.theta() + this.theta));
-            } else {
-                // calc closest point (cp)
-                cpAngle = this.seg.length != 0 ? 
-                          this.closestPt * this.seg.rotateAngleOnPlane / this.seg.length :
-                          0.0;
-                let radSign = Math.sign(this.seg.radiusOnPlane);
-                
-                var cpOnPlane = this.seg.centerPt
-                    .add(DMSLib.Point2D.fromPolar(
-                        Math.abs(this.seg.radiusOnPlane),
-                        this.seg.aDir.theta() + (cpAngle - DMSLib.QUARTERTAU) * radSign));
-
-                var cpDirTheta = this.seg.aDir.theta() + cpAngle * radSign;
-                return cpOnPlane.add(DMSLib.Point2D.fromPolar(this.distance, cpDirTheta + this.theta));
-            }
-        }
-    };
-
-    // static variables, functions
-    $.RelativePosition.isNearerOnSphere = function(pt3d, seg, criteria) {
-        rp = new $.RelativePosition(pt3d, seg);
-        return rp.distance * seg.strength < criteria - DMSLib.EPSILON;
-    };
-
-})(Globemaker);

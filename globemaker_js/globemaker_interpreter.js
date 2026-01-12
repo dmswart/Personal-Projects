@@ -1,6 +1,6 @@
 const size = 720;      // size of image
 let svg;               // d3 selection for base svg object
-let skel = {scale: 72.0}; // dummy skeleton object, with how many pixels correspond to radian
+let gSkel = {scale: 72.0}; // dummy skeleton object, with how many pixels correspond to radian
 let target = {};       // target image object
 let source = {};       // source image object
 let programSkeletons;
@@ -166,16 +166,16 @@ function updateGrid(skel, density) {
 }
 
 function updateGUI(density = 100) {
-    skel.init();
-    d3.select('#input').property('value', serializeSkeleton(skel));
-    updateLines(skel);
-    updateMoves(skel);
-    updateGrid(skel, density);
+    gSkel.init();
+    d3.select('#input').property('value', serializeSkeleton(gSkel));
+    updateLines(gSkel);
+    updateMoves(gSkel);
+    updateGrid(gSkel, density);
 }
 
 function newSkeleton(skeleton_def) {
-    skel = new Skeleton(skel.scale);
-    if(deserializeSkeleton(skeleton_def, skel)) {
+    gSkel = new Skeleton(gSkel.scale);
+    if(deserializeSkeleton(skeleton_def, gSkel)) {
         // input text box successfully parsed: white background
         d3.select('#input').attr('style', 'background-color:white');
         updateGUI();
@@ -292,7 +292,7 @@ function saveImage() {
 
     for(let y = 0; y<outputResolution; y++) {
         for(let x = 0; x < outputResolution; x++) {
-            let c = skel.colorOfCoordinate( (x -(outputResolution/2)+ 0.5) * (size/outputResolution),
+            let c = gSkel.colorOfCoordinate( (x -(outputResolution/2)+ 0.5) * (size/outputResolution),
                                             (-y +(outputResolution/2)+ 0.5) * (size/outputResolution),
                                             sourceColor);
             ppmContent += c.r + ' ';
@@ -310,7 +310,7 @@ function saveImage() {
     element.click();
 
     // build skl into a string
-    sklContent = serializeSkeleton(skel);
+    sklContent = serializeSkeleton(gSkel);
 
     // save the skeleton via user download
     element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(sklContent));
@@ -331,16 +331,69 @@ function scaleFromTarget() {
 
 function randomize() {
     // get fraction of pixels *in* in target
-    skel = getRandomSkeleton(10, scaleFromTarget());
     updateGUI();
+}
+
+function findEndpointOfSkeletonAndComparePos(targetPos, targetRot) {
+    const ptA = DMSLib.Point3D.zAxis();
+    const ptB = new DMSLib.Point3D(0.43588989435,0,0.9); 
+    const targetRotA = targetRot.apply(ptA);
+    const targetRotB = targetRot.apply(ptB);
+
+    const leaf = gSkel.firstLeaf();
+    const endPos = leaf.globalState.plane_pos;
+    const endRotA = leaf.globalState.sphere_rot.apply(ptA);
+    const endRotB = leaf.globalState.sphere_rot.apply(ptB);
+    
+    // return endPos.sub(targetPos).R() / gSkel.scale + endRotA.sub(targetRotA).R() + endRotB.sub(targetRotB).R();
+    return endPos.sub(targetPos).R() / gSkel.scale;
+}
+
+function randomThreeArcSkeletonString() {
+    r = (min, max) => Math.random() * (max - min) + min;
+    let skelString = 'a ' + r(0.1, 1.5) + ' ' + r(-0.5, 0.5) + '\n';
+    // skelString += 'l ' + r(0, 0.5) + '\n';
+    skelString += 'a ' + r(0.1, 1.5) + ' ' + r(-0.5, 0.5) + '\n';
+    // skelString += 'l ' + r(0, 0.5) + '\n';
+    skelString += 'a ' + r(0.1, 1.5) + ' ' + r(-0.5, 0.5) + '\n';
+
+    return skelString;
+}
+
+function scratch() {
+    const initialSkel = randomThreeArcSkeletonString();
+    console.log('Initial skeleton: ' + initialSkel);
+
+    d3.select('#input').property('value', initialSkel)
+    newSkeleton(initialSkel);
+    const targetPos = gSkel.firstLeaf().globalState.plane_pos;
+    const targetRot = gSkel.firstLeaf().globalState.sphere_rot;
+
+    let dist = Infinity;
+    let bestSkel = initialSkel;
+    for(let i = 0; i<1000; i++) {
+        const skelString = randomThreeArcSkeletonString();
+        d3.select('#input').property('value', skelString)
+        newSkeleton(skelString);
+        let newdist = findEndpointOfSkeletonAndComparePos(targetPos, targetRot);
+        if(newdist < dist) {
+            console.log('New best: ' + newdist + ' at ' + skelString);
+            bestSkel = skelString;
+            dist = newdist;
+        }
+    }
+
+    let finalSkel = '{' + bestSkel + '}' + '{' + initialSkel + '}';
+    d3.select('#input').property('value', finalSkel)
+    newSkeleton(finalSkel);
 }
 
 function checkTarget() {
     if( !target.width ) {
         alert('You must specify a target image');
         return false;
-    } else if (target.width > 100) {
-        alert('You must specify a target image with resolution <= 100x100');
+    } else if (target.width > 1000) {
+        alert('You must specify a target image with resolution <= 1000x1000');
         return false;
     } else {
         return true;
@@ -349,7 +402,7 @@ function checkTarget() {
 
 function optimizeToTarget() {
     if (!checkTarget()) return;
-    optimizeSkeleton(skel, target, size);
+    optimizeSkeleton(gSkel, target, size);
     updateGUI();
 }
 
@@ -394,18 +447,18 @@ function TheProgram() {
 function nextTheProgram() {
     if(programSkeletons) {
         programSkeletons = programSkeletons.slice(1).concat(programSkeletons[0])
-        skel = programSkeletons[0];
+        gSkel = programSkeletons[0];
         updateGUI();
     }
 }
 
 function scaleUp() {
-    skel.multiplyLengths(1.05);
+    gSkel.multiplyLengths(1.05);
     updateGUI();
 }
 
 function scaleDown() {
-    skel.multiplyLengths(1 / 1.05);
+    gSkel.multiplyLengths(1 / 1.05);
     updateGUI();
 }
 

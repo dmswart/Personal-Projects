@@ -1,5 +1,20 @@
 var uniqueId = 0;
 
+/*
+ * SkeletonNode
+ * - records a turtle command, and saves the global state after the command is executed.
+ * - segments() recursive function to return a flat array of child segments
+ * - list() recursive function to list plane info of child nodes of a certain type (for drawing)
+ * 
+ * Skeleton
+ * - is a tree of SkeletonNodes (branching happens with push/pop)
+ * - it has a parent node, and for construction, a current node that you can call turtle commands
+ * - three functions implement the method to 'unwrap' spherical imagery to the plane:
+ *     closerNodeExists,
+ *     relativePositiontoNearestSegmentOnPlane,
+ *     colorOfCoordinate
+ */
+
 // type:  'line', 'move', 'moveOnPlane', 'rotate', 'arc' or 'none'
 // value: amount to move, or rotate
 // strength: for line only, how strong the new segment is
@@ -87,6 +102,12 @@ function SkeletonNode(type, value, strength, radius= null) {
 
         this.children.forEach(function(child) {child.multiplyLengths(scaleFactor);});
     }
+
+    // first leaf just returns a leaf node.
+    this.firstLeaf = function() {
+        if (this.children.length === 0) return this;
+        return this.children[0].firstLeaf();
+    };
 
     // recursive calculation of plane info (x1, y1, x2, y2, startdir, id)
     this.list = function(types) {
@@ -180,6 +201,7 @@ function Skeleton(scale) {
 
     // access list of drawing info as an array of {x1, y1, x2, y2, startdir, id}
     this.list = function(type) {return this.parentNode.list(type); };
+    this.firstLeaf = function() {return this.parentNode.firstLeaf(); };
 
 
     this.relativePositiontoNearestSegmentOnPlane = function(pointOnPlane) {

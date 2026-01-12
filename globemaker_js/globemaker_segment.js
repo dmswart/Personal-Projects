@@ -1,4 +1,8 @@
 var Globemaker = Globemaker || {};
+/*
+ * Segment
+ *   stores the geometric information of a drawn line segment (or arc) on both the plane and the sphere.
+ */ 
 
 //
 //  radiusOnPlane:       +ve means arcing ccw
