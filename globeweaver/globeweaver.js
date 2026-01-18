@@ -27,19 +27,19 @@ function outputPath() {
 
 function initializeThreeNode() {
     let node1 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.fromAngleAxis(0, DMSLib.Vector3.ZAxis),
-        new Arm(DMSLib.TAU / 8, 1, 0),
-        new Arm(DMSLib.TAU / 8, 1, 1)
+        new DMSLib.Rotation.identity(),
+        new Arm(DMSLib.TAU / 8, true, 0, 1),
+        new Arm(DMSLib.TAU / 8, false, 1, 1)
     );
     let node2 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 4, DMSLib.Vector3.ZAxis),
-        new Arm(DMSLib.TAU / 8, 2, 0),
-        new Arm(DMSLib.TAU / 8, 2, 1)
+        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 4, DMSLib.Point3D.yAxis()),
+        new Arm(DMSLib.TAU / 8, false, 0, 0),
+        new Arm(DMSLib.TAU / 8, false, 2, 1)
     );
     let node3 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.fromAngleAxis(DMSLib.TAU / 2, DMSLib.Vector3.ZAxis),
-        new Arm(DMSLib.TAU / 8, 0, 1),
-        new Arm(DMSLib.TAU / 8, 0, 0)
+        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 2, DMSLib.Point3D.yAxis()),
+        new Arm(DMSLib.TAU / 8, true, 1, 0),
+        new Arm(DMSLib.TAU / 8, false, 2, 0)
     );
     return new Globeweaver.IntersectionList([node1, node2, node3]);
 }
@@ -47,15 +47,15 @@ function initializeThreeNode() {
 function initializeOneNode() {
     let node1 = new Globeweaver.IntersectionNode(
         new DMSLib.Rotation.fromAngleAxis(0, DMSLib.Point3D.zAxis()),
-        new Arm(DMSLib.TAU / 4, 0, 1),
-        new Arm(DMSLib.TAU / 4, 0, 0)
+        new Arm(DMSLib.TAU / 4, true, 0, 1),
+        new Arm(DMSLib.TAU / 4, true, 0, 0)
     );
     return new Globeweaver.IntersectionList([node1]);
 }
 
 function initializeIntersections() {
-    // gIntersectionList = initializeThreeNode();
-    gIntersectionList = initializeOneNode();
+    gIntersectionList = initializeThreeNode();
+    // gIntersectionList = initializeOneNode();
 }
 
 function toPlanarPath(spherePath) {

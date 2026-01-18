@@ -35,16 +35,19 @@ Globeweaver.IntersectionList.prototype = {
 
         // start at node 0 going north,
         let currentArm = this.nodes[0].arms[0];
-        currentArm.directionIsPositive = true;
 
         // traverse until we loop back to start
         while(true) {
             let nextArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
-            let nextArmIsLast = (nextArm.directionIsPositive !== null);
-            if( !nextArmIsLast ) nextArm.directionIsPositive = true; // until we learn otherwise.
 
             // calculate intersection of great circles 
-            intersectionPoint = DMSLib.Point3D.cross(currentArm.turningAxis(), nextArm.turningAxis()); 
+            let intersectionPoint;
+            if(DMSLib.Point3D.dot(currentArm.turningAxis(), nextArm.turningAxis()) >= 1-DMSLib.EPSILON) {
+                // great circles are (nearly) parallel, so chose midpoint between surfacepoints.
+                intersectionPoint = currentArm.surfacePoint().add(nextArm.surfacePoint()).normalized();
+            } else {
+                intersectionPoint = DMSLib.Point3D.cross(currentArm.turningAxis(), nextArm.turningAxis()); 
+            }
             
             // we want outgoing direction to point towards the intersection,
             // and incoming direction to point away from it           
@@ -58,11 +61,7 @@ Globeweaver.IntersectionList.prototype = {
             //                       \    
             if(DMSLib.Point3D.dot(intersectionPoint, currentArm.surfaceDirection()) < -DMSLib.EPSILON) {
                 // outgoingVector is not pointing towards the intersection, use the antipode of intersection
-                intersectionPoint = DMSLib.Point3D.multiplyScalar(intersectionPoint, -1);
-            }
-            if(!nextArmIsLast && DMSLib.Point3D.dot(intersectionPoint, nextArm.surfaceDirection()) < -DMSLib.EPSILON) {
-                // we want the incomingVector pointing away
-                nextArm.directionIsPositive = false;
+                intersectionPoint.scale(-1);
             }
 
             // AngleOut - length = AngleIn - secondLength
@@ -79,17 +78,17 @@ Globeweaver.IntersectionList.prototype = {
             endOfArc = nextArm.orientationAlongArm(-currentArm.secondLength);
             let arcRotation = endOfArc.combine(startOfArc.inverse());
             currentArm.arcTurn = arcRotation.angle();
+            // turns > 180 degrees should be negative turns
+            if(currentArm.arcTurn >= DMSLib.TAU) {
+                currentArm.arcTurn -= DMSLib.TAU;
+            }
+            if(currentArm.arcTurn <= -DMSLib.TAU) {
+                currentArm.arcTurn += DMSLib.TAU;
+            }
 
-            let rotationCenter = arcRotation.axis();
+
             let startOfArcPoint = startOfArc.apply(DMSLib.Point3D.zAxis());
-            let endOfArcPoint = endOfArc.apply(DMSLib.Point3D.zAxis());
-            currentArm.arcRadius = DMSLib.Point3D.angle(rotationCenter, DMSLib.Point3D.origin(), startOfArcPoint);
-
-            // figure out the sign of the radius. (since Point3D.angle is always positive)
-            // let dotProduct = DMSLib.Point3D.dot( rotationCenter, startOfArcPoint); 
-            // if(dotProduct < 0) {
-                // currentArm.arcRadius = -currentArm.arcRadius;
-            // }
+            currentArm.arcRadius = DMSLib.Point3D.angle(arcRotation.axis(), DMSLib.Point3D.origin(), startOfArcPoint);
 
             // next!
             currentArm = nextArm;

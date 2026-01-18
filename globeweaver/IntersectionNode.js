@@ -8,9 +8,11 @@ var Globeweaver = Globeweaver || {};
 //   length: the length of the straight portion of the path heading out this arm
 //   nextNode: the index of the next intersection heading out this arm 
 //   nextDir: 0 for NS, 1 for EW
+//   directionIsPositive: true means direction is positive (i.e., north or east)
 class Arm {
-    constructor(length, nextNode, nextDir) {
+    constructor(length, directionIsPositive, nextNode, nextDir) {
         this.length = length;
+        this.directionIsPositive = directionIsPositive;
         this.nextNode = nextNode;
         this.nextDir = nextDir;
 
@@ -19,14 +21,12 @@ class Arm {
         this._orientation = DMSLib.Rotation.identity(); // this is the orientation of the intersection.
 
         // derived properties
-        this.directionIsPositive = null;  // true means direction is positive (i.e., north or east)
         this.arcRadius = null;
         this.arcTurn = null;
         this.secondLength = null;
     }
 
     clearDerivedProperties() {
-        this.directionIsPositive = null;
         this.arcRadius = null;
         this.arcTurn = null;
         this.secondLength = null;
