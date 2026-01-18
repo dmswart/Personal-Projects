@@ -1,8 +1,6 @@
 # Wormsphere 
 Use this tool to draw a meandering curve on a sphere (and also unwrapped onto the plane).
 
-This code is in an incompleted state.
-
 The energy function used to optimized the curves is based on repulsive curves work described [here](https://www.cs.cmu.edu/~kmcrane/Projects/RepulsiveCurves/index.html)
 
 ### Instructions
