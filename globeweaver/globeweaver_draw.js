@@ -48,8 +48,6 @@ function initializeSvgs(width, height) {
         .attr('stroke-width', 1)
         .attr('opacity', '0.4')
         .attr('fill', 'silver');
-
-    getRandomPath();
 }
 
 function colorRamp(idx, total) {

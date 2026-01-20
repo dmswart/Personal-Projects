@@ -21,14 +21,12 @@ class Arm {
         this._orientation = DMSLib.Rotation.identity(); // this is the orientation of the intersection.
 
         // derived properties
-        this.arcRadius = null;
-        this.arcTurn = null;
+        this.arcRotation = null;
         this.secondLength = null;
     }
 
     clearDerivedProperties() {
-        this.arcRadius = null;
-        this.arcTurn = null;
+        this.arcRotation = null;
         this.secondLength = null;
     }
 
@@ -49,6 +47,23 @@ class Arm {
     surfacePoint() { return this.getOrientation().apply(DMSLib.Point3D.zAxis()); }
     surfaceDirection() { return this.getOrientation().apply(DMSLib.Point3D.xAxis()); }
     turningAxis() { return this.getOrientation().apply(DMSLib.Point3D.yAxis()); }
+    
+    arcTurn() {
+        let result = this.arcRotation.angle();
+        // turns > 360 degrees should be negative turns
+        if(result >= DMSLib.TAU) { result -= DMSLib.TAU; }
+        if(result <= -DMSLib.TAU) { result += DMSLib.TAU; }
+
+        return result;
+    }
+    arcRadius() {
+        let startOfArc = this.orientationAlongArm(this.length);
+        let startOfArcPoint = startOfArc.apply(DMSLib.Point3D.zAxis());
+        return DMSLib.Point3D.angle(
+            this.arcRotation.axis(),
+            DMSLib.Point3D.origin(),
+            startOfArcPoint);
+    }
 
     // orientation of the point after going out from the arm a given distance
     orientationAlongArm(distance) {

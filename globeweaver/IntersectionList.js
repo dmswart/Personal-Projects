@@ -76,19 +76,10 @@ Globeweaver.IntersectionList.prototype = {
             // now we can get the rotation for the arc.
             startOfArc = currentArm.orientationAlongArm(currentArm.length);
             endOfArc = nextArm.orientationAlongArm(-currentArm.secondLength);
-            let arcRotation = endOfArc.combine(startOfArc.inverse());
-            currentArm.arcTurn = arcRotation.angle();
-            // turns > 180 degrees should be negative turns
-            if(currentArm.arcTurn >= DMSLib.TAU) {
-                currentArm.arcTurn -= DMSLib.TAU;
-            }
-            if(currentArm.arcTurn <= -DMSLib.TAU) {
-                currentArm.arcTurn += DMSLib.TAU;
-            }
+            currentArm.arcRotation = endOfArc.combine(startOfArc.inverse());
 
 
-            let startOfArcPoint = startOfArc.apply(DMSLib.Point3D.zAxis());
-            currentArm.arcRadius = DMSLib.Point3D.angle(arcRotation.axis(), DMSLib.Point3D.origin(), startOfArcPoint);
+
 
             // next!
             currentArm = nextArm;
@@ -102,13 +93,62 @@ Globeweaver.IntersectionList.prototype = {
         // start at node 0 going north,
         let currentArm = this.nodes[0].arms[0];
         while(true) {
-            pathString += 'l ' + currentArm.length/DMSLib.HALFTAU +
-                          ' a ' + currentArm.arcTurn/DMSLib.HALFTAU + ' ' + currentArm.arcRadius/DMSLib.HALFTAU +
-                          ' l ' + currentArm.secondLength/DMSLib.HALFTAU + ' ';
+            pathString += 'l ' + currentArm.length / DMSLib.HALFTAU +
+                          ' a ' + currentArm.arcTurn() / DMSLib.HALFTAU + ' ' + currentArm.arcRadius() / DMSLib.HALFTAU +
+                          ' l ' + currentArm.secondLength / DMSLib.HALFTAU + ' ';
             // next! 
             currentArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
             if(currentArm == this.nodes[0].arms[0]) break;
         }
         return pathString;
+    },
+
+    // handy function to get a list of points on the sphere
+    getSpherePath: function(samplesPerSegment = 20) {
+        let path = [];
+        // start at node 0 going north,
+        let currentArm = this.nodes[0].arms[0];
+        let nextArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
+        while(true) {
+            // outgoing arm
+            if(currentArm.length > 0) {
+                for(i=0; i<samplesPerSegment; i++) {
+                    let l = currentArm.length/samplesPerSegment * i;
+                    let pt = currentArm.orientationAlongArm(l).apply(DMSLib.Point3D.zAxis());
+                    path.push(pt);
+                }
+            }
+    
+            // arc to next arm
+            let startOfArcPoint = currentArm.orientationAlongArm(currentArm.length).apply(DMSLib.Point3D.zAxis());
+            let arcAxis = currentArm.arcRotation.axis();
+            let arcTurn = currentArm.arcTurn();
+            if(arcTurn > 0) {
+                for(i=0; i<samplesPerSegment; i++) {
+                    let l = arcTurn / samplesPerSegment * i;
+                    let pt = DMSLib.Rotation.fromAngleAxis(l, arcAxis).apply(startOfArcPoint);
+                    path.push(pt);
+                }
+            }
+    
+            // next arm
+            if(nextArm.secondLength > 0) {
+                for(i=0; i<samplesPerSegment; i++) {
+                    let l = currentArm.secondLength/samplesPerSegment * (i - samplesPerSegment);
+                    let pt = nextArm.orientationAlongArm(l).apply(DMSLib.Point3D.zAxis());
+                    path.push(pt);
+                }
+            }
+    
+            // next!
+            currentArm = nextArm;
+            nextArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
+            if(currentArm == this.nodes[0].arms[0]) break;
+        }
+
+        path.forEach(pt => pt.normalize());
+
+        return path;
+
     },
 };

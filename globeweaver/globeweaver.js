@@ -56,6 +56,11 @@ function initializeOneNode() {
 function initializeIntersections() {
     gIntersectionList = initializeThreeNode();
     // gIntersectionList = initializeOneNode();
+
+    gSpherePath = gIntersectionList.getSpherePath(20);
+    gSpherePath = redistributePoints(gSpherePath, 0.5);
+    gPlanarPath = toPlanarPath(gSpherePath);
+    outputPath();
 }
 
 function toPlanarPath(spherePath) {
@@ -558,6 +563,8 @@ function getRandomPath() {
     gPlanarPath = toPlanarPath(gSpherePath);
     outputPath();
 }
+
+
 
 function scratch() {
     // do fun stuff here
