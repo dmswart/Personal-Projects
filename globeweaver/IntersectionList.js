@@ -42,9 +42,16 @@ Globeweaver.IntersectionList.prototype = {
 
             // calculate intersection of great circles 
             let intersectionPoint;
+            let bArcsAreParallel = false;
             if(DMSLib.Point3D.dot(currentArm.turningAxis(), nextArm.turningAxis()) >= 1-DMSLib.EPSILON) {
                 // great circles are (nearly) parallel, so chose midpoint between surfacepoints.
                 intersectionPoint = currentArm.surfacePoint().add(nextArm.surfacePoint()).normalized();
+                bArcsAreParallel = true;
+            } else if(DMSLib.Point3D.dot(currentArm.turningAxis(), nextArm.turningAxis()) >= 1-DMSLib.EPSILON) {
+                // NOT implemented
+                console.log("Opposing, parallel arcs detected!");
+                intersectionPoint = currentArm.surfacePoint().add(nextArm.surfacePoint()).normalized();
+                bArcsAreParallel = true;
             } else {
                 intersectionPoint = DMSLib.Point3D.cross(currentArm.turningAxis(), nextArm.turningAxis()); 
             }
@@ -68,18 +75,28 @@ Globeweaver.IntersectionList.prototype = {
             let angleOutToIntersection = DMSLib.Point3D.angle(currentArm.surfacePoint(), DMSLib.Point3D.origin(), intersectionPoint);
             let angleInFromIntersection = DMSLib.Point3D.angle(nextArm.surfacePoint(), DMSLib.Point3D.origin(), intersectionPoint);
             currentArm.secondLength = angleInFromIntersection - angleOutToIntersection + currentArm.length;
+            nextArm.incomingLength = currentArm.secondLength;
             if(currentArm.secondLength < 0) {
                 currentArm.length -= currentArm.secondLength;
                 currentArm.secondLength = 0;
             }
+            // set ranges
+            currentArm.minLength = Math.max(0, angleOutToIntersection - angleInFromIntersection);
+            currentArm.maxLength =  angleOutToIntersection || DMSLib.HALFTAU;
+
 
             // now we can get the rotation for the arc.
-            startOfArc = currentArm.orientationAlongArm(currentArm.length);
-            endOfArc = nextArm.orientationAlongArm(-currentArm.secondLength);
-            currentArm.arcRotation = endOfArc.combine(startOfArc.inverse());
-
-
-
+            let startOfArc = currentArm.orientationAlongArm(currentArm.length);
+            let endOfArc = nextArm.orientationAlongArm(-currentArm.secondLength);
+            if(bArcsAreParallel) {
+                currentArm.arcRotation = DMSLib.Rotation.fromAngleAxis(
+                    DMSLib.Point3D.angle(startOfArc.apply(DMSLib.Point3D.zAxis()),
+                                         DMSLib.Point3D.origin(),
+                                         endOfArc.apply(DMSLib.Point3D.zAxis())),
+                    currentArm.turningAxis());
+            } else {
+                currentArm.arcRotation = endOfArc.combine(startOfArc.inverse());
+            }
 
             // next!
             currentArm = nextArm;
@@ -89,18 +106,27 @@ Globeweaver.IntersectionList.prototype = {
     },
 
     getPathString: function() {
-        let pathString = '';
+        let result = '';
         // start at node 0 going north,
         let currentArm = this.nodes[0].arms[0];
         while(true) {
-            pathString += 'l ' + currentArm.length / DMSLib.HALFTAU +
-                          ' a ' + currentArm.arcTurn() / DMSLib.HALFTAU + ' ' + currentArm.arcRadius() / DMSLib.HALFTAU +
-                          ' l ' + currentArm.secondLength / DMSLib.HALFTAU + ' ';
+            // make sure to format numbers to four decimal places
+        
+            result += 'l ' + (currentArm.length / DMSLib.HALFTAU).toFixed(4) + '\n' +
+                      'a ' + (currentArm.arcTurn() / DMSLib.HALFTAU).toFixed(4) + ' ' +
+                             (currentArm.arcRadius() / DMSLib.HALFTAU).toFixed(4) + '\n' +
+                      'l ' + (currentArm.secondLength / DMSLib.HALFTAU).toFixed(4) + '\n';
             // next! 
             currentArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
             if(currentArm == this.nodes[0].arms[0]) break;
         }
-        return pathString;
+
+        // remove trailing zeros and decimal points
+        result = result.replace(/00*\n/g, '\n');
+        result = result.replace(/00* /g, ' ');
+        result = result.replace(/\.\n/g, '\n');
+        result = result.replace(/\. /g, ' ');
+        return result;
     },
 
     // handy function to get a list of points on the sphere

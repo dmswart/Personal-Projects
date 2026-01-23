@@ -124,7 +124,7 @@ var DMSLib = DMSLib || {};
     $.Point2D.dot = function(a, b) { return a.x * b.x + a.y * b.y; }
     $.Point2D.cross = function(a, b) { return new $.Point3D(0, 0, a.x * b.y - a.y * b.x); }
     $.Point2D.angle = function(a, b, c) {
-        if (a.sub(b).r == 0 || c.sub(b).r == 0) {
+        if (a.sub(b).R() == 0 || c.sub(b).R() == 0) {
             return 0;
         }
 

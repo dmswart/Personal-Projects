@@ -155,16 +155,19 @@
                              a.z * b.x - a.x * b.z,
                              a.x * b.y - a.y * b.x);
     };
-    $.Point3D.angle = function(a, b, c) {
-        // returns angle of ABC (B is vertex)
-        if (a.sub(b).r == 0 || c.sub(b).r == 0) {
-            return 0;
-        }
+    
+    $.Point3D.vectorAngle = function(a, b) {
+        // returns angle between vectors a and b
+        let anorm = a.normalized();
+        let bnorm = b.normalized();
+        let cos = $.Point3D.dot(anorm, bnorm);
+        let sin = $.Point3D.cross(anorm, bnorm).R(); 
 
-        var dotProduct = $.Point3D.dot(a.sub(b).normalized(), c.sub(b).normalized());
-        if (dotProduct <= -1) { return $.HALFTAU; }
-        if (dotProduct >= 1) { return 0.0; }
-        return Math.acos(dotProduct);
+        return Math.atan2(sin, cos);
+    }
+
+    $.Point3D.angle = function(a, b, c) {
+        return $.Point3D.vectorAngle(a.sub(b), c.sub(b));
     };
     $.Point3D.sphereAngle = function(a, b, c) {
         // returns the positive angle between the plane containing points ABO and the plane containing points CBO

@@ -198,19 +198,19 @@ let serializeSkeletonNode = function( node, initialSpace ) {
     if (initialSpace === undefined) initialSpace = '';
 
     if(node.type === 'line') {
-        result += initialSpace + 'l ' + (node.value / Math.PI).toFixed(3);
-        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(3);
+        result += initialSpace + 'l ' + (node.value / Math.PI).toFixed(4);
+        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(4);
         result += '\n';
     } else if (node.type === 'move') {
-        result += initialSpace + 'm ' + (node.value / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'm ' + (node.value / Math.PI).toFixed(4) + '\n';
     } else if (node.type === 'moveOnPlane') {
-        result += initialSpace + 'o ' + (node.value / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'o ' + (node.value / Math.PI).toFixed(4) + '\n';
     } else if (node.type === 'rotate') {
-        result += initialSpace + 'r ' + (node.value / Math.PI).toFixed(3) + '\n';
+        result += initialSpace + 'r ' + (node.value / Math.PI).toFixed(4) + '\n';
     } else if (node.type === 'arc') {
-        result += initialSpace + 'a ' + (node.value / Math.PI).toFixed(3);
-        result += ' ' + (node.radius / Math.PI).toFixed(3);
-        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(3);
+        result += initialSpace + 'a ' + (node.value / Math.PI).toFixed(4);
+        result += ' ' + (node.radius / Math.PI).toFixed(4);
+        if (node.strength !== 1.0) result += ' ' + (1 / node.strength).toFixed(4);
         result += '\n';
     }
 

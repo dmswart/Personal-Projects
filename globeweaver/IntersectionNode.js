@@ -20,14 +20,15 @@ class Arm {
         this._dir = 0;
         this._orientation = DMSLib.Rotation.identity(); // this is the orientation of the intersection.
 
-        // derived properties
-        this.arcRotation = null;
-        this.secondLength = null;
+        this.clearDerivedProperties(); // set derived properties to null.
     }
 
     clearDerivedProperties() {
         this.arcRotation = null;
-        this.secondLength = null;
+        this.secondLength = null; // length of incoming segment from previous arm
+        this.incomingLength = null;
+        this.minLength = null;  // range for possible length adjustments
+        this.maxLength =  null;
     }
 
     // return orientation that maps z axis to surface point, and x axis to surface direction
@@ -44,13 +45,18 @@ class Arm {
         return result;
     }
 
+    isWithinArmsLength(distance) {
+        if(!this.directionIsPositive) distance = -distance;
+        return distance < this.length && distance > -this.incomingLength;
+    }
+
     surfacePoint() { return this.getOrientation().apply(DMSLib.Point3D.zAxis()); }
     surfaceDirection() { return this.getOrientation().apply(DMSLib.Point3D.xAxis()); }
     turningAxis() { return this.getOrientation().apply(DMSLib.Point3D.yAxis()); }
     
     arcTurn() {
         let result = this.arcRotation.angle();
-        // turns > 360 degrees should be negative turns
+        // turns >= 360 degrees should be 0
         if(result >= DMSLib.TAU) { result -= DMSLib.TAU; }
         if(result <= -DMSLib.TAU) { result += DMSLib.TAU; }
 

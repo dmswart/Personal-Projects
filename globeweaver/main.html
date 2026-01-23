@@ -24,8 +24,7 @@
     <button onclick="doEnergy(false, true);">Energy Plane</button>
     <button onclick="doEnergy(true, false);">Energy Sphere</button>
     <button onclick="increasePoints();">Increase Points</button>
-    <button onclick="scratch();">Scratch</button>
-    <p></p>
+    <p/>
     Iterations: 
     <select name="iterations" id="iterations" value=10>
       <option value=1000>1000</option>
@@ -33,11 +32,19 @@
       <option value=10 selected="selected">10</option>
       <option value=1>1</option>
     </select>
+    <p/>
+    <div id="scratchInfo" style="visibility:visible; border: 1px solid grey; padding: 10px; margin-top: 10px;">
+      Scratch controls:
+      <button onclick="scratch();">Scratch</button><br/>
+      SphereEnergy: <span id="sphereEnergy">0</span> PlaneEnergy: <span id="planeEnergy">0</span><br/>
+      <input type="range" id="scratchValue" name="scratchValue"
+        min="0" max="500" style="width:100%;" 
+        onchange="onScratchValueChange(this.value)"/>
+    </div>
 </body>
 </html>
 
 <script>
     initializeSvgs(PLANE_WIDTH, PLANE_HEIGHT);
     initializeIntersections();
-    console.log(gIntersectionList.getPathString());
 </script>
