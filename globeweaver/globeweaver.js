@@ -1,11 +1,10 @@
-const SPHERE_WIDTH = 500;
 const PLANE_WIDTH = 700;
 const PLANE_HEIGHT = 500;
-const PLANE_SCALE = 75;
 const PLANE_BUFFER = 50;
-const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
-                  w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
-                  h:(PLANE_HEIGHT-2*PLANE_BUFFER)/PLANE_SCALE};
+const BOUNDARY = {x:PLANE_BUFFER, y:PLANE_BUFFER,
+                  w:(PLANE_WIDTH-2*PLANE_BUFFER),
+                  h:(PLANE_HEIGHT-2*PLANE_BUFFER)};
+const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (BOUNDARY.w * BOUNDARY.h) );
 
 let gIntersectionList = new Globeweaver.IntersectionList([]);
 
@@ -20,7 +19,7 @@ function increasePoints() {
 }
 
 function outputPath() {
-    drawPathOnPlane(gPlanarPath, PLANE_SCALE);
+    drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     d3.select('#output #skel').property('value', gIntersectionList.getPathString());
 }
@@ -75,7 +74,7 @@ function buildPathFromIntersectionNodes() {
 function toPlanarPath(spherePath, dirRange = DMSLib.HALFTAU) {
     let nominalDir = 0;
     if (gPlanarPath.length > 1) {
-        nominalDir = gPlanarPath[1].sub(gPlanarPath[0]).R();
+        nominalDir = gPlanarPath[1].sub(gPlanarPath[0]).theta();
     } 
     let result = {path: [], scale: 0}
     let o = new DMSLib.Point3D(); // origin
@@ -84,7 +83,8 @@ function toPlanarPath(spherePath, dirRange = DMSLib.HALFTAU) {
         let planePath = [];
         let pos = new DMSLib.Point2D();
         let dir = startdir;
-        if(dir.x < 0) dir += DMSLib.HALFTAU;
+        if(dir < 0) dir += DMSLib.HALFTAU;
+        if(dir > DMSLib.HALFTAU) dir -= DMSLib.HALFTAU;
 
         for (let i=0; i<spherePath.length; i++) {
             planePath.push(pos); 
@@ -120,23 +120,6 @@ function toPlanarPath(spherePath, dirRange = DMSLib.HALFTAU) {
 function toSpherePath(planarPath) {
     let result = [];
     let orientation = new DMSLib.Rotation();
-
-    // get original orientation by working backwards from the middle
-    /*
-    for (let i=Math.floor(planarPath.length/2); i>0; i--) {
-        let p = planarPath[i-1]; 
-        let q = planarPath[i];
-        let r = planarPath[i+1];
-
-        let deflectionAngle = DMSLib.Point2D.deflection(p, q, r);
-        let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
-
-        let distanceToMove = -p.sub(q).R();
-        let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
-
-        orientation = orientation.combine(deflection).combine(move);
-    }
-    */
 
     for(let i=0; i<planarPath.length; i++) {
         result.push(orientation.apply(DMSLib.Point3D.xAxis()));
@@ -203,56 +186,19 @@ function redistributePoints(path, n_multiplier = 1) {
 }
 
 
-function boundaryEnergy(pt) {
-    const left = BOUNDARY.x;
-    const right = BOUNDARY.x + BOUNDARY.w;
-    const top = BOUNDARY.y;
-    const bottom = BOUNDARY.y + BOUNDARY.h;
-
-    beFn = (x) => 1/(x*PLANE_SCALE);
-
-    if (pt instanceof DMSLib.Point3D) {
-        return 0;
-    } else if (pt.x <= left || pt.x >= right || pt.y <= top || pt.y >= bottom) {
-        return Number.MAX_SAFE_INTEGER;
-    } else {
-        return beFn(pt.x - left) + 
-               beFn(right - pt.x) + 
-               beFn(pt.y - top) + 
-               beFn(bottom - pt.y);
-    }
-}
-
 // given a path, precalculated tangents and normals at each point (T, N)
 // calculate the distance to move that point along the tangent for a constant decrease in energy 
 function calcEnergyAtPt(edges, ptData) {
     let pt = ptData.a;
-    // let E = boundaryEnergy(pt);
     let E = 0;
-
-    let localScale = 1/ptData.a.sub(ptData.b).R();
-
 
     const alpha = 2; // common alpha, beta values are (2, 4.5) and (3, 6)
     const beta = 4.5;
     function k(p, q, Tp, Tq) {
-        let pq = p.sub(q).mul(localScale);
-        if(p instanceof DMSLib.Point2D)
-            // k(p, q, Tp) = |Tp x (p-q)| ^ alpha) / |p-q|^beta
-            return Math.pow(DMSLib.cross(Tp, pq).R(), alpha) / Math.pow(pq.R(), beta); // from Buck and Orloff via Crane et al paper
-        else {
-            return Math.pow(DMSLib.cross(Tp, pq).R(), alpha) / Math.pow(pq.R(), beta); // from Buck and Orloff via Crane et al paper
-
-            // OR ....
-            // on sphere we 'forgive' orthogonality
-            // so we want energy to be zeroed out at 0 and at pi/2.  sin(2*theta)^alpha does this.
-            // we have Tp and Tq (not theta). and theta is the angle between Tp and Tq.
-            // so sin(2*theta) = 2 sin(theta) cos(theta) from double angle identity
-            //                 = 2 |Tp x Tq| / (|Tp| |Tq|) * (Tp . Tq) / (|Tp| |Tq|)
-            //                 ~= 2 |Tp x Tq| * (Tp . Tq)
-            // k(p, q, Tp) = (|Tp x Tq| * (Tp . Tq)) ^ alpha) / |p-q|^beta
-            // return Math.pow(DMSLib.cross(Tp, Tq).R() * Math.abs(DMSLib.dot(Tp, Tq)), alpha) / Math.pow(pq.R(), beta);
-        }
+        let pq = p.sub(q);
+        if(p instanceof DMSLib.Point2D) pq = pq.mul(PLANE2SPHERE_SCALE); // scale planar distances to sphere distances
+        // k(p, q, Tp) = |Tp x (p-q)| ^ alpha) / |p-q|^beta
+        return Math.pow(DMSLib.cross(Tp, pq).R(), alpha) / Math.pow(pq.R(), beta); // from Buck and Orloff via Crane et al paper
     }
 
     edges.forEach((edge) => {

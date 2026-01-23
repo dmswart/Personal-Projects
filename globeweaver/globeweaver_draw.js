@@ -55,13 +55,13 @@ function colorRamp(idx, total) {
     return 'rgb(255,' + (255-gray) + ',' + gray + ')';
 }
 
-function drawPathOnPlane(path, planeScale) {
+function drawPathOnPlane(path) {
     gPlaneSvg.selectAll('circle').remove();
     gPlaneSvg.selectAll('path').remove();
     pathString = '';
     for(let i=0; i<path.length; i++) {
-        let x = path[i].x * planeScale;
-        let y = path[i].y * planeScale;
+        let x = path[i].x;
+        let y = path[i].y;
         pathString += (i?'L':'M') + x + ' ' + y;
 
         gPlaneSvg.append('circle')
