@@ -11,6 +11,7 @@ Globeweaver.IntersectionList = function(nodes) {
 
     // set calculated properties of each node.
     this.clearCalculatedProperties();
+    this.setPrevNodes();
     this.calculateProperties();
 };
 
@@ -27,6 +28,22 @@ Globeweaver.IntersectionList.prototype = {
             node.arms.forEach(arm => {
                 arm.clearDerivedProperties();
             });
+        });
+    },
+
+    setPrevNodes: function() {
+        this.nodes.forEach( (node, nodeIdx) => {
+            // arm 0
+            let nextNode = this.nodes[node.arms[0].nextNode];
+            let nextArm = nextNode.arms[node.arms[0].nextDir];
+            nextArm.prevNode = nodeIdx;
+            nextArm.prevDir = 0;
+
+            // arm 1
+            nextNode = this.nodes[node.arms[1].nextNode];
+            nextArm = nextNode.arms[node.arms[1].nextDir];
+            nextArm.prevNode = nodeIdx;
+            nextArm.prevDir = 1;
         });
     },
 
@@ -61,31 +78,34 @@ Globeweaver.IntersectionList.prototype = {
             //
             //                 x  intersection
             //                . .
-            //               .   .
+            // angleOut->    .   .    <-angleIntoNext
             //              .     .
             //             /       . 
             // currentArm o         o nextArm
             //                       \    
-            if(DMSLib.Point3D.dot(intersectionPoint, currentArm.surfaceDirection()) < -DMSLib.EPSILON) {
-                // outgoingVector is not pointing towards the intersection, use the antipode of intersection
+            if(DMSLib.Point3D.vectorAngle(intersectionPoint, currentArm.surfacePoint()) < DMSLib.EPSILON ||   // the surface point *is* the intersection 
+               DMSLib.Point3D.dot(intersectionPoint, currentArm.surfaceDirection()) < -DMSLib.EPSILON) {       // outgoingVector is not pointing towards the intersection, use the antipode of intersection
                 intersectionPoint.scale(-1);
             }
 
-            // AngleOut - length = AngleIn - secondLength
-            let angleOutToIntersection = DMSLib.Point3D.angle(currentArm.surfacePoint(), DMSLib.Point3D.origin(), intersectionPoint);
-            let angleInFromIntersection = DMSLib.Point3D.angle(nextArm.surfacePoint(), DMSLib.Point3D.origin(), intersectionPoint);
-            currentArm.secondLength = angleInFromIntersection - angleOutToIntersection + currentArm.length;
+            // need the straight parts (length, secondLength) for our arc such that: AngleOut - length = AngleIn - secondLength
+            let angleOut = DMSLib.Point3D.vectorAngle(currentArm.surfacePoint(), intersectionPoint);
+            let angleIntoNext = DMSLib.Point3D.vectorAngle(nextArm.surfacePoint(), intersectionPoint);
+
+            let distFromIntersection = angleOut - currentArm.length;
+            distFromIntersection = Math.max(0, distFromIntersection);
+            distFromIntersection = Math.min(angleIntoNext, distFromIntersection);
+
+            currentArm.length = angleOut - distFromIntersection;
+            currentArm.secondLength = angleIntoNext - distFromIntersection;
             nextArm.incomingLength = currentArm.secondLength;
-            if(currentArm.secondLength < 0) {
-                currentArm.length -= currentArm.secondLength;
-                currentArm.secondLength = 0;
-            }
-            // set ranges
-            currentArm.minLength = Math.max(0, angleOutToIntersection - angleInFromIntersection);
-            currentArm.maxLength =  angleOutToIntersection || DMSLib.HALFTAU;
+
+            // set ranges to inform our tweaking algorithms.
+            currentArm.minLength = Math.max(0, angleOut - angleIntoNext);
+            currentArm.maxLength =  angleOut || DMSLib.HALFTAU;
 
 
-            // now we can get the rotation for the arc.
+            // now we can get the rotation for the arc...
             let startOfArc = currentArm.orientationAlongArm(currentArm.length);
             let endOfArc = nextArm.orientationAlongArm(-currentArm.secondLength);
             if(bArcsAreParallel) {
@@ -96,6 +116,12 @@ Globeweaver.IntersectionList.prototype = {
                     currentArm.turningAxis());
             } else {
                 currentArm.arcRotation = endOfArc.combine(startOfArc.inverse());
+            }
+
+            // ... and deal with negating axis and angle 
+            if(currentArm._doesTurnNeedAdjustment())
+            {
+                currentArm.arcRotation = currentArm.arcRotation.double_negative();
             }
 
             // next!
@@ -137,7 +163,7 @@ Globeweaver.IntersectionList.prototype = {
         let nextArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
         while(true) {
             // outgoing arm
-            if(currentArm.length > 0) {
+            if(currentArm.length > DMSLib.EPSILON) {
                 for(i=0; i<samplesPerSegment; i++) {
                     let l = currentArm.length/samplesPerSegment * i;
                     let pt = currentArm.orientationAlongArm(l).apply(DMSLib.Point3D.zAxis());
@@ -149,7 +175,7 @@ Globeweaver.IntersectionList.prototype = {
             let startOfArcPoint = currentArm.orientationAlongArm(currentArm.length).apply(DMSLib.Point3D.zAxis());
             let arcAxis = currentArm.arcRotation.axis();
             let arcTurn = currentArm.arcTurn();
-            if(arcTurn > 0) {
+            if(Math.abs(arcTurn) > DMSLib.EPSILON) {
                 for(i=0; i<samplesPerSegment; i++) {
                     let l = arcTurn / samplesPerSegment * i;
                     let pt = DMSLib.Rotation.fromAngleAxis(l, arcAxis).apply(startOfArcPoint);
@@ -158,7 +184,7 @@ Globeweaver.IntersectionList.prototype = {
             }
     
             // next arm
-            if(nextArm.secondLength > 0) {
+            if(currentArm.secondLength > DMSLib.EPSILON) {
                 for(i=0; i<samplesPerSegment; i++) {
                     let l = currentArm.secondLength/samplesPerSegment * (i - samplesPerSegment);
                     let pt = nextArm.orientationAlongArm(l).apply(DMSLib.Point3D.zAxis());

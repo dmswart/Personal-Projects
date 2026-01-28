@@ -52,6 +52,47 @@ function initializeSvgs(width, height) {
     getRandomPath();
 }
 
+drawPointOnSphere = function(pt3D, radius, color, className, isDiamond=false) {
+    let [x, y, z] = imgXYZFrom3D(pt3D);
+    if(z >= -0.01) {
+        if(isDiamond) {
+            // draw path +- radius from center point
+            let pathString = 'M' + (x - radius) + ' ' + y +
+                             'L' + x + ' ' + (y - radius) +
+                             'L' + (x + radius) + ' ' + y +
+                             'L' + x + ' ' + (y + radius) +
+                             'Z';
+            gSphereSvg.append('path')
+                .classed(className, true)
+                .attr('d', pathString)
+                .attr('fill', color)
+                .attr('stroke', 'black')
+                .attr('stroke-width', 1);
+        } else {
+            gSphereSvg.append('circle')
+                .classed(className, true)
+                .attr('cx', x)
+                .attr('cy', y)
+                .attr('r', radius)
+                .attr('fill', color);
+        }
+    }
+}
+
+drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
+    let [xA, yA, zA] = imgXYZFrom3D(ptA);
+    let [xB, yB, zB] = imgXYZFrom3D(ptB);
+    if(zA >= -0.01 && zB >= -0.01) {
+        let pathString = 'M' + xA + ' ' + yA + 'L' + xB + ' ' + yB;
+        gSphereSvg.append('path')
+            .classed(className, true)
+            .attr('stroke-width', 3)
+            .attr('stroke', color)
+            .attr('fill', 'none')
+            .attr('d', pathString);
+    }
+}
+
 function colorRamp(idx, total) {
     gray = Math.floor(idx/total * 255)
     return 'rgb(255,' + (255-gray) + ',' + gray + ')';
@@ -115,6 +156,26 @@ function imgXYZFrom3D(pt3D) {
     x = -pt3D.x * gSvgHeight/2 + gSvgHeight/2;
     y = pt3D.y * gSvgHeight/2 + gSvgHeight/2;
     return [x, y, pt3D.z];
+}
+
+drawIntersectionsOnSphere = function(intersectionList) {
+    gSphereSvg.selectAll('.intersectionPath').remove();
+    intersectionList.forEach((node, nodeIdx) => {
+        let center = node.orientation.apply(DMSLib.Point3D.zAxis());
+        let c = Math.cos(2*DMSLib.TAU/360);
+        let s = Math.sin(2*DMSLib.TAU/360);
+        if(!node.dirIsPositive) s = -s;
+        let north = node.orientation.apply(new DMSLib.Point3D(0, s, c));
+        let south = node.orientation.apply(new DMSLib.Point3D(0, -s, c));
+        let east = node.orientation.apply(new DMSLib.Point3D(s, 0, c));
+        let west = node.orientation.apply(new DMSLib.Point3D(-s, 0, c));
+
+        drawPointOnSphere(center, 6, 'black', 'intersectionPath');
+        drawPointOnSphere(north, 8, 'red', 'intersectionPath', true);
+        drawPointOnSphere(south, 4, 'red', 'intersectionPath', false);
+        drawPointOnSphere(east, 8, 'green', 'intersectionPath', true);
+        drawPointOnSphere(west, 4, 'green', 'intersectionPath', false);
+    });
 }
 
 function savePlaneSvgToFile(filename) {

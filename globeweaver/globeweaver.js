@@ -21,28 +21,62 @@ function increasePoints() {
 function outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
+    drawIntersectionsOnSphere(gIntersectionList);
     d3.select('#output #skel').property('value', gIntersectionList.getPathString());
+}
+
+// load button, clicked ask for json file to upload, and then parse it into gIntersectionList
+function loadIntersectionsFromFile() {
+    let input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = e => {
+        let file = e.target.files[0];
+        let reader = new FileReader();
+        reader.onload = event => {
+            let json = event.target.result;
+            json = JSON.parse(json);
+            let newList = [];
+            json.forEach(data => {
+                let node = new Globeweaver.IntersectionNode(
+                    new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
+                    new Arm(data.arms[0].length, data.arms[0].directionIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
+                    new Arm(data.arms[1].length, data.arms[1].directionIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
+                );
+                newList.push(node);
+            });
+            gIntersectionList = new Globeweaver.IntersectionList(newList);
+            buildPathFromIntersectionNodes();
+            outputPath();
+        };
+        reader.readAsText(file);
+    };
+    input.click();
 }
 
 function initializeThreeNode() {
     const defaultArmLength = 35 * DMSLib.TAU / 360; // ten degrees
     let node1 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.identity(),
+        new DMSLib.Rotation.fromAngleAxis(0, DMSLib.Point3D.yAxis()).combine(
+            DMSLib.Rotation.fromAngleAxis(-0.1*DMSLib.TAU/360, DMSLib.Point3D.zAxis())),
         new Arm(defaultArmLength, true, 0, 1),
         new Arm(defaultArmLength, false, 1, 1)
     );
     let node2 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 4, DMSLib.Point3D.yAxis()),
+        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 4, DMSLib.Point3D.yAxis()).combine(
+            DMSLib.Rotation.fromAngleAxis(0.1*DMSLib.TAU/360, DMSLib.Point3D.zAxis())),
         new Arm(defaultArmLength, false, 0, 0),
         new Arm(defaultArmLength, false, 2, 1)
     );
     let node3 = new Globeweaver.IntersectionNode(
-        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 2, DMSLib.Point3D.yAxis()),
+        new DMSLib.Rotation.fromAngleAxis(-DMSLib.TAU / 2, DMSLib.Point3D.yAxis()).combine(
+            DMSLib.Rotation.fromAngleAxis(-0.1*DMSLib.TAU/360, DMSLib.Point3D.zAxis())),
         new Arm(defaultArmLength, true, 1, 0),
         new Arm(defaultArmLength, false, 2, 0)
     );
     return new Globeweaver.IntersectionList([node1, node2, node3]);
 }
+
 
 function initializeOneNode() {
     let node1 = new Globeweaver.IntersectionNode(
@@ -64,6 +98,7 @@ function initializeIntersections() {
 function buildPathFromIntersectionNodes() {
     gIntersectionList.calculateProperties();
     gSpherePath = gIntersectionList.getSpherePath(20);
+    gSpherePath = cleanPath(gSpherePath);
     gSpherePath = redistributePoints(gSpherePath, gIntersectionList.nodes.length / gSpherePath.length * 40);
     gPlanarPath = toPlanarPath(gSpherePath);
     gPlanarPath = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 20);
@@ -140,13 +175,20 @@ function toSpherePath(planarPath) {
     return result;
 }
 
-function colorRamp(idx, total) {
-    gray = Math.floor(idx/total * 255)
-    return 'rgb(255,' + (255-gray) + ',' + gray + ')';
+// remove points that are too close together    
+function cleanPath(path) {
+    result = [];
+    for(let i=0; i<path.length; i++) {
+        if(i==0 || path[i].sub(path[i-1]).R() > DMSLib.EPSILON) {
+            result.push(path[i]);
+        }
+    }
+    return result;
 }
 
 // return n equally distributed points along a path 
 function redistributePoints(path, n_multiplier = 1) {
+    path = cleanPath(path);
     let n = path.length * n_multiplier
     pathdistance = 0
     lastIdx = path.length-1;
@@ -275,12 +317,13 @@ function calcEnergy() {
     return {s:sEnergy, p:pEnergy};
 }
 
+PLANE_ENERGY_WEIGHT = 10.0;
 function doEnergy(doSphere, doPlane) {
     let n = parseInt(document.getElementById("iterations").value);
 
     // energy calculations are normalized to initial energy
-    let e = calcEnergy();
-    let currentEnergy = (doSphere ? e.s : 0) + (doPlane ? e.p : 0); 
+    let bestE = calcEnergy();
+    let currentEnergy = (doSphere ? bestE.s : 0) + (doPlane ? bestE.p * PLANE_ENERGY_WEIGHT : 0); 
 
     console.log('initial energy = ' + currentEnergy);
 
@@ -294,7 +337,6 @@ function doEnergy(doSphere, doPlane) {
         let oldLength = randomArm.length;
 
         // flip a coin, length, or orientation
-        
         if(Math.random() < 0.5) {
             // TWEAK LENGTH
             let delta = (Math.random() * 2.0 - 1.0) * step; // +/- a step
@@ -306,25 +348,109 @@ function doEnergy(doSphere, doPlane) {
             }
         } else {
             // TWEAK ORIENTATION
-            // TODO - am I effectively changing this orientation?
-            randomNode.orientation = randomNode.orientation.combine(
-                                     DMSLib.Rotation.fromAngleAxis(step, DMSLib.Point3D.random()));
+            let newOrientation = randomNode.orientation.combine(DMSLib.Rotation.fromAngleAxis(step, DMSLib.Point3D.zAxis()));
+            randomNode.setOrientation(newOrientation);
         }
 
         buildPathFromIntersectionNodes();
-        e = calcEnergy();
-        let newEnergy = (doSphere ? e.s : 0) + (doPlane ? e.p : 0); 
+        let e = calcEnergy();
+        let newEnergy = (doSphere ? e.s : 0) + (doPlane ? e.p * PLANE_ENERGY_WEIGHT : 0); 
 
         if(newEnergy < currentEnergy) {
+            bestE = e;
             currentEnergy = newEnergy;
         } else {
             // Restore
             randomArm.length = oldLength;
-            randomNode.orientation = oldOrientation;
+            randomNode.setOrientation(oldOrientation);
             buildPathFromIntersectionNodes();
         }
     }
-    console.log('current energy = ' + currentEnergy);
+    d3.select('#scratchInfo #sphereEnergy').text(bestE.s.toFixed(2));
+    d3.select('#scratchInfo #planeEnergy').text(bestE.p.toFixed(2));
+
+    outputPath();
+}
+
+// returns rotation that maps z axis to pt (normalized), and two given vectors to (close to) x and y axes
+function calculateOrientationFromDirs(pt, dirX, dirY) {
+    // first rotate z axis to pt
+    let axis = (Math.abs(pt.z) > 1-DMSLib.EPSILON) ?
+        DMSLib.Point3D.xAxis() : 
+        new DMSLib.Point3D(-pt.y, pt.x, 0).normalized();
+    let orientZaxisToIntersection = DMSLib.Rotation.fromAngleAxis(Math.acos(pt.z), axis);
+
+    let nativedirX = orientZaxisToIntersection.inverse().apply(dirX);
+    let nativedirY = orientZaxisToIntersection.inverse().apply(dirY);
+
+    let correctionAngle = (nativedirY.theta()-DMSLib.QUARTERTAU + nativedirX.theta() - 0) * 0.5;
+    return orientZaxisToIntersection.combine(
+        DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+}
+
+// orientation moves the z axis to a point P.  We want an orientation that moves z-axis to P+delta
+function moveOrientation(orientation, delta) {
+    let pos = orientation.apply(DMSLib.Point3D.zAxis());
+    let posX = orientation.apply((new DMSLib.Point3D(0.01, 0, 1)).normalized());
+    let posY = orientation.apply((new DMSLib.Point3D(0, 0.01, 1)).normalized());
+
+    pos = pos.add(delta).normalized();
+    posX = posX.add(delta).normalized();
+    posY = posY.add(delta).normalized();
+
+    return calculateOrientationFromDirs(pos, posX.sub(pos), posY.sub(pos));
+}
+
+// ***** DEAL WITH POSITIONS
+function doIntersectionPositions() {
+    let avgPt = DMSLib.Point3D.origin();
+    gIntersectionList.nodes.forEach((node, nodeIdx) => {
+         avgPt = avgPt.add(node.orientation.apply(DMSLib.Point3D.zAxis()));
+    });
+    avgPt = avgPt.mul(gIntersectionList.nodes.length);
+
+    gIntersectionList.nodes.forEach((node, nodeIdx) => {
+        node.setOrientation(moveOrientation(node.orientation,avgPt.mul(-0.01)));
+    });
+    buildPathFromIntersectionNodes();
+    outputPath();
+}
+
+// **** DEAL WITH ANGLES 
+function doIntersectionAngles() {
+    gIntersectionList.nodes.forEach((node, nodeIdx) => {
+        let inverseOrient = node.orientation.inverse();
+        let offAngleSum = 0;
+
+        fnOffAngle = (o, expectedAngle) => {
+            let pt = inverseOrient.combine(o).apply(DMSLib.Point3D.zAxis());
+            if(Math.abs(pt.z) > 1 - DMSLib.EPSILON) return 0;
+            return pt.theta() - expectedAngle;
+        }
+
+        // north, south destination
+        let northNode = gIntersectionList.nodes[node.arms[0].nextNode];
+        let southNode = gIntersectionList.nodes[node.arms[0].prevNode];
+        if(!node.arms[0].directionIsPositive) [northNode, southNode] = [southNode, northNode];
+        offAngleSum += fnOffAngle(northNode.orientation, DMSLib.QUARTERTAU);
+        offAngleSum += fnOffAngle(southNode.orientation, -DMSLib.QUARTERTAU);
+
+        // east, west destination
+        let eastNode = gIntersectionList.nodes[node.arms[1].nextNode];
+        let westNode = gIntersectionList.nodes[node.arms[1].prevNode];
+        if(!node.arms[1].directionIsPositive) [eastNode, westNode] = [westNode, eastNode];
+        offAngleSum += fnOffAngle(eastNode.orientation, 0);
+        offAngleSum += fnOffAngle(westNode.orientation, DMSLib.HALFTAU);
+
+        // new orientation that rotates
+        let correctionAngle = DMSLib.fixAngle(offAngleSum) / 10;
+        let newOrientation = node.orientation.combine(
+            DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+
+        node.setOrientation(newOrientation);
+    });
+
+    buildPathFromIntersectionNodes();
     outputPath();
 }
 
@@ -350,8 +476,6 @@ function onScratchValueChange(newValue) {
     let e = calcEnergy();
     d3.select('#scratchInfo #sphereEnergy').text(e.s.toFixed(2));
     d3.select('#scratchInfo #planeEnergy').text(e.p.toFixed(2));
-
-    //console.log('' + newValue, ', ' + e.s + ' ,' + e.p);
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.

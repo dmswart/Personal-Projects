@@ -54,21 +54,25 @@ class Arm {
     surfaceDirection() { return this.getOrientation().apply(DMSLib.Point3D.xAxis()); }
     turningAxis() { return this.getOrientation().apply(DMSLib.Point3D.yAxis()); }
     
-    arcTurn() {
-        let result = this.arcRotation.angle();
-        // turns >= 360 degrees should be 0
-        if(result >= DMSLib.TAU) { result -= DMSLib.TAU; }
-        if(result <= -DMSLib.TAU) { result += DMSLib.TAU; }
+    _doesTurnNeedAdjustment() {
+        let p = this.orientationAlongArm(this.length).apply(DMSLib.Point3D.zAxis());
+        let p_straight = this.orientationAlongArm(this.length+DMSLib.EPSILON).apply(DMSLib.Point3D.zAxis());
+        let straightdir = p_straight.sub(p).normalized();
 
-        return result;
+        let p_arced = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/360, this.arcRotation.axis()).apply(p);
+        let arceddir = p_arced.sub(p).normalized();
+
+        return DMSLib.dot(arceddir, straightdir) < 0;
     }
+    
+    arcTurn() {
+        return this.arcRotation.angle();
+    }
+
     arcRadius() {
         let startOfArc = this.orientationAlongArm(this.length);
         let startOfArcPoint = startOfArc.apply(DMSLib.Point3D.zAxis());
-        return DMSLib.Point3D.angle(
-            this.arcRotation.axis(),
-            DMSLib.Point3D.origin(),
-            startOfArcPoint);
+        return DMSLib.Point3D.vectorAngle( this.arcRotation.axis(), startOfArcPoint);
     }
 
     // orientation of the point after going out from the arm a given distance
@@ -84,18 +88,20 @@ class Arm {
 // armEW: is the east west outgoing arm
 //
 Globeweaver.IntersectionNode = function(orientation, armNS, armEW) {
-    this.orientation = orientation || new DMSLib.Rotation();
-    armNS._orientation = this.orientation;
     armNS._dir = 0;
-    armEW._orientation = this.orientation;
     armEW._dir = 1;
-
     this.arms = [armNS, armEW];
+
+    this.setOrientation(orientation);
 };
+
 
 Globeweaver.IntersectionNode.prototype = {
     constructor: Globeweaver.IntersectionNode,
 
     // Example method: Check if the node is symmetric
-    isSymmetric: function() {}
+    setOrientation: function(orientation) {
+        this.orientation = orientation;
+        this.arms.forEach( arm => arm._orientation = orientation );
+    }
 };

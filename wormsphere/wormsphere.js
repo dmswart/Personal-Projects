@@ -68,23 +68,6 @@ function toSpherePath(planarPath) {
     let result = [];
     let orientation = new DMSLib.Rotation();
 
-    // get original orientation by working backwards from the middle
-    /*
-    for (let i=Math.floor(planarPath.length/2); i>0; i--) {
-        let p = planarPath[i-1]; 
-        let q = planarPath[i];
-        let r = planarPath[i+1];
-
-        let deflectionAngle = DMSLib.Point2D.deflection(p, q, r);
-        let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
-
-        let distanceToMove = -p.sub(q).R();
-        let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
-
-        orientation = orientation.combine(deflection).combine(move);
-    }
-    */
-
     for(let i=0; i<planarPath.length; i++) {
         result.push(orientation.apply(DMSLib.Point3D.xAxis()));
 
@@ -207,8 +190,7 @@ function turnPathToArcs(givenPath) {
 function redistributePoints(path, n_multiplier = 1) {
     let n = path.length * n_multiplier
     pathdistance = 0
-    lastIdx = path.length-1;
-    for (let i=0; i<lastIdx; i++) {
+    for (let i=0; i<path.length; i++) {
         let a = path[i]
         let b = path[(i+1)%path.length]
         pathdistance += a.sub(b).R();
@@ -216,9 +198,9 @@ function redistributePoints(path, n_multiplier = 1) {
 
     distToNextStep = 0;
     idx = 0;
-    stepdist = pathdistance / (n-1);
+    stepdist = pathdistance / n;
     result = [];
-    while (idx < lastIdx - 1e-5) {
+    while (idx < path.length - 1e-5) {
         idxI = Math.floor(idx)
         idxF = idx - idxI
         let a = path[idxI]
@@ -239,7 +221,6 @@ function redistributePoints(path, n_multiplier = 1) {
         distToNextStep -= toTravel 
         idx += toTravel / b.sub(a).R();
     }
-    result.push(path[path.length-1]);
     return result;
 }
 
@@ -290,8 +271,8 @@ function smoothPoint(A) {
 function smoothPath(path) {
     result = path.slice();
     if(path[0] instanceof DMSLib.Point3D) {
-        for(let i=2; i<path.length-2; i++) {
-            let pts = [-2, -1, 0, 1, 2].map(t => path[i + t]);
+        for(let i=0; i<path.length; i++) {
+            let pts = [-2, -1, 0, 1, 2].map(t => path[(i + t+ path.length) % path.length]);
             result[i] = smoothPoint(pts);
         }
     } else if (path[0] instanceof DMSLib.Point2D) {
@@ -370,6 +351,13 @@ function boundaryEnergy(pt) {
     }
 }
 
+function ignoreEnergy(a, b, totalEdges) {
+    a = a/totalEdges; 
+    b = b/totalEdges;
+    let diff = Math.abs(a-b);
+    return (diff > 0.25 && diff < 0.75);
+}
+
 // given a path, precalculated tangents and normals at each point (T, N)
 // calculate the distance to move that point along the tangent for a constant decrease in energy 
 function calcStep(edges, ptData) {
@@ -390,11 +378,12 @@ function calcStep(edges, ptData) {
         return Math.pow(DMSLib.cross(Tp, pq).R(), alpha) / Math.pow(pq.R(), beta);
     }
 
-    edges.forEach((edge) => {
+    edges.forEach((edge, i) => {
         let a = edge.a;
         let b = edge.b;
         let T = edge.T;
         if(a.equals(pt) || b.equals(pt)) return;
+        if (ignoreEnergy(edge.idx, ptData.idx, edges.length)) return;
 
         E += k(a, pt, T, ptData.T) + k(b, pt, T, ptData.T);
         E_T += k(a, pt_T, T, ptData.T) + k(b, pt_T, T, ptData.T);
@@ -410,12 +399,12 @@ function buildEdges(path) {
     result = [];
     for(let i=0; i<path.length; i++) {
         let a = path[i];
-        let b = (i<path.length-1) ? path[i+1] : path[i-1];
+        let b = (i<path.length-1) ? path[i+1] : path[0];
         let T = b.sub(a).normalized();
         let N = (T instanceof DMSLib.Point3D) ?
                 DMSLib.Point3D.cross(a, T) : 
                 new DMSLib.Point2D(T.y, -T.x);
-        result.push({a, b, T, N});
+        result.push({a, b, T, N, idx: i});
     }
     return result;
 }
@@ -428,7 +417,7 @@ function doEnergy(doSphere, doPlane) {
         } else if(doPlane) {
             doPlaneStep();
         } else if(doSphere) {
-            doSphereStep('energy');
+            doSphereStep();
         }
     }
     outputPath(gPlanarPath);
@@ -461,16 +450,12 @@ function doBothStep() {
     gPlanarPath = toPlanarPath(gSpherePath);
 }
 
-function doSphereStep(type = 'wind') {
+function doSphereStep() {
     edges = buildEdges(gSpherePath);
     let step = [];
 
-    if(type === 'wind') {
-        step = applySphereWind(gSpherePath, edges);
-    } else if (type === 'energy') {
-        for(let i=0; i<gPlanarPath.length; i++) {
-            step[i] = calcStep(edges, edges[i]); 
-        }
+    for(let i=0; i<edges.length; i++) {
+        step[i] = calcStep(edges, edges[i]); 
     }
 
     let mags = step.map(s => s.R()).sort((a, b) => b-a);
@@ -525,8 +510,117 @@ function getRandomPath() {
     outputPath();
 }
 
+function intersectsOnSphere(a1, a2, b1, b2) {
+    let nA = DMSLib.Point3D.cross(a1, a2).normalized();
+    let nB = DMSLib.Point3D.cross(b1, b2).normalized();
+    let intersectionPoint1 = DMSLib.Point3D.cross(nA, nB).normalized();
+    let intersectionPoint2 = intersectionPoint1.mul(-1);
+    //check if intersection points are on both segments
+    function onSegment(p, s1, s2) {
+        let angleS1S2 = DMSLib.Point3D.vectorAngle(s1, s2);
+        let angleS1P = DMSLib.Point3D.vectorAngle(s1, p);
+        let anglePS2 = DMSLib.Point3D.vectorAngle(p, s2);
+        return Math.abs(angleS1P + anglePS2 - angleS1S2) < 1e-5;
+    }
+    if (onSegment(intersectionPoint1, a1, a2) && onSegment(intersectionPoint1, b1, b2))
+        return intersectionPoint1;
+    else if ( onSegment(intersectionPoint2, a1, a2) && onSegment(intersectionPoint2, b1, b2))
+        return intersectionPoint2;
+    else
+        return null;
+}
+
+function nextIntersection(intersections, idx) {
+    let result = {node: 0, arm: 0}
+    closestNextIdx = Number.MAX_SAFE_INTEGER;
+    for(let i=0; i<intersections.length; i++) {
+        if(intersections[i].nsIdx > idx && intersections[i].nsIdx < closestNextIdx) {
+            closestNextIdx = intersections[i].nsIdx;
+            result.node = i;
+            result.arm = 0;
+        } else if (intersections[i].ewIdx > idx && intersections[i].ewIdx < closestNextIdx) {
+            closestNextIdx = intersections[i].ewIdx;
+            result.node = i;
+            result.arm = 1;
+        }
+    }
+    if(result.node == Number.MAX_SAFE_INTEGER) {
+        result.node = 0;
+    }
+    return result;
+}
+
 function scratch() {
-    // do fun stuff here
+    // find intersections
+    let intersections = [];
+    for(let i=0; i<gSpherePath.length-1; i++) {
+        let edgeA_1 = gSpherePath[i];
+        let edgeA_2 = gSpherePath[i+1];
+        for(let j=i+2; j<gSpherePath.length-1; j++) {
+            let edgeB_1 = gSpherePath[j];
+            let edgeB_2 = gSpherePath[j+1];
+            let intersectionPoint =  intersectsOnSphere(edgeA_1, edgeA_2, edgeB_1, edgeB_2);
+            if(intersectionPoint) {
+                let nsdir = edgeA_1.sub(edgeA_2).normalized();
+                let ewdir = edgeB_1.sub(edgeB_2).normalized();
+                let ewDirIsPositive = DMSLib.dot(DMSLib.cross(nsdir, ewdir), intersectionPoint) > 0.0;
+
+                let orientZaxisToIntersection = DMSLib.Rotation.fromAngleAxis(
+                    Math.acos(intersectionPoint.z),
+                    new DMSLib.Point3D(-intersectionPoint.y, intersectionPoint.x, 0).normalized());
+                // what direction is north south and east west in "native" space
+                let nativeNSdir = orientZaxisToIntersection.inverse().apply(nsdir);
+                let nativeEWdir = orientZaxisToIntersection.inverse().apply(ewdir);
+                let correctionAngle = (DMSLib.QUARTERTAU-nativeNSdir.theta() + 0 - nativeEWdir.theta()) * 0.5;
+                let orientation = orientZaxisToIntersection.combine(
+                    DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+
+                let newIntersection = {
+                    orientation,
+                    nsIdx: i,
+                    ewIdx: j,
+                    arms: [ {idx: i,
+                             length: 1*DMSLib.TAU/360,
+                             dirIsPositive: true,
+                             nextNode: null,
+                             nextArm: null},
+                            {idx: j,
+                             length: 1*DMSLib.TAU/360,
+                             dirIsPositive: ewDirIsPositive,
+                             nextNode: null,
+                             nextArm: null}]
+                };
+                intersections.push(newIntersection);
+            }
+        }
+    }
+
+    // now fill in 
+    currentIntersection = 0;
+    currentArm = 0;
+    while(true) {
+        let pathIdx = intersections[currentIntersection].arms[currentArm].idx;
+        let next = nextIntersection(intersections, pathIdx);
+        intersections[currentIntersection].arms[currentArm].nextNode = next.node;
+        intersections[currentIntersection].arms[currentArm].nextArm = next.arm;
+
+        // 
+        currentIntersection = next.node;
+        currentArm = next.arm;
+
+        if(currentIntersection == 0 && currentArm == 0) break;
+    }
+    drawIntersectionsOnSphere(intersections);
+
+    // write intersections as json to downloaded file
+    let outputString = JSON.stringify(intersections, null, 2);
+    let element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(outputString));
+    element.setAttribute('download', 'intersections.json');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.

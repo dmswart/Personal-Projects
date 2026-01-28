@@ -30,6 +30,11 @@ var DMSLib = DMSLib || {};
     };
 
     $.Rotation.prototype = {
+        equals : function(other) {return this._q0 == other._q0 &&
+                                         this._qx == other._qx &&
+                                         this._qy == other._qy &&
+                                         this._qz == other._qz;},
+
         // accessors
         angle: function() { return 2.0 * Math.acos(this._q0);},
         setAngle: function(val) {
@@ -52,6 +57,7 @@ var DMSLib = DMSLib || {};
 
         // functions
         inverse: function() { return new $.Rotation(-this._q0, this._qx, this._qy, this._qz); },
+        double_negative: function() { return new $.Rotation(-this._q0, -this._qx, -this._qy, -this._qz); },
 
         combine: function(other) {
             // a.combine(b) applied to x is like applying a(b(x))
@@ -91,7 +97,7 @@ var DMSLib = DMSLib || {};
 
     $.Rotation.fromVectorToVector = function(from, to) {
         var axis = $.Point3D.cross(from, to);
-        var angle = $.Point3D.angle(from, $.Point3D.origin(), to);
+        var angle = $.Point3D.vectorAngle(from, to);
         return $.Rotation.fromAngleAxis(angle, axis);
     };
 
