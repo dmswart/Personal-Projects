@@ -59,8 +59,14 @@ class Arm {
         let p_straight = this.orientationAlongArm(this.length+DMSLib.EPSILON).apply(DMSLib.Point3D.zAxis());
         let straightdir = p_straight.sub(p).normalized();
 
-        let p_arced = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/360, this.arcRotation.axis()).apply(p);
+        // check if p and arcRoation.axis are aligned
+        if( Math.abs(DMSLib.dot(p, this.arcRotation.axis())) > 1.0 - DMSLib.EPSILON ) { return false; }
+        let p_arced = DMSLib.Rotation.fromAngleAxis(1 * DMSLib.TAU/360, this.arcRotation.axis()).apply(p);
         let arceddir = p_arced.sub(p).normalized();
+
+        if(arceddir === undefined || straightdir === undefined) {
+            console.warn("Undefined direction in _doesTurnNeedAdjustment");
+        }
 
         return DMSLib.dot(arceddir, straightdir) < 0;
     }

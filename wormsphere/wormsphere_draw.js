@@ -15,7 +15,7 @@ function onSphereSvgClicked() {
     var x = coordinates[0] - gSvgHeight/2; // subtract off x,y of top left of image
     var y = coordinates[1] - gSvgHeight/2;
 
-    incrementalRotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/12.0, new DMSLib.Point3D(y, x, 0))
+    incrementalRotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/12.0, new DMSLib.Point3D(-y, -x, 0))
     gSphereRotation = incrementalRotation.combine(gSphereRotation);
     drawPathOnSphere(gSpherePath);
 }
@@ -52,7 +52,7 @@ function initializeSvgs(width, height) {
     getRandomPath();
 }
 
-drawPointOnSphere = function(pt3D, radius, color, className, isDiamond=false) {
+drawPointOnSphere = function(pt3D, radius, color, className, titleText, isDiamond=false) {
     let [x, y, z] = imgXYZFrom3D(pt3D);
     if(z >= -0.01) {
         if(isDiamond) {
@@ -67,14 +67,16 @@ drawPointOnSphere = function(pt3D, radius, color, className, isDiamond=false) {
                 .attr('d', pathString)
                 .attr('fill', color)
                 .attr('stroke', 'black')
-                .attr('stroke-width', 1);
+                .attr('stroke-width', 1)
+                .append('title').text(titleText);
         } else {
             gSphereSvg.append('circle')
                 .classed(className, true)
                 .attr('cx', x)
                 .attr('cy', y)
                 .attr('r', radius)
-                .attr('fill', color);
+                .attr('fill', color)
+                .append('title').text(titleText);
         }
     }
 }
@@ -153,8 +155,8 @@ function drawPathOnSphere(path) {
 
 function imgXYZFrom3D(pt3D) {
     pt3D = gSphereRotation.apply(pt3D.normalized());
-    x = -pt3D.x * gSvgHeight/2 + gSvgHeight/2;
-    y = pt3D.y * gSvgHeight/2 + gSvgHeight/2;
+    x = pt3D.x * gSvgHeight/2 + gSvgHeight/2;
+    y = -pt3D.y * gSvgHeight/2 + gSvgHeight/2;
     return [x, y, pt3D.z];
 }
 
@@ -162,19 +164,19 @@ drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
     intersectionList.forEach((node, nodeIdx) => {
         let center = node.orientation.apply(DMSLib.Point3D.zAxis());
-        let c = Math.cos(2*DMSLib.TAU/360);
-        let s = Math.sin(2*DMSLib.TAU/360);
-        if(!node.dirIsPositive) s = -s;
+        let c = Math.cos(5*DMSLib.TAU/360);
+        let s = Math.sin(5*DMSLib.TAU/360);
         let north = node.orientation.apply(new DMSLib.Point3D(0, s, c));
         let south = node.orientation.apply(new DMSLib.Point3D(0, -s, c));
+        if(!node.arms[1].dirIsPositive) s = -s;
         let east = node.orientation.apply(new DMSLib.Point3D(s, 0, c));
         let west = node.orientation.apply(new DMSLib.Point3D(-s, 0, c));
 
-        drawPointOnSphere(center, 6, 'black', 'intersectionPath');
-        drawPointOnSphere(north, 8, 'red', 'intersectionPath', true);
-        drawPointOnSphere(south, 4, 'red', 'intersectionPath', false);
-        drawPointOnSphere(east, 8, 'green', 'intersectionPath', true);
-        drawPointOnSphere(west, 4, 'green', 'intersectionPath', false);
+        drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);
+        drawPointOnSphere(north, 8, 'red', 'intersectionPath', '', true);
+        drawPointOnSphere(south, 4, 'red', 'intersectionPath', '', false);
+        drawPointOnSphere(east, 8, 'green', 'intersectionPath', '', true);
+        drawPointOnSphere(west, 4, 'green', 'intersectionPath', '', false);
     });
 }
 

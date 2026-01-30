@@ -111,7 +111,7 @@ function drawPathOnSphere(path) {
         .attr('d', pathString);
 }
 
-drawPointOnSphere = function(pt3D, radius, color, className, isDiamond=false) {
+drawPointOnSphere = function(pt3D, radius, color, className, hovertext, isDiamond=false) {
     let [x, y, z] = imgXYZFrom3D(pt3D);
     if(z >= -0.01) {
         if(isDiamond) {
@@ -126,14 +126,16 @@ drawPointOnSphere = function(pt3D, radius, color, className, isDiamond=false) {
                 .attr('d', pathString)
                 .attr('fill', color)
                 .attr('stroke', 'black')
-                .attr('stroke-width', 1);
+                .attr('stroke-width', 1)
+                .append('title').text(hovertext);
         } else {
             gSphereSvg.append('circle')
                 .classed(className, true)
                 .attr('cx', x)
                 .attr('cy', y)
                 .attr('r', radius)
-                .attr('fill', color);
+                .attr('fill', color)
+                .append('title').text(hovertext);
         }
     }
 }
@@ -154,7 +156,7 @@ drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
 
 drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
-    intersectionList.nodes.forEach(node => {
+    intersectionList.nodes.forEach((node, nodeIdx) => {
         let center = node.orientation.apply(DMSLib.Point3D.zAxis());
         armColors = ['red', 'green']
         node.arms.forEach((arm, armIdx) => {
@@ -164,11 +166,11 @@ drawIntersectionsOnSphere = function(intersectionList) {
                 let ptB = arm.orientationAlongArm(x+step).apply(DMSLib.Point3D.zAxis());
                 drawLineSegmentOnSphere(ptA, ptB, armColors[armIdx], 'intersectionPath');
             }
-            drawPointOnSphere(arm.orientationAlongArm(8*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 8, armColors[armIdx], 'intersectionPath', true);
-            drawPointOnSphere(arm.orientationAlongArm(-8*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 4, armColors[armIdx], 'intersectionPath', false);
+            drawPointOnSphere(arm.orientationAlongArm(5*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 8, armColors[armIdx], 'intersectionPath', '', true);
+            drawPointOnSphere(arm.orientationAlongArm(-5*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 4, armColors[armIdx], 'intersectionPath', '', false);
         });
 
-        drawPointOnSphere(center, 6, 'black', 'intersectionPath');
+        drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);
     });
 }
 

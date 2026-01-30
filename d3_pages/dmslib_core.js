@@ -13,6 +13,16 @@ DMSLib.fixAngle = function(theta) {
     return theta;
 };
 
+DMSLib.averageAngle = function(angles) {
+    let x = 0;
+    let y = 0;
+    angles.forEach(angle => {
+        x += Math.cos(angle);
+        y += Math.sin(angle);
+    });
+    return Math.atan2(y, x);
+};
+
 // difference between angles
 DMSLib.angleBetween = function(angleA, angleB) {
     return Math.abs(DMSLib.fixAngle(angleA - angleB));

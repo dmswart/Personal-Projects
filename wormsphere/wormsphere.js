@@ -550,6 +550,24 @@ function nextIntersection(intersections, idx) {
     return result;
 }
 
+// returns rotation that maps z axis to pt (normalized), and two given vectors to (close to) x and y axes
+// TODO - this is a duplicate of code in wormsphereviewer.js
+
+function calculateOrientationFromDirs(pt, dirX, dirY) {
+    // first rotate z axis to pt
+    let axis = (Math.abs(pt.z) > 1-DMSLib.EPSILON) ?
+        DMSLib.Point3D.xAxis() : 
+        new DMSLib.Point3D(-pt.y, pt.x, 0).normalized();
+    let orientZaxisToIntersection = DMSLib.Rotation.fromAngleAxis(Math.acos(pt.z), axis);
+
+    let nativedirX = orientZaxisToIntersection.inverse().apply(dirX);
+    let nativedirY = orientZaxisToIntersection.inverse().apply(dirY);
+
+    let correctionAngle = DMSLib.averageAngle([nativedirY.theta()-DMSLib.QUARTERTAU, nativedirX.theta()]);
+    return orientZaxisToIntersection.combine(
+        DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+}
+
 function scratch() {
     // find intersections
     let intersections = [];
@@ -561,32 +579,38 @@ function scratch() {
             let edgeB_2 = gSpherePath[j+1];
             let intersectionPoint =  intersectsOnSphere(edgeA_1, edgeA_2, edgeB_1, edgeB_2);
             if(intersectionPoint) {
-                let nsdir = edgeA_1.sub(edgeA_2).normalized();
-                let ewdir = edgeB_1.sub(edgeB_2).normalized();
-                let ewDirIsPositive = DMSLib.dot(DMSLib.cross(nsdir, ewdir), intersectionPoint) > 0.0;
+                let ndir = edgeA_2.sub(edgeA_1).normalized();
+                let edir = edgeB_2.sub(edgeB_1).normalized();
+                let eDirIsPositive = DMSLib.dot(DMSLib.cross(edir, ndir), intersectionPoint) > 0.0;
+                if(!eDirIsPositive) {
+                    edir = edir.mul(-1);
+                }
 
-                let orientZaxisToIntersection = DMSLib.Rotation.fromAngleAxis(
-                    Math.acos(intersectionPoint.z),
-                    new DMSLib.Point3D(-intersectionPoint.y, intersectionPoint.x, 0).normalized());
-                // what direction is north south and east west in "native" space
-                let nativeNSdir = orientZaxisToIntersection.inverse().apply(nsdir);
-                let nativeEWdir = orientZaxisToIntersection.inverse().apply(ewdir);
-                let correctionAngle = (DMSLib.QUARTERTAU-nativeNSdir.theta() + 0 - nativeEWdir.theta()) * 0.5;
-                let orientation = orientZaxisToIntersection.combine(
-                    DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+                let orientation = calculateOrientationFromDirs(intersectionPoint, edir, ndir);
+                if(true)
+                {
+                    let testN = orientation.apply(DMSLib.Point3D.yAxis());
+                    let testE = orientation.apply(DMSLib.Point3D.xAxis());
+                    let nAngle = DMSLib.Point3D.vectorAngle(testN, ndir);
+                    let eAngle = DMSLib.Point3D.vectorAngle(testE, edir);
+                    if(nAngle > DMSLib.QUARTERTAU || eAngle > DMSLib.QUARTERTAU) {
+                        console.log("orientation error!");
+                    }
+
+                }
 
                 let newIntersection = {
                     orientation,
                     nsIdx: i,
                     ewIdx: j,
                     arms: [ {idx: i,
-                             length: 1*DMSLib.TAU/360,
+                             length: 5*DMSLib.TAU/360,
                              dirIsPositive: true,
                              nextNode: null,
                              nextArm: null},
                             {idx: j,
-                             length: 1*DMSLib.TAU/360,
-                             dirIsPositive: ewDirIsPositive,
+                             length: 5*DMSLib.TAU/360,
+                             dirIsPositive: eDirIsPositive,
                              nextNode: null,
                              nextArm: null}]
                 };

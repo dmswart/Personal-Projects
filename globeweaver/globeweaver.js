@@ -40,8 +40,8 @@ function loadIntersectionsFromFile() {
             json.forEach(data => {
                 let node = new Globeweaver.IntersectionNode(
                     new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
-                    new Arm(data.arms[0].length, data.arms[0].directionIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
-                    new Arm(data.arms[1].length, data.arms[1].directionIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
+                    new Arm(data.arms[0].length, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
+                    new Arm(data.arms[1].length, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
                 );
                 newList.push(node);
             });
@@ -383,35 +383,79 @@ function calculateOrientationFromDirs(pt, dirX, dirY) {
     let nativedirX = orientZaxisToIntersection.inverse().apply(dirX);
     let nativedirY = orientZaxisToIntersection.inverse().apply(dirY);
 
-    let correctionAngle = (nativedirY.theta()-DMSLib.QUARTERTAU + nativedirX.theta() - 0) * 0.5;
+    let correctionAngle = DMSLib.fixAngle(nativedirY.theta()-DMSLib.QUARTERTAU + nativedirX.theta() - 0) * 0.5;
     return orientZaxisToIntersection.combine(
         DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
 }
 
 // orientation moves the z axis to a point P.  We want an orientation that moves z-axis to P+delta
-function moveOrientation(orientation, delta) {
-    let pos = orientation.apply(DMSLib.Point3D.zAxis());
-    let posX = orientation.apply((new DMSLib.Point3D(0.01, 0, 1)).normalized());
-    let posY = orientation.apply((new DMSLib.Point3D(0, 0.01, 1)).normalized());
+function moveOrientation(node, delta) {
+    let pos = node.orientation.apply(DMSLib.Point3D.zAxis());
+    let posX = node.orientation.apply((new DMSLib.Point3D(0.01, 0, 1)).normalized());
+    let posY = node.orientation.apply((new DMSLib.Point3D(0, 0.01, 1)).normalized());
 
     pos = pos.add(delta).normalized();
     posX = posX.add(delta).normalized();
     posY = posY.add(delta).normalized();
 
-    return calculateOrientationFromDirs(pos, posX.sub(pos), posY.sub(pos));
+    newOrientation = calculateOrientationFromDirs(pos, posX.sub(pos), posY.sub(pos));
+    node.setOrientation(newOrientation);
 }
 
 // ***** DEAL WITH POSITIONS
 function doIntersectionPositions() {
+    /*
+    gIntersectionList.nodes.forEach((node, nodeIdx) => {
+        function calcDist(aIdx, bIdx) {
+            if(aIdx == bIdx) return null;
+            let aPos = gIntersectionList.nodes[aIdx].orientation.apply(DMSLib.Point3D.zAxis());
+            let bPos = gIntersectionList.nodes[bIdx].orientation.apply(DMSLib.Point3D.zAxis());
+            return DMSLib.Point3D.vectorAngle(aPos, bPos);
+        }
+
+        // look for asymmetric distances to neighbors.  move towards or away from neighbors.
+        let dists = [];
+        dists.push(calcDist(nodeIdx, node.arms[0].nextNode));
+        dists.push(calcDist(nodeIdx, node.arms[0].prevNode));
+        dists.push(calcDist(nodeIdx, node.arms[1].nextNode));
+        dists.push(calcDist(nodeIdx, node.arms[1].prevNode));
+        dists = dists.filter(d => d !== null);
+        let avgDist = dists.reduce((a, b) => a + b, 0) / dists.length;
+
+        function calcVector(fromNode, toNode, desiredDist) {
+            if(fromNode == toNode) return DMSLib.Point3D.origin();
+
+            let fromPos = gIntersectionList.nodes[fromNode].orientation.apply(DMSLib.Point3D.zAxis());
+            let toPos = gIntersectionList.nodes[toNode].orientation.apply(DMSLib.Point3D.zAxis());
+            let currentDist = DMSLib.Point3D.vectorAngle(fromPos, toPos);
+            let percentageToMove = (currentDist - desiredDist) / currentDist;
+            return toPos.sub(fromPos).mul(percentageToMove);
+        }
+
+        let deltaVector = DMSLib.Point3D.origin();
+        deltaVector = deltaVector.add(calcVector(nodeIdx, node.arms[0].nextNode, avgDist));
+        deltaVector = deltaVector.add(calcVector(nodeIdx, node.arms[0].prevNode, avgDist));
+        deltaVector = deltaVector.add(calcVector(nodeIdx, node.arms[1].nextNode, avgDist));
+        deltaVector = deltaVector.add(calcVector(nodeIdx, node.arms[1].prevNode, avgDist));
+
+        moveOrientation(node, deltaVector.mul(0.1));
+    });
+    buildPathFromIntersectionNodes();
+    */
+
+    // calculate average
     let avgPt = DMSLib.Point3D.origin();
     gIntersectionList.nodes.forEach((node, nodeIdx) => {
          avgPt = avgPt.add(node.orientation.apply(DMSLib.Point3D.zAxis()));
     });
-    avgPt = avgPt.mul(gIntersectionList.nodes.length);
+    avgPt = avgPt.div(gIntersectionList.nodes.length);
 
+    // apply average
     gIntersectionList.nodes.forEach((node, nodeIdx) => {
-        node.setOrientation(moveOrientation(node.orientation,avgPt.mul(-0.01)));
+        moveOrientation(node, avgPt.mul(-0.1));
+        node.length = 2 * DMSLib.TAU / 360; // two degrees
     });
+
     buildPathFromIntersectionNodes();
     outputPath();
 }
@@ -420,34 +464,38 @@ function doIntersectionPositions() {
 function doIntersectionAngles() {
     gIntersectionList.nodes.forEach((node, nodeIdx) => {
         let inverseOrient = node.orientation.inverse();
-        let offAngleSum = 0;
+        let offAngles = [];
 
         fnOffAngle = (o, expectedAngle) => {
             let pt = inverseOrient.combine(o).apply(DMSLib.Point3D.zAxis());
             if(Math.abs(pt.z) > 1 - DMSLib.EPSILON) return 0;
-            return pt.theta() - expectedAngle;
+            return DMSLib.fixAngle(pt.theta() - expectedAngle);
         }
 
         // north, south destination
         let northNode = gIntersectionList.nodes[node.arms[0].nextNode];
         let southNode = gIntersectionList.nodes[node.arms[0].prevNode];
         if(!node.arms[0].directionIsPositive) [northNode, southNode] = [southNode, northNode];
-        offAngleSum += fnOffAngle(northNode.orientation, DMSLib.QUARTERTAU);
-        offAngleSum += fnOffAngle(southNode.orientation, -DMSLib.QUARTERTAU);
+        offAngles.push(fnOffAngle(northNode.orientation, DMSLib.QUARTERTAU));
+        offAngles.push(fnOffAngle(southNode.orientation, -DMSLib.QUARTERTAU));
 
         // east, west destination
         let eastNode = gIntersectionList.nodes[node.arms[1].nextNode];
         let westNode = gIntersectionList.nodes[node.arms[1].prevNode];
         if(!node.arms[1].directionIsPositive) [eastNode, westNode] = [westNode, eastNode];
-        offAngleSum += fnOffAngle(eastNode.orientation, 0);
-        offAngleSum += fnOffAngle(westNode.orientation, DMSLib.HALFTAU);
+        offAngles.push(fnOffAngle(eastNode.orientation, 0));
+        offAngles.push(fnOffAngle(westNode.orientation, DMSLib.HALFTAU));
 
-        // new orientation that rotates
-        let correctionAngle = DMSLib.fixAngle(offAngleSum) / 10;
+        // new orientation that rotates to the right angle
+        offAngles = offAngles.filter(a => Math.abs(a) > DMSLib.EPSILON);
+        let avgOffAngleMagnitude = offAngles.map(a => Math.abs(a)).reduce((a, b) => a + b, 0) / offAngles.length;
+        let avgOffAngle = offAngles.reduce((a, b) => a + b, 0) / offAngles.length;
+        if (avgOffAngleMagnitude > DMSLib.QUARTERTAU) { avgOffAngle += DMSLib.HALFTAU; } // sign that it's in a stuck state
         let newOrientation = node.orientation.combine(
-            DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
+            DMSLib.Rotation.fromAngleAxis(avgOffAngle, DMSLib.Point3D.zAxis()));
 
         node.setOrientation(newOrientation);
+        node.length = 2 * DMSLib.TAU / 360; // two degrees
     });
 
     buildPathFromIntersectionNodes();
