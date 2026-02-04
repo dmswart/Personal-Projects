@@ -22,8 +22,16 @@
     <button onclick="doEnergy(true, true);">Energy</button>
     <button onclick="doEnergy(false, true);">Energy Plane</button>
     <button onclick="doEnergy(true, false);">Energy Sphere</button>
-    <button onclick="increasePoints();">Increase Points</button>
+    <p></p>
+    #Points: 
+    <button onclick="increasePoints();">+</button>
+    <button onclick="decreasePoints();">-</button>
+    <button onclick="outputIntersections();">Output Intersections</button>
     <button onclick="scratch();">Scratch</button>
+    <p></p>
+    Allow Opposite Points to Cross: 
+    <input type="checkbox" id="allowOppositeCrossCheckbox" name="allowOppositeCrossCheckbox" checked="checked"
+      onchange="onAllowOppositeCrossChange(this.checked)"/>
     <p></p>
     Iterations: 
     <select name="iterations" id="iterations" value=100>

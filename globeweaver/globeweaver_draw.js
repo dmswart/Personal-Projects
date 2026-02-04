@@ -3,6 +3,7 @@ let gSphereSvg = null;
 let gPlaneSvg = null;
 let gSvgHeight = null;
 let gSphereRotation = new DMSLib.Rotation();
+let gDrawingIntersectionsOnSphere = true;
 
 function increasePoints() {
     gSpherePath = redistributePoints(gSpherePath, 1.3);
@@ -154,20 +155,25 @@ drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
     }
 }
 
+enableIntersectionsOnSphere = function(enable) {
+    gDrawingIntersectionsOnSphere = enable;
+}
+
 drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
+    if(!gDrawingIntersectionsOnSphere) return;
     intersectionList.nodes.forEach((node, nodeIdx) => {
         let center = node.orientation.apply(DMSLib.Point3D.zAxis());
         armColors = ['red', 'green']
         node.arms.forEach((arm, armIdx) => {
-            let step = (arm.incomingLength + arm.length)/10;
-            for(let x = -arm.incomingLength; x < arm.length; x += step) {
-                let ptA = arm.orientationAlongArm(x).apply(DMSLib.Point3D.zAxis());
-                let ptB = arm.orientationAlongArm(x+step).apply(DMSLib.Point3D.zAxis());
+            let step = (arm.inLength + arm.outLength)/10;
+            for(let x = -arm.inLength; x < arm.outLength - DMSLib.EPSILON; x += step) {
+                let ptA = arm.pointAlongArm(x);
+                let ptB = arm.pointAlongArm(x+step);
                 drawLineSegmentOnSphere(ptA, ptB, armColors[armIdx], 'intersectionPath');
             }
-            drawPointOnSphere(arm.orientationAlongArm(5*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 8, armColors[armIdx], 'intersectionPath', '', true);
-            drawPointOnSphere(arm.orientationAlongArm(-5*DMSLib.TAU/360).apply(DMSLib.Point3D.zAxis()), 4, armColors[armIdx], 'intersectionPath', '', false);
+            drawPointOnSphere(arm.outPoint(), 8, armColors[armIdx], 'intersectionPath', '', true);
+            drawPointOnSphere(arm.inPoint(), 4, armColors[armIdx], 'intersectionPath', '', false);
         });
 
         drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);

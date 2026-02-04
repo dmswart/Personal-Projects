@@ -11,9 +11,16 @@ const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
 // ---- get your global variables here ----
 let gPlanarPath = [];
 let gSpherePath = [];
+let gAllowOppositeCross = true;
 
 function increasePoints() {
     gSpherePath = redistributePoints(gSpherePath, 1.3);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath);
+}
+
+function decreasePoints() {
+    gSpherePath = redistributePoints(gSpherePath, 0.7);
     gSpherePath = smoothPath(gSpherePath);
     gPlanarPath = toPlanarPath(gSpherePath);
 }
@@ -24,14 +31,32 @@ function outputPath() {
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
 }
 
-function toPlanarPath(spherePath) {
+function onAllowOppositeCrossChange(checked) {
+    gAllowOppositeCross = checked;
+}
+
+function toPlanarPath(spherePath, dirRange) {
+    if(dirRange === undefined) {
+        let result = toPlanarPath(gSpherePath, DMSLib.HALFTAU);
+        result = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 20);
+        result = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 400);
+        result = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 8000);
+        return result;
+    }
+
+    let nominalDir = 0;
+    if (gPlanarPath.length > 1) {
+        nominalDir = gPlanarPath[1].sub(gPlanarPath[0]).theta();
+    } 
     let result = {path: [], scale: 0}
     let o = new DMSLib.Point3D(); // origin
 
-    for(let startdir=0; startdir<DMSLib.QUARTERTAU; startdir+=DMSLib.HALFTAU/90) {
+    for(let startdir=nominalDir - dirRange; startdir<nominalDir+dirRange; startdir+=dirRange/30) {
         let planePath = [];
         let pos = new DMSLib.Point2D();
         let dir = startdir;
+        if(dir < 0) dir += DMSLib.HALFTAU;
+        if(dir > DMSLib.HALFTAU) dir -= DMSLib.HALFTAU;
 
         for (let i=0; i<spherePath.length; i++) {
             planePath.push(pos); 
@@ -190,7 +215,8 @@ function turnPathToArcs(givenPath) {
 function redistributePoints(path, n_multiplier = 1) {
     let n = path.length * n_multiplier
     pathdistance = 0
-    for (let i=0; i<path.length; i++) {
+    let lastIdx = path.length - 1  
+    for (let i=0; i<lastIdx; i++) {
         let a = path[i]
         let b = path[(i+1)%path.length]
         pathdistance += a.sub(b).R();
@@ -198,9 +224,9 @@ function redistributePoints(path, n_multiplier = 1) {
 
     distToNextStep = 0;
     idx = 0;
-    stepdist = pathdistance / n;
+    stepdist = pathdistance / (n-1);
     result = [];
-    while (idx < path.length - 1e-5) {
+    while (idx < lastIdx - 1e-5) {
         idxI = Math.floor(idx)
         idxF = idx - idxI
         let a = path[idxI]
@@ -221,6 +247,7 @@ function redistributePoints(path, n_multiplier = 1) {
         distToNextStep -= toTravel 
         idx += toTravel / b.sub(a).R();
     }
+    result.push(path[path.length-1]);
     return result;
 }
 
@@ -352,6 +379,7 @@ function boundaryEnergy(pt) {
 }
 
 function ignoreEnergy(a, b, totalEdges) {
+    if(gAllowOppositeCross) return false; // if we're not allowing opposite crossings, don't ignore any edges
     a = a/totalEdges; 
     b = b/totalEdges;
     let diff = Math.abs(a-b);
@@ -568,7 +596,7 @@ function calculateOrientationFromDirs(pt, dirX, dirY) {
         DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
 }
 
-function scratch() {
+function outputIntersections() {
     // find intersections
     let intersections = [];
     for(let i=0; i<gSpherePath.length-1; i++) {
@@ -636,6 +664,15 @@ function scratch() {
     }
     drawIntersectionsOnSphere(intersections);
 
+    // check if all "nextNode" fields of each arm of every intersection are not null
+    let validIntersections = intersections.every(intersection =>
+        intersection.arms.every(arm => arm.nextNode !== null)
+    );
+    if(!validIntersections) {
+        console.error("Error: Some intersection arms have null nextNode fields.");
+        return;
+    }
+
     // write intersections as json to downloaded file
     let outputString = JSON.stringify(intersections, null, 2);
     let element = document.createElement('a');
@@ -645,6 +682,33 @@ function scratch() {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+}
+
+function scratch() {
+    // get random path
+    getRandomPath();
+
+    // set num points to 50.
+    gSpherePath = redistributePoints(gSpherePath, 50 / gSpherePath.length);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath);
+
+    // run do Plane step for 1000 iterations
+    for(let i=0; i<1000; i++) {
+        doPlaneStep();
+    }
+
+    // increase points to quite a bit (with smoothing and all that)
+    //gSpherePath = redistributePoints(gSpherePath, 2000 / gSpherePath.length);
+    // for(let i=0; i<4; i++) gSpherePath = smoothPath(gSpherePath);
+    // gPlanarPath = toPlanarPath(gSpherePath);
+    for(let i=0; i<12; i++) { increasePoints(); }
+
+    // show our work!
+    outputPath();
+
+    // output intersections
+    outputIntersections();
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.

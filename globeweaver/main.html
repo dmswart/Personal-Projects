@@ -26,12 +26,18 @@
     <button onclick="doEnergy(true, false);">Energy Sphere</button>
     <p/>
     <button onclick="doIntersectionPositions();">Adjust Positions</button>
-    <button onclick="doIntersectionAngles();">Adjust Angles</button>
     <button onclick="increasePoints();">Increase Points</button>
     <button onclick="loadIntersectionsFromFile();">Load Intersections</button>
     <p/>
+    <!---- a checkbox whether to show or not show the intersection points -->
+    Show Intersection Points: 
+    <input type="checkbox" id="showIntersectionPointsCheckbox" name="showIntersectionPointsCheckbox" checked="checked"
+      onchange="onShowIntersectionPointsChange(this.checked)"/>
+    <p/>
+
     Iterations: 
     <select name="iterations" id="iterations" value=10>
+      <option value=10000>10000</option>
       <option value=1000>1000</option>
       <option value=100>100</option>
       <option value=10 selected="selected">10</option>

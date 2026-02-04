@@ -11,7 +11,8 @@ var Globeweaver = Globeweaver || {};
 //   directionIsPositive: true means direction is positive (i.e., north or east)
 class Arm {
     constructor(length, directionIsPositive, nextNode, nextDir) {
-        this.length = length;
+        this.inLength = length;
+        this.outLength = length
         this.directionIsPositive = directionIsPositive;
         this.nextNode = nextNode;
         this.nextDir = nextDir;
@@ -19,16 +20,6 @@ class Arm {
         // placeholders for contextual information
         this._dir = 0;
         this._orientation = DMSLib.Rotation.identity(); // this is the orientation of the intersection.
-
-        this.clearDerivedProperties(); // set derived properties to null.
-    }
-
-    clearDerivedProperties() {
-        this.arcRotation = null;
-        this.secondLength = null; // length of incoming segment from previous arm
-        this.incomingLength = null;
-        this.minLength = null;  // range for possible length adjustments
-        this.maxLength =  null;
     }
 
     // return orientation that maps z axis to surface point, and x axis to surface direction
@@ -45,47 +36,17 @@ class Arm {
         return result;
     }
 
-    isWithinArmsLength(distance) {
-        if(!this.directionIsPositive) distance = -distance;
-        return distance < this.length && distance > -this.incomingLength;
-    }
-
     surfacePoint() { return this.getOrientation().apply(DMSLib.Point3D.zAxis()); }
     surfaceDirection() { return this.getOrientation().apply(DMSLib.Point3D.xAxis()); }
     turningAxis() { return this.getOrientation().apply(DMSLib.Point3D.yAxis()); }
-    
-    _doesTurnNeedAdjustment() {
-        let p = this.orientationAlongArm(this.length).apply(DMSLib.Point3D.zAxis());
-        let p_straight = this.orientationAlongArm(this.length+DMSLib.EPSILON).apply(DMSLib.Point3D.zAxis());
-        let straightdir = p_straight.sub(p).normalized();
 
-        // check if p and arcRoation.axis are aligned
-        if( Math.abs(DMSLib.dot(p, this.arcRotation.axis())) > 1.0 - DMSLib.EPSILON ) { return false; }
-        let p_arced = DMSLib.Rotation.fromAngleAxis(1 * DMSLib.TAU/360, this.arcRotation.axis()).apply(p);
-        let arceddir = p_arced.sub(p).normalized();
-
-        if(arceddir === undefined || straightdir === undefined) {
-            console.warn("Undefined direction in _doesTurnNeedAdjustment");
-        }
-
-        return DMSLib.dot(arceddir, straightdir) < 0;
-    }
-    
-    arcTurn() {
-        return this.arcRotation.angle();
+    pointAlongArm(x) {
+        return this.getOrientation().apply(
+            new DMSLib.Point3D(Math.sin(x), 0, Math.cos(x)));
     }
 
-    arcRadius() {
-        let startOfArc = this.orientationAlongArm(this.length);
-        let startOfArcPoint = startOfArc.apply(DMSLib.Point3D.zAxis());
-        return DMSLib.Point3D.vectorAngle( this.arcRotation.axis(), startOfArcPoint);
-    }
-
-    // orientation of the point after going out from the arm a given distance
-    orientationAlongArm(distance) {
-        let rotateFromZTowardsX = DMSLib.Rotation.fromAngleAxis(distance, DMSLib.Point3D.yAxis());
-        return this.getOrientation().combine(rotateFromZTowardsX);
-    }
+    outPoint() { return this.pointAlongArm(this.outLength); }
+    inPoint() { return this.pointAlongArm(-this.inLength); }
 }
 
 //
