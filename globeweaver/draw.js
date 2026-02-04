@@ -1,15 +1,9 @@
-// ---- globeweaver global variables ----
+// ---- get your global variables here ----
 let gSphereSvg = null;
 let gPlaneSvg = null;
 let gSvgHeight = null;
 let gSphereRotation = new DMSLib.Rotation();
 let gDrawingIntersectionsOnSphere = true;
-
-function increasePoints() {
-    gSpherePath = redistributePoints(gSpherePath, 1.3);
-    gSpherePath = smoothPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath);
-}
 
 function onSphereSvgClicked() {
     let coordinates= d3.mouse(this);
@@ -19,7 +13,10 @@ function onSphereSvgClicked() {
     incrementalRotation = DMSLib.Rotation.fromAngleAxis(DMSLib.TAU/12.0, new DMSLib.Point3D(-y, -x, 0))
     gSphereRotation = incrementalRotation.combine(gSphereRotation);
     drawPathOnSphere(gSpherePath);
-    drawIntersectionsOnSphere(gIntersectionList);
+
+    if(typeof gIntersectionList !== 'undefined') {
+        drawIntersectionsOnSphere(gIntersectionList);
+    }   
 }
 
 function initializeSvgs(width, height) {
@@ -52,6 +49,53 @@ function initializeSvgs(width, height) {
         .attr('fill', 'silver');
 }
 
+drawPointOnSphere = function(pt3D, radius, color, className, titleText, isDiamond=false) {
+    let [x, y, z] = imgXYZFrom3D(pt3D);
+    if(z >= -0.01) {
+        if(isDiamond) {
+            // draw path +- radius from center point
+            let pathString = 'M' + (x - radius) + ' ' + y +
+                             'L' + x + ' ' + (y - radius) +
+                             'L' + (x + radius) + ' ' + y +
+                             'L' + x + ' ' + (y + radius) +
+                             'Z';
+            gSphereSvg.append('path')
+                .classed(className, true)
+                .attr('d', pathString)
+                .attr('fill', color)
+                .attr('stroke', 'black')
+                .attr('stroke-width', 1)
+                .append('title').text(titleText);
+        } else {
+            gSphereSvg.append('circle')
+                .classed(className, true)
+                .attr('cx', x)
+                .attr('cy', y)
+                .attr('r', radius)
+                .attr('fill', color)
+                .append('title').text(titleText);
+        }
+    }
+}
+
+drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
+    let [xA, yA, zA] = imgXYZFrom3D(ptA);
+    let [xB, yB, zB] = imgXYZFrom3D(ptB);
+    if(zA >= -0.01 && zB >= -0.01) {
+        let pathString = 'M' + xA + ' ' + yA + 'L' + xB + ' ' + yB;
+        gSphereSvg.append('path')
+            .classed(className, true)
+            .attr('stroke-width', 3)
+            .attr('stroke', color)
+            .attr('fill', 'none')
+            .attr('d', pathString);
+    }
+}
+
+enableIntersectionsOnSphere = function(enable) {
+    gDrawingIntersectionsOnSphere = enable;
+}
+
 function colorRamp(idx, total) {
     gray = Math.floor(idx/total * 255)
     return 'rgb(255,' + (255-gray) + ',' + gray + ')';
@@ -59,12 +103,17 @@ function colorRamp(idx, total) {
 
 
 function drawPathOnPlane(path) {
+    // if the variable PLANE_SCALE is defined, use it to scale the points
+    if(typeof PLANE_SCALE === 'undefined') {
+        PLANE_SCALE = 1.0;
+    }
+
     gPlaneSvg.selectAll('circle').remove();
     gPlaneSvg.selectAll('path').remove();
     pathString = '';
     for(let i=0; i<path.length; i++) {
-        let x = path[i].x;
-        let y = path[i].y;
+        let x = path[i].x * PLANE_SCALE;
+        let y = path[i].y * PLANE_SCALE;
         pathString += (i?'L':'M') + x + ' ' + y;
 
         gPlaneSvg.append('circle')
@@ -83,6 +132,7 @@ function drawPathOnPlane(path) {
 
 function drawPathOnSphere(path) {
     gSphereSvg.selectAll('.spherePath').remove();
+    gSphereSvg.selectAll('.intersectionPath').remove();
 
     let pathString = '';
     let lastZ = -1; // fake previous point with negative z
@@ -112,51 +162,11 @@ function drawPathOnSphere(path) {
         .attr('d', pathString);
 }
 
-drawPointOnSphere = function(pt3D, radius, color, className, hovertext, isDiamond=false) {
-    let [x, y, z] = imgXYZFrom3D(pt3D);
-    if(z >= -0.01) {
-        if(isDiamond) {
-            // draw path +- radius from center point
-            let pathString = 'M' + (x - radius) + ' ' + y +
-                             'L' + x + ' ' + (y - radius) +
-                             'L' + (x + radius) + ' ' + y +
-                             'L' + x + ' ' + (y + radius) +
-                             'Z';
-            gSphereSvg.append('path')
-                .classed(className, true)
-                .attr('d', pathString)
-                .attr('fill', color)
-                .attr('stroke', 'black')
-                .attr('stroke-width', 1)
-                .append('title').text(hovertext);
-        } else {
-            gSphereSvg.append('circle')
-                .classed(className, true)
-                .attr('cx', x)
-                .attr('cy', y)
-                .attr('r', radius)
-                .attr('fill', color)
-                .append('title').text(hovertext);
-        }
-    }
-}
-
-drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
-    let [xA, yA, zA] = imgXYZFrom3D(ptA);
-    let [xB, yB, zB] = imgXYZFrom3D(ptB);
-    if(zA >= -0.01 && zB >= -0.01) {
-        let pathString = 'M' + xA + ' ' + yA + 'L' + xB + ' ' + yB;
-        gSphereSvg.append('path')
-            .classed(className, true)
-            .attr('stroke-width', 3)
-            .attr('stroke', color)
-            .attr('fill', 'none')
-            .attr('d', pathString);
-    }
-}
-
-enableIntersectionsOnSphere = function(enable) {
-    gDrawingIntersectionsOnSphere = enable;
+function imgXYZFrom3D(pt3D) {
+    pt3D = gSphereRotation.apply(pt3D.normalized());
+    x = pt3D.x * gSvgHeight/2 + gSvgHeight/2;
+    y = -pt3D.y * gSvgHeight/2 + gSvgHeight/2;
+    return [x, y, pt3D.z];
 }
 
 drawIntersectionsOnSphere = function(intersectionList) {
@@ -166,25 +176,29 @@ drawIntersectionsOnSphere = function(intersectionList) {
         let center = node.orientation.apply(DMSLib.Point3D.zAxis());
         armColors = ['red', 'green']
         node.arms.forEach((arm, armIdx) => {
-            let step = (arm.inLength + arm.outLength)/10;
-            for(let x = -arm.inLength; x < arm.outLength - DMSLib.EPSILON; x += step) {
-                let ptA = arm.pointAlongArm(x);
-                let ptB = arm.pointAlongArm(x+step);
+            let inPoint, outPoint;
+            if(arm.pointAlongArm === undefined) {
+                let [x, y, z] = [0, Math.sin(5*DMSLib.TAU/360), Math.cos(5*DMSLib.TAU/360)];
+                if(!arm.dirIsPositive) y = -y;
+                if(armIdx == 1) [x, y] = [y, x];
+                outPoint = node.orientation.apply(new DMSLib.Point3D(x, y, z));
+                inPoint = node.orientation.apply(new DMSLib.Point3D(-x, -y, z));
+            } else {
+                inPoint = arm.inPoint();
+                outPoint= arm.outPoint();
+            }
+
+            for(let x = 0; x < 30; x ++) {
+                let ptA = inPoint.add(outPoint.sub(inPoint).mul(x/30)).normalized();
+                let ptB = inPoint.add(outPoint.sub(inPoint).mul((x+1)/30)).normalized();
                 drawLineSegmentOnSphere(ptA, ptB, armColors[armIdx], 'intersectionPath');
             }
-            drawPointOnSphere(arm.outPoint(), 8, armColors[armIdx], 'intersectionPath', '', true);
-            drawPointOnSphere(arm.inPoint(), 4, armColors[armIdx], 'intersectionPath', '', false);
-        });
 
+            drawPointOnSphere(outPoint, 8, armColors[armIdx], 'intersectionPath', '', true);
+            drawPointOnSphere(inPoint, 4, armColors[armIdx], 'intersectionPath', '', false);
+        });
         drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);
     });
-}
-
-function imgXYZFrom3D(pt3D) {
-    pt3D = gSphereRotation.apply(pt3D.normalized());
-    x = pt3D.x * gSvgHeight/2 + gSvgHeight/2;
-    y = -pt3D.y * gSvgHeight/2 + gSvgHeight/2;
-    return [x, y, pt3D.z];
 }
 
 function savePlaneSvgToFile(filename) {

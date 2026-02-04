@@ -10,7 +10,8 @@
     <script src='../d3_pages/tsp_solver.js'></script>
     <script src='../d3_pages/tsp_tour_generation.js'></script>
     <script src='wormsphere.js'></script>
-    <script src='wormsphere_draw.js'></script>
+    <script src='paths.js'></script>
+    <script src='draw.js'></script>
 </head>
 
 <body>
@@ -45,4 +46,6 @@
 
 <script>
     initializeSvgs(PLANE_WIDTH, PLANE_HEIGHT);
+    getRandomPath();
+    outputPath();
 </script>

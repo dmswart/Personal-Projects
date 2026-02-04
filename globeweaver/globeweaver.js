@@ -9,13 +9,15 @@ const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (BOUNDARY.w * BOUNDARY.h) 
 let gIntersectionList = new Globeweaver.IntersectionList([]);
 
 // ---- globeweaver global variables ----
-let gPlanarPath = [];
-let gSpherePath = [];
+// let gPlanarPath = [];
+// let gSpherePath = [];
 
+/*
 function increasePoints() {
     gSpherePath = redistributePoints(gSpherePath, 1.3);
     gPlanarPath = toPlanarPath(gSpherePath);
 }
+    */
 
 function outputPath() {
     drawPathOnPlane(gPlanarPath);
@@ -103,11 +105,9 @@ function buildPathFromIntersectionNodes() {
     gSpherePath = cleanPath(gSpherePath);
     gSpherePath = redistributePoints(gSpherePath, gIntersectionList.nodes.length / gSpherePath.length * 20);
     gPlanarPath = toPlanarPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 20);
-    gPlanarPath = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 400);
-    gPlanarPath = toPlanarPath(gSpherePath, DMSLib.HALFTAU / 8000);
 }
 
+/*
 function toPlanarPath(spherePath, dirRange = DMSLib.HALFTAU) {
     let nominalDir = 0;
     if (gPlanarPath.length > 1) {
@@ -176,6 +176,7 @@ function toSpherePath(planarPath) {
 
     return result;
 }
+    */
 
 // remove points that are too close together    
 function cleanPath(path) {
@@ -188,6 +189,7 @@ function cleanPath(path) {
     return result;
 }
 
+/*
 // return n equally distributed points along a path 
 function redistributePoints(path, n_multiplier = 1) {
     path = cleanPath(path);
@@ -230,6 +232,7 @@ function redistributePoints(path, n_multiplier = 1) {
     result.push(path[path.length-1]);
     return result;
 }
+    */
 
 
 // given a path, precalculated tangents and normals at each point (T, N)
