@@ -49,7 +49,9 @@ function initializeSvgs(width, height) {
         .attr('fill', 'silver');
 }
 
+// returns the object that got drawn if it's ever needed (otherwise null)
 drawPointOnSphere = function(pt3D, radius, color, className, titleText, isDiamond=false) {
+    let obj = null;
     let [x, y, z] = imgXYZFrom3D(pt3D);
     if(z >= -0.01) {
         if(isDiamond) {
@@ -59,23 +61,23 @@ drawPointOnSphere = function(pt3D, radius, color, className, titleText, isDiamon
                              'L' + (x + radius) + ' ' + y +
                              'L' + x + ' ' + (y + radius) +
                              'Z';
-            gSphereSvg.append('path')
+            obj = gSphereSvg.append('path')
                 .classed(className, true)
                 .attr('d', pathString)
                 .attr('fill', color)
                 .attr('stroke', 'black')
                 .attr('stroke-width', 1)
-                .append('title').text(titleText);
         } else {
-            gSphereSvg.append('circle')
+            obj = gSphereSvg.append('circle')
                 .classed(className, true)
                 .attr('cx', x)
                 .attr('cy', y)
                 .attr('r', radius)
-                .attr('fill', color)
-                .append('title').text(titleText);
+                .attr('fill', color);
         }
+        obj.append('title').text(titleText);
     }
+    return obj;
 }
 
 drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
@@ -169,6 +171,14 @@ function imgXYZFrom3D(pt3D) {
     return [x, y, pt3D.z];
 }
 
+addOnClickHandler = function(d3Element, nodeIdx, armIdx) {
+    if(!d3Element) return;
+    d3Element.on('click', () => {
+        d3.select('#scratchNode').property('value', nodeIdx);
+        d3.select('#scratchArm').property('value', armIdx);
+    });
+}
+
 drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
     if(!gDrawingIntersectionsOnSphere) return;
@@ -194,7 +204,8 @@ drawIntersectionsOnSphere = function(intersectionList) {
                 drawLineSegmentOnSphere(ptA, ptB, armColors[armIdx], 'intersectionPath');
             }
 
-            drawPointOnSphere(outPoint, 8, armColors[armIdx], 'intersectionPath', '', true);
+            let obj = drawPointOnSphere(outPoint, 8, armColors[armIdx], 'intersectionPath', '', true);
+            obj = addOnClickHandler(obj, nodeIdx, armIdx);
             drawPointOnSphere(inPoint, 4, armColors[armIdx], 'intersectionPath', '', false);
         });
         drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);

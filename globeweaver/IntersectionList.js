@@ -37,33 +37,6 @@ Globeweaver.IntersectionList.prototype = {
         });
     },
 
-    getPathString: function() {
-        return 'l 0';
-        /*
-        let result = '';
-        // start at node 0 going north,
-        let currentArm = this.nodes[0].arms[0];
-        while(true) {
-            // make sure to format numbers to four decimal places
-        
-            result += 'l ' + (currentArm.length / DMSLib.HALFTAU).toFixed(4) + '\n' +
-                      'a ' + (currentArm.arcTurn() / DMSLib.HALFTAU).toFixed(4) + ' ' +
-                             (currentArm.arcRadius() / DMSLib.HALFTAU).toFixed(4) + '\n' +
-                      'l ' + (currentArm.secondLength / DMSLib.HALFTAU).toFixed(4) + '\n';
-            // next! 
-            currentArm = this.nodes[currentArm.nextNode].arms[currentArm.nextDir];
-            if(currentArm == this.nodes[0].arms[0]) break;
-        }
-
-        // remove trailing zeros and decimal points
-        result = result.replace(/00*\n/g, '\n');
-        result = result.replace(/00* /g, ' ');
-        result = result.replace(/\.\n/g, '\n');
-        result = result.replace(/\. /g, ' ');
-        return result;
-    */
-    },
-
     // handy function to get a list of points on the sphere
     getSpherePath: function(samplesPerSegment = 20) {
         let path = [];

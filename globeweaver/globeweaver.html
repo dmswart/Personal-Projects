@@ -28,7 +28,8 @@
     <p/>
     <button onclick="doIntersectionPositions();">Adjust Positions</button>
     <button onclick="increasePoints();">Increase Points</button>
-    <button onclick="loadIntersectionsFromFile();">Load Intersections</button>
+    <button onclick="loadIntersections();">Load</button>
+    <button onclick="saveIntersections();">Save</button>
     <p/>
     <!---- a checkbox whether to show or not show the intersection points -->
     Show Intersection Points: 
@@ -49,6 +50,16 @@
       Scratch controls:
       <button onclick="scratch();">Scratch</button><br/>
       SphereEnergy: <span id="sphereEnergy">0</span> PlaneEnergy: <span id="planeEnergy">0</span><br/>
+      <p></p>
+      Node: 
+      <input type="number" id="scratchNode" name="scratchNode" 
+        min="0" max="50" value="2" style="width:50px;" 
+        onchange="onScratchNodeChange(this.value)"/>
+      Arm: 
+      <input type="number" id="scratchArm" name="scratchArm" 
+        min="0" max="1" value="0" style="width:50px;" 
+        onchange="onScratchNodeChange(this.value)"/>
+
       <input type="range" id="scratchValue" name="scratchValue"
         min="0" max="500" style="width:100%;" 
         onchange="onScratchValueChange(this.value)"/>

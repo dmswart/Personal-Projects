@@ -6,57 +6,85 @@ const BOUNDARY = {x:PLANE_BUFFER, y:PLANE_BUFFER,
                   h:(PLANE_HEIGHT-2*PLANE_BUFFER)};
 const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (BOUNDARY.w * BOUNDARY.h) );
 
+// ---- globeweaver global variables ----
 let gIntersectionList = new Globeweaver.IntersectionList([]);
 
-// ---- globeweaver global variables ----
-// let gPlanarPath = [];
-// let gSpherePath = [];
-
-/*
-function increasePoints() {
-    gSpherePath = redistributePoints(gSpherePath, 1.3);
-    gPlanarPath = toPlanarPath(gSpherePath);
-}
-    */
 
 function outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     drawIntersectionsOnSphere(gIntersectionList);
-    d3.select('#output #skel').property('value', gIntersectionList.getPathString());
+    d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
+    // d3.select('#output #skel').property('value', gIntersectionList.getPathString());
 
     let e = calcEnergy();
     d3.select('#scratchInfo #sphereEnergy').text(e.s.toFixed(2));
     d3.select('#scratchInfo #planeEnergy').text(e.p.toFixed(2));
 }
 
-// load button, clicked ask for json file to upload, and then parse it into gIntersectionList
-function loadIntersectionsFromFile() {
+// given a file name, load the intersection list from that file and redraw
+function loadIntersectionsFromFile(filenameBlob, callbackfn) {
+    let reader = new FileReader();
+    reader.onload = event => {
+        let json = event.target.result;
+        json = JSON.parse(json);
+        let newList = [];
+        json.forEach(data => {
+            let node = new Globeweaver.IntersectionNode(
+                new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
+                new Arm(data.arms[0].length, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
+                new Arm(data.arms[1].length, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
+            );
+            newList.push(node);
+        });
+        let il = new Globeweaver.IntersectionList(newList);
+        if(callbackfn) callbackfn(il);
+
+    }
+    reader.readAsText(filenameBlob);
+}
+
+function loadIntersections() {
     let input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
     input.onchange = e => {
         let file = e.target.files[0];
-        let reader = new FileReader();
-        reader.onload = event => {
-            let json = event.target.result;
-            json = JSON.parse(json);
-            let newList = [];
-            json.forEach(data => {
-                let node = new Globeweaver.IntersectionNode(
-                    new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
-                    new Arm(0.25, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
-                    new Arm(0.25, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
-                );
-                newList.push(node);
-            });
-            gIntersectionList = new Globeweaver.IntersectionList(newList);
+        loadIntersectionsFromFile(file, il => {
+            gIntersectionList = il;
+            d3.select('#scratchNode').attr('max', gIntersectionList.nodes.length - 1);
             buildPathFromIntersectionNodes();
             outputPath();
-        };
-        reader.readAsText(file);
+        });
     };
     input.click();
+}
+
+function saveIntersections() {
+    saveIntersectionsToFile('globeweaver');
+}
+
+function saveIntersectionsToFile(filename) {
+    // build json object the way we want it.
+    let json = [];
+    gIntersectionList.nodes.forEach(node => {
+        json.push({
+            orientation: node.orientation,
+            arms: node.arms.map(arm => ({
+                length: (arm.outLength + arm.inLength) / 2,
+                dirIsPositive: arm.directionIsPositive,
+                nextNode: arm.nextNode,
+                nextArm: arm.nextDir
+            }))
+        });
+    });
+
+    // now save it to file
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data: text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(json, null, 2)));
+    element.setAttribute('download', filename + '.json');
+    element.click();
+    element.remove();
 }
 
 function initializeThreeNode() {
@@ -96,6 +124,7 @@ function initializeIntersections() {
     gIntersectionList = initializeThreeNode();
     // gIntersectionList = initializeOneNode();
 
+    d3.select('#scratchNode').attr('max', gIntersectionList.nodes.length - 1);
     buildPathFromIntersectionNodes();
     outputPath();
 }
@@ -106,133 +135,6 @@ function buildPathFromIntersectionNodes() {
     gSpherePath = redistributePoints(gSpherePath, gIntersectionList.nodes.length / gSpherePath.length * 20);
     gPlanarPath = toPlanarPath(gSpherePath);
 }
-
-/*
-function toPlanarPath(spherePath, dirRange = DMSLib.HALFTAU) {
-    let nominalDir = 0;
-    if (gPlanarPath.length > 1) {
-        nominalDir = gPlanarPath[1].sub(gPlanarPath[0]).theta();
-    } 
-    let result = {path: [], scale: 0}
-    let o = new DMSLib.Point3D(); // origin
-
-    for(let startdir=nominalDir - dirRange; startdir<nominalDir+dirRange; startdir+=dirRange/30) {
-        let planePath = [];
-        let pos = new DMSLib.Point2D();
-        let dir = startdir;
-        if(dir < 0) dir += DMSLib.HALFTAU;
-        if(dir > DMSLib.HALFTAU) dir -= DMSLib.HALFTAU;
-
-        for (let i=0; i<spherePath.length; i++) {
-            planePath.push(pos); 
-
-            let p = i>0 ? spherePath[i-1] : null;
-            let q = spherePath[i]
-            let r = i < spherePath.length-1 ? spherePath[i+1] : null;
-
-            let deflectionAngle = (p && q && r) ? -DMSLib.Point3D.sphereDeflection(p, q, r) : 0;
-            dir += deflectionAngle;
-
-            let distanceToMove = (q && r) ? DMSLib.Point3D.angle(q,o,r) : 0;
-            pos = pos.add(DMSLib.Point2D.fromPolar(distanceToMove, dir));
-        }
-
-        // get values of path
-        let maxX = Math.max(...planePath.map(p => p.x))
-        let minX = Math.min(...planePath.map(p => p.x))
-        let maxY = Math.max(...planePath.map(p => p.y))
-        let minY = Math.min(...planePath.map(p => p.y))
-
-        let scale = Math.min(BOUNDARY.w / (maxX - minX), BOUNDARY.h / (maxY - minY));
-        if(scale > result.scale) {
-            result.scale = scale;
-            let offset = new DMSLib.Point2D(BOUNDARY.x - minX*result.scale, BOUNDARY.y - minY*result.scale);
-            result.path = planePath.map(p => p.mul(result.scale).add(offset));
-        }
-    }
-
-    return result.path;
-}
-
-function toSpherePath(planarPath) {
-    let result = [];
-    let orientation = new DMSLib.Rotation();
-
-    for(let i=0; i<planarPath.length; i++) {
-        result.push(orientation.apply(DMSLib.Point3D.xAxis()));
-
-        let p = i>0 ? planarPath[i-1] : null; 
-        let q = planarPath[i];
-        let r = i < planarPath.length-1 ? planarPath[i+1] : null;
-
-        let deflectionAngle = (p && q && r) ? -DMSLib.Point2D.deflection(p, q, r) : 0;
-        let deflection = DMSLib.Rotation.fromAngleAxis(deflectionAngle, DMSLib.Point3D.xAxis());
-
-        let distanceToMove = (q && r) ? r.sub(q).R() : 0;
-        let move = DMSLib.Rotation.fromAngleAxis(distanceToMove, DMSLib.Point3D.zAxis());
-
-        orientation = orientation.combine(deflection).combine(move);
-    }
-
-    return result;
-}
-    */
-
-// remove points that are too close together    
-function cleanPath(path) {
-    result = [];
-    for(let i=0; i<path.length; i++) {
-        if(i==0 || path[i].sub(path[i-1]).R() > DMSLib.EPSILON) {
-            result.push(path[i]);
-        }
-    }
-    return result;
-}
-
-/*
-// return n equally distributed points along a path 
-function redistributePoints(path, n_multiplier = 1) {
-    path = cleanPath(path);
-    let n = path.length * n_multiplier
-    pathdistance = 0
-    lastIdx = path.length-1;
-    for (let i=0; i<lastIdx; i++) {
-        let a = path[i]
-        let b = path[(i+1)%path.length]
-        pathdistance += a.sub(b).R();
-    }
-
-    distToNextStep = 0;
-    idx = 0;
-    stepdist = pathdistance / (n-1);
-    result = [];
-    while (idx < lastIdx - 1e-5) {
-        idxI = Math.floor(idx)
-        idxF = idx - idxI
-        let a = path[idxI]
-        let b = path[(idxI+1) % path.length]
-        currentPos = a.add(b.sub(a).mul(idxF)) 
-        if(a.nodeIdx !== undefined) currentPos.nodeIdx = a.nodeIdx; // preserve node index
-        if(b.nodeIdx !== undefined) currentPos.nodeIdx = b.nodeIdx;
-        distToNextPoint = b.sub(currentPos).R();
-
-        if(distToNextStep <= 0) {
-            // push current location to result
-            result.push(currentPos)
-            distToNextStep = stepdist
-        }
-        
-        toTravel = Math.min(distToNextStep, distToNextPoint);
-        toTravel = Math.max(toTravel, 1e-6);
-
-        // go to next step location
-        distToNextStep -= toTravel 
-        idx += toTravel / b.sub(a).R();
-    }
-    result.push(path[path.length-1]);
-    return result;
-}
-    */
 
 
 // given a path, precalculated tangents and normals at each point (T, N)
@@ -459,21 +361,35 @@ function doIntersectionAngles() {
             DMSLib.Rotation.fromAngleAxis(avgOffAngle, DMSLib.Point3D.zAxis()));
 
         node.setOrientation(newOrientation);
-        node.length = 2 * DMSLib.TAU / 360; // two degrees
-    });
 
+        // and fix lengths too
+        node.arms[0].inLength = 10 * DMSLib.TAU / 360; // two degrees
+        node.arms[0].outLength = 10 * DMSLib.TAU / 360; // two degrees
+        node.arms[1].inLength = 10 * DMSLib.TAU / 360; // two degrees
+        node.arms[1].outLength = 10 * DMSLib.TAU / 360; // two degrees
+    });
 }
 
 function scratch() {
-    // do fun stuff here
-    let arm = gIntersectionList.nodes[2].arms[1];
-    let data = [];
-    for(let i=0; i<100; i++) {
-        arm.length = (i+1) / 102 * (arm.maxLength-arm.minLength) + arm.minLength;
-        buildPathFromIntersectionNodes();
-        data.push(calcEnergy());
+    // ask user for a bunch of files to process
+    let input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.multiple = true;
+    input.onchange = e => {
+        let files = e.target.files;
+        for(let i=0; i<files.length; i++) {
+            loadIntersectionsFromFile(files[i], il => {
+                gIntersectionList = il;
+                for(let i=0; i<15; i++) {
+                    doIntersectionPositions();
+                }
+                newFilename = files[i].name.replace('.json', ' improved');
+                saveIntersectionsToFile(newFilename);
+            });
+        }
     }
-    console.table(data);
+    input.click();
 }
 
 function onShowIntersectionPointsChange(isChecked) {
@@ -483,7 +399,11 @@ function onShowIntersectionPointsChange(isChecked) {
 
 // Function to respond to scratchValue changes
 function onScratchValueChange(newValue) {
-    let arm = gIntersectionList.nodes[2].arms[1];
+    // get node from the scratchNode input
+    let nodeIdx = parseInt(document.getElementById("scratchNode").value);
+    let armIdx = parseInt(document.getElementById("scratchArm").value);
+    let arm = gIntersectionList.nodes[nodeIdx].arms[armIdx];
+
     arm.outLength = (parseInt(newValue)+1) / 502 * DMSLib.HALFTAU; 
     let nextArm =  gIntersectionList.nodes[arm.nextNode].arms[arm.nextDir];
     nextArm.inLength = arm.outLength;

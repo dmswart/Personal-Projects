@@ -301,7 +301,7 @@ function calculateOrientationFromDirs(pt, dirX, dirY) {
         DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
 }
 
-function outputIntersections() {
+function calculateIntersectionInfo() {
     // find intersections
     let intersections = [];
     for(let i=0; i<gSpherePath.length-1; i++) {
@@ -367,19 +367,29 @@ function outputIntersections() {
 
         if(currentIntersection == 0 && currentArm == 0) break;
     }
-    drawIntersectionsOnSphere({nodes: intersections});
+    return intersections;
+}
+
+function isIntersectionInfoGood(info) {
+    // we want a nice number
+    if(info.length < 20 || info.length > 30) {
+        return false;
+    }
 
     // check if all "nextNode" fields of each arm of every intersection are not null
-    let validIntersections = intersections.every(intersection =>
+    let validIntersections = info.every(intersection =>
         intersection.arms.every(arm => arm.nextNode !== null)
     );
     if(!validIntersections) {
-        console.error("Error: Some intersection arms have null nextNode fields.");
-        return;
+        return false;
     }
 
+    return true;
+}
+
+function outputIntersections(info) {
     // write intersections as json to downloaded file
-    let outputString = JSON.stringify(intersections, null, 2);
+    let outputString = JSON.stringify(info, null, 2);
     let element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(outputString));
     element.setAttribute('download', 'intersections.json');
@@ -390,27 +400,48 @@ function outputIntersections() {
 }
 
 function scratch() {
-    // get random path
-    getRandomPath();
+    let numFiles = 0;
+    let intersectionInfo;
+    while(numFiles < 1000) {
+        // get random path
+        getRandomPath();
 
-    // set num points to 50.
-    gSpherePath = redistributePoints(gSpherePath, 50 / gSpherePath.length);
-    gSpherePath = smoothPath(gSpherePath);
-    gPlanarPath = toPlanarPath(gSpherePath);
+        // set num points to 50.
+        gSpherePath = redistributePoints(gSpherePath, 50 / gSpherePath.length);
+        gSpherePath = smoothPath(gSpherePath);
+        gPlanarPath = toPlanarPath(gSpherePath);
 
-    // run do Plane step for 1000 iterations
-    for(let i=0; i<1000; i++) {
-        doPlaneStep();
+        // run do Plane step for 1000 iterations
+        for(let i=0; i<1000; i++) {
+            doPlaneStep();
+        }
+
+        // increase points to quite a bit (with smoothing and all that)
+        gSpherePath = redistributePoints(gSpherePath, 200 / gSpherePath.length);
+        for(let i=0; i<6; i++) { gSpherePath = smoothPath(gSpherePath); } 
+        gSpherePath = redistributePoints(gSpherePath, 2000 / gSpherePath.length);
+        gSpherePath = smoothPath(gSpherePath);
+        gPlanarPath = toPlanarPath(gSpherePath);
+
+        // output intersections
+        try {
+            intersectionInfo = calculateIntersectionInfo();
+        } catch (e) {
+            console.error("Error calculating intersection info: " + e);
+            continue;
+        }
+        if(isIntersectionInfoGood(intersectionInfo)) {
+            outputIntersections(intersectionInfo);
+            numFiles++;
+        } else {
+            console.error("Intersection info not good, not outputting.");
+        }
     }
-
-    // increase points to quite a bit (with smoothing and all that)
-    for(let i=0; i<12; i++) { increasePoints(); }
 
     // show our work!
     outputPath();
+    drawIntersectionsOnSphere({nodes: intersectionInfo});
 
-    // output intersections
-    outputIntersections();
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.

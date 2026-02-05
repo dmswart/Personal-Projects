@@ -1,3 +1,4 @@
+/*
 // ---- get your global variables here ----
 let gSphereSvg = null;
 let gPlaneSvg = null;
@@ -207,3 +208,4 @@ function savePlaneSvgToFile(filename) {
     element.click();
     element.remove();
 }
+*/
