@@ -23,6 +23,13 @@
     <button onclick="doEnergy(true, true);">Energy</button>
     <button onclick="doEnergy(false, true);">Energy Plane</button>
     <button onclick="doEnergy(true, false);">Energy Sphere</button>
+    Iterations: 
+    <select name="iterations" id="iterations" value=100>
+      <option value=1000>1000</option>
+      <option value=100 selected="selected">100</option>
+      <option value=10>10</option>
+      <option value=1>1</option>
+    </select>
     <p></p>
     #Points: 
     <button onclick="increasePoints();">+</button>
@@ -34,17 +41,17 @@
     <input type="checkbox" id="allowOppositeCrossCheckbox" name="allowOppositeCrossCheckbox" checked="checked"
       onchange="onAllowOppositeCrossChange(this.checked)"/>
     <p></p>
-    Iterations: 
-    <select name="iterations" id="iterations" value=100>
-      <option value=1000>1000</option>
-      <option value=100 selected="selected">100</option>
-      <option value=10>10</option>
-      <option value=1>1</option>
-    </select>
+    Show Intersection Points: 
+    <input type="checkbox" id="showIntersectionPointsCheckbox" name="showIntersectionPointsCheckbox" checked="checked"
+      onchange="onShowIntersectionPointsChange(this.checked)"/>
+    <p/>
 </body>
 </html>
 
 <script>
+    // turn off drawing intersections initially
+    gDrawingIntersectionsOnSphere = false;
+    
     initializeSvgs(PLANE_WIDTH, PLANE_HEIGHT);
     getRandomPath();
     outputPath();

@@ -20,6 +20,11 @@ function onAllowOppositeCrossChange(checked) {
     gAllowOppositeCross = checked;
 }
 
+function onShowIntersectionPointsChange(checked) {
+    gDrawingIntersectionsOnSphere = checked;
+    outputPath();
+}
+
 /******************************************************************************************
 *  wind code
 ******************************************************************************************/
@@ -402,7 +407,7 @@ function outputIntersections(info) {
 function scratch() {
     let numFiles = 0;
     let intersectionInfo;
-    while(numFiles < 1000) {
+    while(numFiles < 1) {
         // get random path
         getRandomPath();
 

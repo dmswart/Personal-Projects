@@ -394,7 +394,7 @@ function scratch() {
 
 function onShowIntersectionPointsChange(isChecked) {
     enableIntersectionsOnSphere(isChecked);
-    drawIntersectionsOnSphere(gIntersectionList);
+    outputPath();
 }
 
 // Function to respond to scratchValue changes

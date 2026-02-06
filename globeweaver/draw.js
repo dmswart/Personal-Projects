@@ -5,6 +5,8 @@ let gSvgHeight = null;
 let gSphereRotation = new DMSLib.Rotation();
 let gDrawingIntersectionsOnSphere = true;
 
+let darkIndigo = '#323369';
+
 function onSphereSvgClicked() {
     let coordinates= d3.mouse(this);
     var x = coordinates[0] - gSvgHeight/2; // subtract off x,y of top left of image
@@ -34,6 +36,13 @@ function initializeSvgs(width, height) {
         .attr('height', '100%')
         .attr('xlink:href', 'sphere.png')
         .on('click', onSphereSvgClicked);
+    gSphereSvg.append('circle')
+        .attr('cx', height/2)
+        .attr('cy', height/2)
+        .attr('r', height/2-0.25)
+        .attr('stroke-width', 0.5)
+        .attr('stroke', 'black')
+        .attr('fill', 'none');
 
     gPlaneSvg = d3.select('#plane').append('svg')
         .attr('id', 'planarSvg')
@@ -45,62 +54,62 @@ function initializeSvgs(width, height) {
         .attr('width', '100%')
         .attr('height', '100%')
         .attr('stroke-width', 1)
+        .attr('stroke', 'black')
         .attr('opacity', '0.4')
-        .attr('fill', 'silver');
+        .attr('fill', '#f8e0d7');
 }
 
 // returns the object that got drawn if it's ever needed (otherwise null)
-drawPointOnSphere = function(pt3D, radius, color, className, titleText, isDiamond=false) {
+drawArrowHeadOnSphere = function(pt3D, radius, color, className, titleText) {
     let obj = null;
     let [x, y, z] = imgXYZFrom3D(pt3D);
     if(z >= -0.01) {
-        if(isDiamond) {
-            // draw path +- radius from center point
-            let pathString = 'M' + (x - radius) + ' ' + y +
-                             'L' + x + ' ' + (y - radius) +
-                             'L' + (x + radius) + ' ' + y +
-                             'L' + x + ' ' + (y + radius) +
-                             'Z';
-            obj = gSphereSvg.append('path')
-                .classed(className, true)
-                .attr('d', pathString)
-                .attr('fill', color)
-                .attr('stroke', 'black')
-                .attr('stroke-width', 1)
-        } else {
-            obj = gSphereSvg.append('circle')
-                .classed(className, true)
-                .attr('cx', x)
-                .attr('cy', y)
-                .attr('r', radius)
-                .attr('fill', color);
-        }
+        obj = gSphereSvg.append('circle')
+            .classed(className, true)
+            .attr('cx', x)
+            .attr('cy', y)
+            .attr('r', radius)
+            .attr('fill', color)
+            .attr('stroke', darkIndigo)
+            .attr('stroke-width', 1.5)
         obj.append('title').text(titleText);
     }
     return obj;
-}
-
-drawLineSegmentOnSphere = function(ptA, ptB, color, className) {
-    let [xA, yA, zA] = imgXYZFrom3D(ptA);
-    let [xB, yB, zB] = imgXYZFrom3D(ptB);
-    if(zA >= -0.01 && zB >= -0.01) {
-        let pathString = 'M' + xA + ' ' + yA + 'L' + xB + ' ' + yB;
-        gSphereSvg.append('path')
-            .classed(className, true)
-            .attr('stroke-width', 3)
-            .attr('stroke', color)
-            .attr('fill', 'none')
-            .attr('d', pathString);
-    }
 }
 
 enableIntersectionsOnSphere = function(enable) {
     gDrawingIntersectionsOnSphere = enable;
 }
 
-function colorRamp(idx, total) {
-    gray = Math.floor(idx/total * 255)
-    return 'rgb(255,' + (255-gray) + ',' + gray + ')';
+function colorRamp(idx, total, muted = false) {
+    let x = Math.floor(idx/total)
+
+    // go from 0 = #ed913e // via 0.5 = #934E6A // to 1 = #38396f if(x < 0.5) {
+    let zeroColor = [237, 145, 62];
+    let midColor  = [147, 78, 106];
+    let endColor  = [56, 57, 97];
+
+    // interpolate rgb values using the value x
+    if(x < 0.5) {
+        // interpolate between zeroColor and midColor using (x*2)
+        r = Math.floor(zeroColor[0] + (midColor[0]-zeroColor[0]) * (idx/(total/2)));
+        g = Math.floor(zeroColor[1] + (midColor[1]-zeroColor[1]) * (idx/(total/2)));
+        b = Math.floor(zeroColor[2] + (midColor[2]-zeroColor[2]) * (idx/(total/2)));
+    } else {
+        // interpolate between midColor and endColor using ((x-0.5)*2)
+        r = Math.floor(midColor[0] + (endColor[0]-midColor[0]) * ((idx - total/2)/(total/2)));
+        g = Math.floor(midColor[1] + (endColor[1]-midColor[1]) * ((idx - total/2)/(total/2)));
+        b = Math.floor(midColor[2] + (endColor[2]-midColor[2]) * ((idx - total/2)/(total/2)));
+    }
+
+    if(muted) {
+        // we want a color a certain percentage closer to our background color of rgb(240, 230, 220)
+        let percentage = 0.5;
+        r = Math.floor((r * (1 - percentage)) + (240 * percentage));
+        g = Math.floor((g * (1 - percentage)) + (230 * percentage));
+        b = Math.floor((b * (1 - percentage)) + (220 * percentage));
+    }
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 
@@ -110,26 +119,35 @@ function drawPathOnPlane(path) {
         PLANE_SCALE = 1.0;
     }
 
-    gPlaneSvg.selectAll('circle').remove();
-    gPlaneSvg.selectAll('path').remove();
-    pathString = '';
+    gPlaneSvg.selectAll('.planePath').remove();
     for(let i=0; i<path.length; i++) {
         let x = path[i].x * PLANE_SCALE;
         let y = path[i].y * PLANE_SCALE;
-        pathString += (i?'L':'M') + x + ' ' + y;
+        let color = colorRamp(i, path.length);
+
+        // draw a line segment on the plane
+        if(i < path.length - 1) {
+            nextX= path[i+1].x * PLANE_SCALE;
+            nextY= path[i+1].y * PLANE_SCALE;
+            gPlaneSvg.append('line')
+                .classed('planePath', true)
+                .attr('x1', nextX)
+                .attr('y1', nextY)
+                .attr('x2', x)
+                .attr('y2', y)
+                .attr('stroke-width', 3)
+                .attr('stroke', color);
+        }
 
         gPlaneSvg.append('circle')
+            .classed('planePath', true)
             .attr('cx', x)
             .attr('cy', y)
             .attr('r', 3)
-            .attr('fill', colorRamp(i, path.length));
+            .attr('stroke-width', 1)
+            .attr('stroke', color)
+            .attr('fill', 'white');
     }
-     
-    gPlaneSvg.append('path')
-        .attr('stroke-width', 1)
-        .attr('stroke', 'black')
-        .attr('fill', 'none')
-        .attr('d', pathString);
 }
 
 function drawPathOnSphere(path) {
@@ -137,31 +155,36 @@ function drawPathOnSphere(path) {
     gSphereSvg.selectAll('.intersectionPath').remove();
 
     let pathString = '';
-    let lastZ = -1; // fake previous point with negative z
     for (let i=0; i<path.length; i++) {
         let [x, y, z] = imgXYZFrom3D(path[i]);
+        let color = colorRamp(i, path.length, gDrawingIntersectionsOnSphere);
 
-        if(z >= -0.01) {
-            pathString += (lastZ >= 0.0) ? 'L' : 'M'; 
-            pathString += x + ' ' + y;
+        if(z < -0.01) continue; // skip points on back side of sphere
 
-            gSphereSvg.append('circle')
-                .classed('spherePath', true)
-                .attr('cx', x)
-                .attr('cy', y)
-                .attr('r', 3)
-                .attr('fill', colorRamp(i, path.length));
+        // draw a line segment on the sphere if we can
+        if(i < path.length - 1) {
+            let [nextX, nextY, nextZ] = imgXYZFrom3D(path[i+1]);
+            if(nextZ >= -0.01) {
+                gSphereSvg.append('line')
+                    .classed('spherePath', true)
+                    .attr('x1', nextX)
+                    .attr('y1', nextY)
+                    .attr('x2', x)
+                    .attr('y2', y)
+                    .attr('stroke-width', 3)
+                    .attr('stroke', color);
+            }
         }
 
-        lastZ = z; // for next time
+        gSphereSvg.append('circle')
+            .classed('spherePath', true)
+            .attr('cx', x)
+            .attr('cy', y)
+            .attr('r', 3)
+            .attr('stroke-width', 1)
+            .attr('stroke', color)
+            .attr('fill', 'white');
     }
-
-    gSphereSvg.append('path')
-        .classed('spherePath', true)
-        .attr('stroke-width', 1)
-        .attr('stroke', 'black')
-        .attr('fill', 'none')
-        .attr('d', pathString);
 }
 
 function imgXYZFrom3D(pt3D) {
@@ -184,7 +207,7 @@ drawIntersectionsOnSphere = function(intersectionList) {
     if(!gDrawingIntersectionsOnSphere) return;
     intersectionList.nodes.forEach((node, nodeIdx) => {
         let center = node.orientation.apply(DMSLib.Point3D.zAxis());
-        armColors = ['red', 'green']
+        armColors = [darkIndigo, 'white']
         node.arms.forEach((arm, armIdx) => {
             let inPoint, outPoint;
             if(arm.pointAlongArm === undefined) {
@@ -198,17 +221,39 @@ drawIntersectionsOnSphere = function(intersectionList) {
                 outPoint= arm.outPoint();
             }
 
+            // build path string
+            let pathString = 'M';
             for(let x = 0; x < 30; x ++) {
                 let ptA = inPoint.add(outPoint.sub(inPoint).mul(x/30)).normalized();
-                let ptB = inPoint.add(outPoint.sub(inPoint).mul((x+1)/30)).normalized();
-                drawLineSegmentOnSphere(ptA, ptB, armColors[armIdx], 'intersectionPath');
+                let [xA, yA, zA] = imgXYZFrom3D(ptA);
+                if(zA >= -0.01) {
+                    // if last character of pathstring is not 'M'
+                    if(pathString[pathString.length - 1] != 'M') pathString += 'L';
+                    pathString += xA + ' ' + yA 
+                } else {
+                    if(pathString[pathString.length - 1] != 'M') pathString += 'M';
+                }
             }
+            gSphereSvg.append('path')
+                .classed('intersectionPath', true)
+                .attr('stroke-linecap', 'round')
+                .attr('stroke-width', 5)
+                .attr('stroke', darkIndigo)
+                .attr('fill', 'none')
+                .attr('d', pathString);
 
-            let obj = drawPointOnSphere(outPoint, 8, armColors[armIdx], 'intersectionPath', '', true);
+            gSphereSvg.append('path')
+                .classed('intersectionPath', true)
+                .attr('stroke-linecap', 'round')
+                .attr('stroke-width', 2.5)
+                .attr('stroke', armColors[armIdx])
+                .attr('fill', 'none')
+                .attr('d', pathString);
+
+            let obj = drawArrowHeadOnSphere(outPoint, 8, armColors[armIdx], 'intersectionPath', 
+                'Node ' + nodeIdx + ' Arm ' + armIdx, true);
             obj = addOnClickHandler(obj, nodeIdx, armIdx);
-            drawPointOnSphere(inPoint, 4, armColors[armIdx], 'intersectionPath', '', false);
         });
-        drawPointOnSphere(center, 6, 'black', 'intersectionPath', 'node ' + nodeIdx);
     });
 }
 
