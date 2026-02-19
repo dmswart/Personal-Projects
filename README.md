@@ -12,7 +12,16 @@ Personal Projects
 * I recommend the latest JavaScript code in the globemaker_js directory. Read the [README](globemaker_js/README.md) there for more details.
 
 ## wormsphere
-[Wormsphere](https://dmswart.github.io/Personal-Projects/globeweaver/wormsphere.html) is software for some initial experiments to create a meandering worm on a sphere which is simultaneously unwrapped onto the plane.  See the [README](globeweaver/README.md) there for more details
+[Wormsphere](https://dmswart.github.io/Personal-Projects/globeweaver/wormsphere.html)
+is software to create a meandering worm
+on a sphere which is simultaneously unwrapped onto the plane.
+Extra facilities are there can record the positions of the intersections
+and the knot-code.
+See the [README](globeweaver/README.md) there for more details
+
+## globeweaver
+[Globeweaver](https://dmswart.github.io/Personal-Projects/globeweaver/globeweaver.html)
+is software that takes the list of intersections (output by wormsphere) and creates a nice spline for it weaving through each intersection over the sphere. Simultaneously rendering the curve as if it was unwound onto the plane.  See the [README](globeweaver/README.md) there for more details
 
 ## d3_pages
 a directory of my experiments using javascript and heavily relying on D3.
