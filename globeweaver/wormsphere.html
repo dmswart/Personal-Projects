@@ -9,9 +9,13 @@
 
     <script src='../d3_pages/tsp_solver.js'></script>
     <script src='../d3_pages/tsp_tour_generation.js'></script>
-    <script src='wormsphere.js'></script>
     <script src='paths.js'></script>
     <script src='draw.js'></script>
+    <script src='IntersectionList.js'></script>
+    <script src='IntersectionNode.js'></script>
+
+    <script src='globeweaver.js'></script>
+    <script src='wormsphere.js'></script>
 </head>
 
 <body>
@@ -20,9 +24,9 @@
         <div id="plane"> </div>
         <div id="output"> <textarea id="skel" type="text" cols="30" rows="32" style="overflow:scroll"></textarea> </div>
     </div>
-    <button onclick="doEnergy(true, true);">Energy</button>
-    <button onclick="doEnergy(false, true);">Energy Plane</button>
-    <button onclick="doEnergy(true, false);">Energy Sphere</button>
+    <button onclick="worm_doEnergy(true, true);">Energy</button>
+    <button onclick="worm_doEnergy(false, true);">Energy Plane</button>
+    <button onclick="worm_doEnergy(true, false);">Energy Sphere</button>
     Iterations: 
     <select name="iterations" id="iterations" value=100>
       <option value=1000>1000</option>
@@ -32,8 +36,8 @@
     </select>
     <p></p>
     #Points: 
-    <button onclick="increasePoints();">+</button>
-    <button onclick="decreasePoints();">-</button>
+    <button onclick="increasePoints();outputPath();">+</button>
+    <button onclick="decreasePoints();outputPath();">-</button>
     <button onclick="outputIntersections();">Output Intersections</button>
     <button onclick="scratch();">Scratch</button>
     <p></p>
@@ -51,6 +55,8 @@
 <script>
     // turn off drawing intersections initially
     gDrawingIntersectionsOnSphere = false;
+    gPlaneScale = 75;
+    outputPath = worm_outputPath; // assign our outputPath
     
     initializeSvgs(PLANE_WIDTH, PLANE_HEIGHT);
     getRandomPath();

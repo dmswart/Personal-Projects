@@ -1,25 +1,34 @@
-const PLANE_WIDTH = 700;
-const PLANE_HEIGHT = 500;
-const PLANE_BUFFER = 50;
-const BOUNDARY = {x:PLANE_BUFFER, y:PLANE_BUFFER,
-                  w:(PLANE_WIDTH-2*PLANE_BUFFER),
-                  h:(PLANE_HEIGHT-2*PLANE_BUFFER)};
-const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (BOUNDARY.w * BOUNDARY.h) );
+const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (PLANE_WIDTH * PLANE_HEIGHT) );
 
 // ---- globeweaver global variables ----
 let gIntersectionList = new Globeweaver.IntersectionList([]);
 
 
-function outputPath() {
+function globe_outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     drawIntersectionsOnSphere(gIntersectionList);
+    drawCrossingDiagram(gIntersectionList);
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
     // d3.select('#output #skel').property('value', gIntersectionList.getPathString());
 
     let e = calcEnergy();
     d3.select('#scratchInfo #sphereEnergy').text(e.s.toFixed(2));
     d3.select('#scratchInfo #planeEnergy').text(e.p.toFixed(2));
+    d3.select('#scratchInfo #planeScale').text(gPlanePathScaleFactor.toFixed(2));
+}
+
+function loadIntersectionsFromJSON(json) {
+    let newList = [];
+    json.forEach(data => {
+        let node = new Globeweaver.IntersectionNode(
+            new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
+            new Arm(data.arms[0].length, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
+            new Arm(data.arms[1].length, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
+        );
+        newList.push(node);
+    });
+    return new Globeweaver.IntersectionList(newList);
 }
 
 // given a file name, load the intersection list from that file and redraw
@@ -28,16 +37,7 @@ function loadIntersectionsFromFile(filenameBlob, callbackfn) {
     reader.onload = event => {
         let json = event.target.result;
         json = JSON.parse(json);
-        let newList = [];
-        json.forEach(data => {
-            let node = new Globeweaver.IntersectionNode(
-                new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
-                new Arm(data.arms[0].length, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
-                new Arm(data.arms[1].length, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
-            );
-            newList.push(node);
-        });
-        let il = new Globeweaver.IntersectionList(newList);
+        let il = loadIntersectionsFromJSON(json);
         if(callbackfn) callbackfn(il);
 
     }
@@ -54,7 +54,7 @@ function loadIntersections() {
             gIntersectionList = il;
             d3.select('#scratchNode').attr('max', gIntersectionList.nodes.length - 1);
             buildPathFromIntersectionNodes();
-            outputPath();
+            globe_outputPath();
         });
     };
     input.click();
@@ -126,7 +126,7 @@ function initializeIntersections() {
 
     d3.select('#scratchNode').attr('max', gIntersectionList.nodes.length - 1);
     buildPathFromIntersectionNodes();
-    outputPath();
+    globe_outputPath();
 }
 
 function buildPathFromIntersectionNodes() {
@@ -173,30 +173,6 @@ function calcEnergyForEdges(edges) {
     return result;
 }
 
-// return index of node if the two points lie on one of it's arms
-// TODO - verify this is working
-function getNodeIdx(a, b) {
-    if(a.nodeIdx !== undefined) return a.nodeIdx;
-    if(b.nodeIdx !== undefined) return b.nodeIdx;
-    return -1;
-}
-
-// precalculated edges, point pairs: (a, b) and tangent vector T
-function buildEdges(path) {
-    result = [];
-    for(let i=0; i<path.length; i++) {
-        let a = path[i];
-        let b = (i<path.length-1) ? path[i+1] : path[i-1];
-        let T = b.sub(a).normalized();
-        let N = (T instanceof DMSLib.Point3D) ?
-                DMSLib.Point3D.cross(a, T) : 
-                new DMSLib.Point2D(T.y, -T.x);
-        let nodeIdx = getNodeIdx(a, b, gIntersectionList);
-        result.push({a, b, T, N, nodeIdx});
-    }
-    return result;
-}
-
 function calcEnergy() {
     let sEdges = buildEdges(gSpherePath);
     let pEdges = buildEdges(gPlanarPath);
@@ -206,7 +182,7 @@ function calcEnergy() {
 }
 
 PLANE_ENERGY_WEIGHT = 1.0;
-function doEnergy(doSphere, doPlane) {
+function globe_doEnergy(doSphere, doPlane) {
     let n = parseInt(document.getElementById("iterations").value);
 
     // energy calculations are normalized to initial energy
@@ -253,7 +229,7 @@ function doEnergy(doSphere, doPlane) {
         }
     }
 
-    outputPath();
+    globe_outputPath();
 }
 
 // orientation moves the z axis to a point P.  We want an orientation that moves z-axis to P+delta
@@ -324,7 +300,7 @@ function doIntersectionPositions() {
     doIntersectionAngles();
 
     buildPathFromIntersectionNodes();
-    outputPath();
+    globe_outputPath();
 }
 
 function doIntersectionAngles() {
@@ -363,10 +339,10 @@ function doIntersectionAngles() {
         node.setOrientation(newOrientation);
 
         // and fix lengths too
-        node.arms[0].inLength = 10 * DMSLib.TAU / 360; // two degrees
-        node.arms[0].outLength = 10 * DMSLib.TAU / 360; // two degrees
-        node.arms[1].inLength = 10 * DMSLib.TAU / 360; // two degrees
-        node.arms[1].outLength = 10 * DMSLib.TAU / 360; // two degrees
+        node.arms[0].inLength = 15 * DMSLib.TAU / 360; // two degrees
+        node.arms[0].outLength = 15 * DMSLib.TAU / 360; // two degrees
+        node.arms[1].inLength = 15 * DMSLib.TAU / 360; // two degrees
+        node.arms[1].outLength = 15 * DMSLib.TAU / 360; // two degrees
     });
 }
 
@@ -392,11 +368,6 @@ function scratch() {
     input.click();
 }
 
-function onShowIntersectionPointsChange(isChecked) {
-    enableIntersectionsOnSphere(isChecked);
-    outputPath();
-}
-
 // Function to respond to scratchValue changes
 function onScratchValueChange(newValue) {
     // get node from the scratchNode input
@@ -409,16 +380,73 @@ function onScratchValueChange(newValue) {
     nextArm.inLength = arm.outLength;
 
     buildPathFromIntersectionNodes();
-    outputPath();
+    globe_outputPath();
 
     let e = calcEnergy();
     d3.select('#scratchInfo #sphereEnergy').text(e.s.toFixed(2));
     d3.select('#scratchInfo #planeEnergy').text(e.p.toFixed(2));
 }
 
-// strategy do plane only - covers sphere and plane: then try to tweak on sphere.
-// TODO - calc energy for sphere
-//      - start by trying 1/x version of wind get it to work.
-//      - calculate T and N movement - using wind - keep it working
-//      - run at same time as plane
-// TODO - try redistributing lower/higher for plane/sphere
+
+/*
+ * given N, reverse arms between C and D.  have A point to D.  have C point to B. delete N.
+ *        |
+ *        B
+ *        ^
+ *        |
+ * --A--> N -> --C-->.
+ *        ^         .
+ *        |        .
+ *        D . . . .
+ */
+function deleteNode() {
+    arm = (n, a) => gIntersectionList.nodes[n].arms[a];
+    let Nn = parseInt(document.getElementById("scratchNode").value);  // N is given 
+    let Na = parseInt(document.getElementById("scratchArm").value);
+    let An = arm(Nn, Na).prevNode;
+    let Aa = arm(Nn, Na).prevDir;
+    let Bn = arm(Nn, 1-Na).nextNode;
+    let Ba = arm(Nn, 1-Na).nextDir;
+    let Cn = arm(Nn, Na).nextNode;
+    let Ca = arm(Nn, Na).nextDir;
+    let Dn = arm(Nn, 1-Na).prevNode;
+    let Da = arm(Nn, 1-Na).prevDir;
+
+    // flip directions of between C and D
+    let currN = Cn;
+    let currA = Ca;
+    while(currN != Nn) {
+        let currArm = arm(currN, currA);
+
+        // grab the next values before we flip
+        currN = currArm.nextNode;
+        currA = currArm.nextDir;
+
+        // flip
+        currArm.directionIsPositive = !currArm.directionIsPositive;
+        [currArm.nextNode, currArm.prevNode] = [currArm.prevNode, currArm.nextNode];
+        [currArm.nextDir, currArm.prevDir] = [currArm.prevDir, currArm.nextDir];
+    }
+
+    // have A point to D;
+    arm(An, Aa).nextNode = Dn;
+    arm(An, Aa).nextDir = Da;
+    arm(Dn, Da).prevNode = An;
+    arm(Dn, Da).prevDir = Aa;
+    // have C point to B
+    arm(Cn, Ca).nextNode = Bn;
+    arm(Cn, Ca).nextDir = Ba;
+    arm(Bn, Ba).prevNode = Cn;
+    arm(Bn, Ba).prevDir = Ca;
+
+    // delete N
+    gIntersectionList.nodes.forEach((node) => {
+        node.arms.forEach((a) => {
+            if(a.nextNode > Nn) { a.nextNode -= 1; }
+            if(a.prevNode > Nn) { a.prevNode -= 1; }
+        });
+    });
+    gIntersectionList.nodes.splice(Nn, 1);
+    buildPathFromIntersectionNodes();
+    globe_outputPath();
+}

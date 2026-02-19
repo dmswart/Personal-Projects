@@ -1,5 +1,6 @@
 // ---- get your global variables here ----
 let gPlanarPath = [];
+let gPlanePathScaleFactor = 0;
 let gSpherePath = [];
 
 function increasePoints() {
@@ -54,14 +55,20 @@ function toPlanarPath(spherePath, dirRange, nominalDir) {
         let maxY = Math.max(...planePath.map(p => p.y))
         let minY = Math.min(...planePath.map(p => p.y))
 
-        let scale = Math.min(BOUNDARY.w / (maxX - minX), BOUNDARY.h / (maxY - minY));
+        let boundary = {w: (PLANE_WIDTH - 2*PLANE_BUFFER) / gPlaneScale,
+                        h: (PLANE_HEIGHT - 2*PLANE_BUFFER) / gPlaneScale,
+                        x: PLANE_BUFFER / gPlaneScale,
+                        y: PLANE_BUFFER / gPlaneScale };
+
+        let scale = Math.min(boundary.w / (maxX - minX), boundary.h / (maxY - minY));
         if(scale > result.scale) {
             result.scale = scale;
-            let offset = new DMSLib.Point2D(BOUNDARY.x - minX*result.scale, BOUNDARY.y - minY*result.scale);
+            let offset = new DMSLib.Point2D(boundary.x - minX*result.scale, boundary.y - minY*result.scale);
             result.path = planePath.map(p => p.mul(result.scale).add(offset));
         }
     }
 
+    gPlanePathScaleFactor = result.scale;
     return result.path;
 }
 
@@ -281,18 +288,79 @@ function smoothPath(path) {
     return result;
 }
 
-function getRandomPath() {
+function getRandomPath(phase = -1) {
     const STARTINGPOINTS = 20;
-    gSpherePath = [];
-    for(let i=0; i<STARTINGPOINTS; i++) {
-        gSpherePath[i] = DMSLib.Point3D.random(1).normalized();
+    if(phase == -1 || phase ==0) {
+        gSpherePath = [];
+        for(let i=0; i<STARTINGPOINTS; i++) {
+            gSpherePath[i] = DMSLib.Point3D.random(1).normalized();
+        }
     }
-    doInsertionHeuristic(gSpherePath, 0, STARTINGPOINTS-1);
-    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
-    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, true)) {}
-    while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
+    
+    if(phase == -1 || phase == 1) {
+        doInsertionHeuristic(gSpherePath, 0, STARTINGPOINTS-1);
+        while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
+        while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, true)) {}
+        while(doTwoOpt(gSpherePath, 0, STARTINGPOINTS-1, false)) {}
+    } 
+    
+    if (phase == -1 || phase == 2) {
+        gSpherePath = redistributePoints(gSpherePath, 10);
+        gPlanarPath = toPlanarPath(gSpherePath);
+    }
+}
 
-    gSpherePath = redistributePoints(gSpherePath, 10);
+// given the index, return a point [x, y] on the Hilbert curve of order 4 (256 points)
+function getHilbertPoint(index, level) {
+    function rot(n, x, y, rx, ry) {
+        if (ry == 0) {
+            if (rx == 1) {
+                x = n - 1 - x;
+                y = n - 1 - y;
+            }
+            // Swap x and y
+            [x, y] = [y, x];
+        }
+        return [x, y];
+    }
+    if (index == 0) return [0, 0];
+    let n = 1 << level; // number of points per side
+    let x = 0, y = 0;
+    for (let s = 1; s < n; s *= 2) {
+        let rx = 1 & (index / 2);
+        let ry = 1 & (index ^ rx);
+        [x, y] = rot(s, x, y, rx, ry);
+        x += s * rx;
+        y += s * ry;
+        index /= 4;
+    }
+    return [x, y];
+}
 
+function getHilbertPath() {
+    gPlanarPath = [];
+    level = 5;
+    for(let i=0; i<(4 ** level); i++) {
+        let [x, y] = getHilbertPoint(i, level);
+        gPlanarPath.push(new DMSLib.Point2D(x, y).mul(6.4/(2 ** level)));
+    }
+    gSpherePath = toSpherePath(gPlanarPath);
     gPlanarPath = toPlanarPath(gSpherePath);
+}
+
+
+// precalculated edges, point pairs: (a, b) and tangent vector T
+function buildEdges(path, closed=false) {
+    let getNodeIdx = (a, b) => (a.nodeIdx !== undefined) ? a.nodeIdx : ((b.nodeIdx !== undefined) ? b.nodeIdx : -1);
+    let result = [];
+    for(let i=0; i<path.length; i++) {
+        let a = path[i];
+        let b = (i<path.length-1 || closed) ? path[(i+1)%path.length] : path[i-1];
+        let T = b.sub(a).normalized();
+        let N = (T instanceof DMSLib.Point3D) ?
+                DMSLib.Point3D.cross(a, T) : 
+                new DMSLib.Point2D(T.y, -T.x);
+        result.push({a, b, T, N, nodeIdx: getNodeIdx(a, b), idx: i});
+    }
+    return result;
 }

@@ -11,9 +11,10 @@
   <script src='../d3_pages/tsp_tour_generation.js'></script>
   <script src='IntersectionList.js'></script>
   <script src='IntersectionNode.js'></script>
-  <script src='globeweaver.js'></script>
   <script src='draw.js'></script>
   <script src='paths.js'></script>
+  <script src='wormsphere.js'></script>
+  <script src='globeweaver.js'></script>
 </head>
 
 <body>
@@ -22,9 +23,9 @@
         <div id="plane"> </div>
         <div id="output"> <textarea id="skel" type="text" cols="30" rows="32" style="overflow:scroll"></textarea> </div>
     </div>
-    <button onclick="doEnergy(true, true);">Energy</button>
-    <button onclick="doEnergy(false, true);">Energy Plane</button>
-    <button onclick="doEnergy(true, false);">Energy Sphere</button>
+    <button onclick="globe_doEnergy(true, true);">Energy</button>
+    <button onclick="globe_doEnergy(false, true);">Energy Plane</button>
+    <button onclick="globe_doEnergy(true, false);">Energy Sphere</button>
     Iterations: 
     <select name="iterations" id="iterations" value=10>
       <option value=10000>10000</option>
@@ -43,12 +44,18 @@
     Show Intersection Points: 
     <input type="checkbox" id="showIntersectionPointsCheckbox" name="showIntersectionPointsCheckbox" checked="checked"
       onchange="onShowIntersectionPointsChange(this.checked)"/>
+    Show Crossing Diagram:
+    <input type="checkbox" id="showCrossingDiagramCheckbox" name="showCrossingDiagramCheckbox" checked="unchecked"
+      onchange="onShowCrossingDiagramChange(this.checked)"/>
     <p/>
 
     <div id="scratchInfo" style="visibility:visible; border: 1px solid grey; padding: 10px; margin-top: 10px;">
       Scratch controls:
       <button onclick="scratch();">Scratch</button><br/>
-      SphereEnergy: <span id="sphereEnergy">0</span> PlaneEnergy: <span id="planeEnergy">0</span><br/>
+      SphereEnergy: <span id="sphereEnergy">0</span>
+      PlaneEnergy: <span id="planeEnergy">0</span>
+      Plane Scale Factor: <span id="planeScale" style="font-size:x-large;">1</span>
+      <br/>
       <p></p>
       Node: 
       <input type="number" id="scratchNode" name="scratchNode" 
@@ -59,6 +66,8 @@
         min="0" max="1" value="0" style="width:50px;" 
         onchange="onScratchNodeChange(this.value)"/>
 
+      <button onclick="deleteNode();">Delete Next Node</Del></button>
+
       <input type="range" id="scratchValue" name="scratchValue"
         min="0" max="500" style="width:100%;" 
         onchange="onScratchValueChange(this.value)"/>
@@ -67,6 +76,9 @@
 </html>
 
 <script>
+    gPlaneScale = 1;
+    outputPath = globe_outputPath; // assign our outputPath
+
     initializeSvgs(PLANE_WIDTH, PLANE_HEIGHT);
     initializeIntersections();
 </script>

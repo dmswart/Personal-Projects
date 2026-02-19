@@ -1,11 +1,20 @@
+const PLANE_WIDTH = 45*17;
+const PLANE_HEIGHT = 45*11;
+const PLANE_BUFFER = 50;
+
 // ---- get your global variables here ----
 let gSphereSvg = null;
 let gPlaneSvg = null;
 let gSvgHeight = null;
 let gSphereRotation = new DMSLib.Rotation();
+
+let gPlaneScale = 75;
+
 let gDrawingIntersectionsOnSphere = true;
+let gDrawingCrossingDiagram = false;
 
 let darkIndigo = '#323369';
+let paper = '#f2eee8';
 
 function onSphereSvgClicked() {
     let coordinates= d3.mouse(this);
@@ -18,6 +27,7 @@ function onSphereSvgClicked() {
 
     if(typeof gIntersectionList !== 'undefined') {
         drawIntersectionsOnSphere(gIntersectionList);
+        drawCrossingDiagram(gIntersectionList);
     }   
 }
 
@@ -55,8 +65,8 @@ function initializeSvgs(width, height) {
         .attr('height', '100%')
         .attr('stroke-width', 1)
         .attr('stroke', 'black')
-        .attr('opacity', '0.4')
-        .attr('fill', '#f8e0d7');
+        .attr('fill', paper);
+
 }
 
 // returns the object that got drawn if it's ever needed (otherwise null)
@@ -77,58 +87,72 @@ drawArrowHeadOnSphere = function(pt3D, radius, color, className, titleText) {
     return obj;
 }
 
-enableIntersectionsOnSphere = function(enable) {
-    gDrawingIntersectionsOnSphere = enable;
+function onShowIntersectionPointsChange(checked) {
+    gDrawingIntersectionsOnSphere = checked;
+    outputPath();
+}
+
+function onShowCrossingDiagramChange(isChecked) {
+    gDrawingCrossingDiagram = isChecked;
+    outputPath();
 }
 
 function colorRamp(idx, total, muted = false) {
-    let x = Math.floor(idx/total)
+    let x = idx/total;
 
-    // go from 0 = #ed913e // via 0.5 = #934E6A // to 1 = #38396f if(x < 0.5) {
-    let zeroColor = [237, 145, 62];
-    let midColor  = [147, 78, 106];
-    let endColor  = [56, 57, 97];
+    let zeroColorString = '#ed913e';
+    let midColorString = '#934E6A';
+    let endColorString = '#1a419c';
+
+    let zeroColor = [parseInt(zeroColorString.slice(1, 3), 16),
+                     parseInt(zeroColorString.slice(3, 5), 16),
+                     parseInt(zeroColorString.slice(5, 7), 16)];
+    let midColor  = [parseInt(midColorString.slice(1, 3), 16),
+                     parseInt(midColorString.slice(3, 5), 16),
+                     parseInt(midColorString.slice(5, 7), 16)];
+    let endColor  = [parseInt(endColorString.slice(1, 3), 16),
+                    parseInt(endColorString.slice(3, 5), 16),
+                    parseInt(endColorString.slice(5, 7), 16)];
+                    
 
     // interpolate rgb values using the value x
     if(x < 0.5) {
         // interpolate between zeroColor and midColor using (x*2)
-        r = Math.floor(zeroColor[0] + (midColor[0]-zeroColor[0]) * (idx/(total/2)));
-        g = Math.floor(zeroColor[1] + (midColor[1]-zeroColor[1]) * (idx/(total/2)));
-        b = Math.floor(zeroColor[2] + (midColor[2]-zeroColor[2]) * (idx/(total/2)));
+        r = Math.floor(zeroColor[0] + (midColor[0]-zeroColor[0]) * x*2);
+        g = Math.floor(zeroColor[1] + (midColor[1]-zeroColor[1]) * x*2);
+        b = Math.floor(zeroColor[2] + (midColor[2]-zeroColor[2]) * x*2);
     } else {
         // interpolate between midColor and endColor using ((x-0.5)*2)
-        r = Math.floor(midColor[0] + (endColor[0]-midColor[0]) * ((idx - total/2)/(total/2)));
-        g = Math.floor(midColor[1] + (endColor[1]-midColor[1]) * ((idx - total/2)/(total/2)));
-        b = Math.floor(midColor[2] + (endColor[2]-midColor[2]) * ((idx - total/2)/(total/2)));
+        r = Math.floor(midColor[0] + (endColor[0]-midColor[0]) * ((x-0.5)*2));
+        g = Math.floor(midColor[1] + (endColor[1]-midColor[1]) * ((x-0.5)*2));
+        b = Math.floor(midColor[2] + (endColor[2]-midColor[2]) * ((x-0.5)*2));
     }
 
     if(muted) {
-        // we want a color a certain percentage closer to our background color of rgb(240, 230, 220)
+        // we want a color a certain percentage closer to our background color of our background paper 
         let percentage = 0.5;
-        r = Math.floor((r * (1 - percentage)) + (240 * percentage));
-        g = Math.floor((g * (1 - percentage)) + (230 * percentage));
-        b = Math.floor((b * (1 - percentage)) + (220 * percentage));
+        let paperColor = [parseInt(paper.slice(1, 3), 16),
+                         parseInt(paper.slice(3, 5), 16),
+                         parseInt(paper.slice(5, 7), 16)]; 
+        r = Math.floor((r * (1 - percentage)) + (paperColor[0] * percentage));
+        g = Math.floor((g * (1 - percentage)) + (paperColor[1] * percentage));
+        b = Math.floor((b * (1 - percentage)) + (paperColor[2] * percentage));
     }
     return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 
 function drawPathOnPlane(path) {
-    // if the variable PLANE_SCALE is defined, use it to scale the points
-    if(typeof PLANE_SCALE === 'undefined') {
-        PLANE_SCALE = 1.0;
-    }
-
     gPlaneSvg.selectAll('.planePath').remove();
     for(let i=0; i<path.length; i++) {
-        let x = path[i].x * PLANE_SCALE;
-        let y = path[i].y * PLANE_SCALE;
+        let x = path[i].x * gPlaneScale;
+        let y = path[i].y * gPlaneScale;
         let color = colorRamp(i, path.length);
 
         // draw a line segment on the plane
         if(i < path.length - 1) {
-            nextX= path[i+1].x * PLANE_SCALE;
-            nextY= path[i+1].y * PLANE_SCALE;
+            nextX= path[i+1].x * gPlaneScale;
+            nextY= path[i+1].y * gPlaneScale;
             gPlaneSvg.append('line')
                 .classed('planePath', true)
                 .attr('x1', nextX)
@@ -206,7 +230,6 @@ drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
     if(!gDrawingIntersectionsOnSphere) return;
     intersectionList.nodes.forEach((node, nodeIdx) => {
-        let center = node.orientation.apply(DMSLib.Point3D.zAxis());
         armColors = [darkIndigo, 'white']
         node.arms.forEach((arm, armIdx) => {
             let inPoint, outPoint;
@@ -234,6 +257,11 @@ drawIntersectionsOnSphere = function(intersectionList) {
                     if(pathString[pathString.length - 1] != 'M') pathString += 'M';
                 }
             }
+            // if pathString ends with M, remove it
+            if(pathString[pathString.length - 1] == 'M') {
+                pathString = pathString.slice(0, -1);
+            }
+
             gSphereSvg.append('path')
                 .classed('intersectionPath', true)
                 .attr('stroke-linecap', 'round')
@@ -255,6 +283,81 @@ drawIntersectionsOnSphere = function(intersectionList) {
             obj = addOnClickHandler(obj, nodeIdx, armIdx);
         });
     });
+}
+
+// crossing diagram: alternate showing / not showing the arms as they connect
+function drawCrossingDiagram(intersectionList) {
+    gSphereSvg.selectAll('.crossingDiagram').remove();
+    if(!gDrawingCrossingDiagram) return;
+
+    let currentNodeIdx = 0;
+    let currentArmIdx = 0;
+    let showArm = false;
+
+    while(true) {
+        let currentArm = intersectionList.nodes[currentNodeIdx].arms[currentArmIdx];
+        if(showArm) {
+            // draw arm on sphere just like for draw intersections on sphere
+            let ptA = currentArm.inPoint();
+            let ptB = currentArm.surfacePoint();
+            let ptC = currentArm.outPoint();
+            let [xA, yA, zA] = imgXYZFrom3D(ptA);
+            let [xB, yB, zB] = imgXYZFrom3D(ptB);
+            let [xC, yC, zC] = imgXYZFrom3D(ptC);
+            if(zA >= -0.01 && zB >= -0.01) {
+                gSphereSvg.append('line')
+                    .classed('crossingDiagram', true)
+                    .attr('x1', xA)
+                    .attr('y1', yA)
+                    .attr('x2', xB)
+                    .attr('y2', yB)
+                    .attr('stroke-width', 5)
+                    .attr('stroke', 'red');
+            }
+            if(zB >= -0.01 && zC >= -0.01) {
+                gSphereSvg.append('line')
+                    .classed('crossingDiagram', true)
+                    .attr('x1', xB)
+                    .attr('y1', yB)
+                    .attr('x2', xC)
+                    .attr('y2', yC)
+                    .attr('stroke-width', 5)
+                    .attr('stroke', 'red');
+            }
+
+            // draw 'arrowhead' at outpoint 
+            if(zC >= -0.01) {
+                drawArrowHeadOnSphere(ptC, 8, 'red', 'crossingDiagram', '');
+            }
+
+            // draw node idx at intersection (ptB)
+            if(zB >= -0.01) {
+                // first draw a white translucent dot behind the text to make it more visible
+                gSphereSvg.append('circle')
+                    .classed('crossingDiagram', true)
+                    .attr('cx', xB)
+                    .attr('cy', yB)
+                    .attr('r', 15)
+                    .attr('fill', 'white');
+                gSphereSvg.append('text')
+                    .classed('crossingDiagram', true)
+                    .attr('x', xB)
+                    .attr('y', yB)
+                    .attr('text-anchor', 'middle')
+                    .attr('alignment-baseline', 'middle')
+                    .attr('font-size', 24)
+                    .attr('font-family', 'sans-serif')
+                    .attr('fill', 'black')
+                    .text(currentNodeIdx);
+            }
+        }
+
+        // get ready for next!
+        showArm  = !showArm;
+        currentNodeIdx = currentArm.nextNode;
+        currentArmIdx = currentArm.nextDir;
+        if(currentNodeIdx == 0 && currentArmIdx == 0) break;
+    }
 }
 
 function savePlaneSvgToFile(filename) {

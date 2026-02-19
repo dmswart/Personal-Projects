@@ -1,16 +1,7 @@
-const SPHERE_WIDTH = 500;
-const PLANE_WIDTH = 700;
-const PLANE_HEIGHT = 500;
-const PLANE_SCALE = 75;
-const PLANE_BUFFER = 50;
-const BOUNDARY = {x:PLANE_BUFFER/PLANE_SCALE, y:PLANE_BUFFER/PLANE_SCALE,
-                  w:(PLANE_WIDTH-2*PLANE_BUFFER)/PLANE_SCALE,
-                  h:(PLANE_HEIGHT-2*PLANE_BUFFER)/PLANE_SCALE};
-
 // ---- get your global variables here ----
 let gAllowOppositeCross = true;
 
-function outputPath() {
+function worm_outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
@@ -18,11 +9,6 @@ function outputPath() {
 
 function onAllowOppositeCrossChange(checked) {
     gAllowOppositeCross = checked;
-}
-
-function onShowIntersectionPointsChange(checked) {
-    gDrawingIntersectionsOnSphere = checked;
-    outputPath();
 }
 
 /******************************************************************************************
@@ -86,12 +72,12 @@ function applySphereWind(path, edges) {
 ******************************************************************************************/
 
 function boundaryEnergy(pt) {
-    const left = BOUNDARY.x;
-    const right = BOUNDARY.x + BOUNDARY.w;
-    const top = BOUNDARY.y;
-    const bottom = BOUNDARY.y + BOUNDARY.h;
+    const left = PLANE_BUFFER/gPlaneScale;
+    const right = PLANE_BUFFER/gPlaneScale + (PLANE_WIDTH-2*PLANE_BUFFER)/gPlaneScale;
+    const top = PLANE_BUFFER/gPlaneScale;
+    const bottom = PLANE_BUFFER/gPlaneScale + (PLANE_HEIGHT-2*PLANE_BUFFER)/gPlaneScale;
 
-    beFn = (x) => 1/(x*PLANE_SCALE);
+    beFn = (x) => 1/(x*gPlaneScale);
 
     if (pt instanceof DMSLib.Point3D) {
         return 0;
@@ -149,22 +135,7 @@ function calcStep(edges, ptData) {
     return new DMSLib.Point2D(E-E_T, E-E_N);  
 }
 
-// precalculated edges, point pairs: (a, b) and tangent vector T
-function buildEdges(path) {
-    result = [];
-    for(let i=0; i<path.length; i++) {
-        let a = path[i];
-        let b = (i<path.length-1) ? path[i+1] : path[0];
-        let T = b.sub(a).normalized();
-        let N = (T instanceof DMSLib.Point3D) ?
-                DMSLib.Point3D.cross(a, T) : 
-                new DMSLib.Point2D(T.y, -T.x);
-        result.push({a, b, T, N, idx: i});
-    }
-    return result;
-}
-
-function doEnergy(doSphere, doPlane) {
+function worm_doEnergy(doSphere, doPlane) {
     let n = parseInt(document.getElementById("iterations").value);
     for(let iter = 0; iter<n; iter++) {
         if(doPlane && doSphere) {
@@ -175,7 +146,7 @@ function doEnergy(doSphere, doPlane) {
             doSphereStep();
         }
     }
-    outputPath(gPlanarPath);
+    worm_outputPath(gPlanarPath);
 }
 
 function doBothStep() {
@@ -190,7 +161,7 @@ function doBothStep() {
     let max = sSteps.map(s => s.R()).sort((a, b) => b-a)[0];
     sSteps = sSteps.map(s => s.mul((1/360 * DMSLib.TAU) / max));
     max = pSteps.map(s => s.R()).sort((a, b) => b-a)[0];
-    pSteps = pSteps.map(s => s.mul((5/PLANE_SCALE) / max));
+    pSteps = pSteps.map(s => s.mul((5/gPlaneScale) / max));
 
     for(let i=0; i<gSpherePath.length; i++) {
         let step = sSteps[i].add(pSteps[i]);
@@ -237,7 +208,7 @@ function doPlaneStep() {
     }
     let mags = step.map(s => s.R()).sort((a, b) => b-a);
 
-    let stepscale = (1 / PLANE_SCALE) / mags[0];  // max 5 pixels per step
+    let stepscale = (1 / gPlaneScale) / mags[0];  // max 5 pixels per step
     
     for(let i=0; i<gPlanarPath.length; i++) {
         gPlanarPath[i] = gPlanarPath[i]
@@ -264,6 +235,29 @@ function intersectsOnSphere(a1, a2, b1, b2) {
         return intersectionPoint1;
     else if ( onSegment(intersectionPoint2, a1, a2) && onSegment(intersectionPoint2, b1, b2))
         return intersectionPoint2;
+    else
+        return null;
+}
+
+function intersectsOnPlane(a1, a2, b1, b2) {
+    let da = a2.sub(a1);
+    let db = b2.sub(b1);
+    let dp = a1.sub(b1);
+    let dap = new DMSLib.Point2D(-da.y, da.x);
+    let denom = DMSLib.dot(dap, db);
+    if(Math.abs(denom) < DMSLib.EPSILON) return null; 
+    let num = DMSLib.dot(dap, dp);
+    let intersectionPoint = b1.add(db.mul(num/denom));
+    // check if intersection point is on both segments
+    function onSegment(p, s1, s2) {
+        let minX = Math.min(s1.x, s2.x);
+        let maxX = Math.max(s1.x, s2.x);
+        let minY = Math.min(s1.y, s2.y);
+        let maxY = Math.max(s1.y, s2.y);
+        return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+    }
+    if (onSegment(intersectionPoint, a1, a2) && onSegment(intersectionPoint, b1, b2))
+        return intersectionPoint;
     else
         return null;
 }
@@ -306,6 +300,26 @@ function calculateOrientationFromDirs(pt, dirX, dirY) {
         DMSLib.Rotation.fromAngleAxis(correctionAngle, DMSLib.Point3D.zAxis()));
 }
 
+// this function counts number of points in a loop of a path formed by the intersection
+function intersectionScore(path) {
+    result = 0;
+    for(let i=0; i<path.length-1; i++) {
+        let edgeA_1 = path[i];
+        let edgeA_2 = path[i+1];
+        for(let j=i+2; j<path.length-1; j++) {
+            let edgeB_1 = path[j];
+            let edgeB_2 = path[j+1];
+            let intersectionPoint = (edgeA_1 instanceof DMSLib.Point3D) ?
+                                    intersectsOnSphere(edgeA_1, edgeA_2, edgeB_1, edgeB_2) :
+                                    intersectsOnPlane(edgeA_1, edgeA_2, edgeB_1, edgeB_2);
+            if(intersectionPoint) {
+                result += (j-i);
+            }
+        }
+    }
+    return result / path.length;
+}
+
 function calculateIntersectionInfo() {
     // find intersections
     let intersections = [];
@@ -325,17 +339,6 @@ function calculateIntersectionInfo() {
                 }
 
                 let orientation = calculateOrientationFromDirs(intersectionPoint, edir, ndir);
-                if(true)
-                {
-                    let testN = orientation.apply(DMSLib.Point3D.yAxis());
-                    let testE = orientation.apply(DMSLib.Point3D.xAxis());
-                    let nAngle = DMSLib.Point3D.vectorAngle(testN, ndir);
-                    let eAngle = DMSLib.Point3D.vectorAngle(testE, edir);
-                    if(nAngle > DMSLib.QUARTERTAU || eAngle > DMSLib.QUARTERTAU) {
-                        console.log("orientation error!");
-                    }
-
-                }
 
                 let newIntersection = {
                     orientation,
@@ -376,10 +379,9 @@ function calculateIntersectionInfo() {
 }
 
 function isIntersectionInfoGood(info) {
-    // we want a nice number
-    if(info.length < 20 || info.length > 30) {
+    // make sure number of intersections is acceptable
+    if(info.length < 24)
         return false;
-    }
 
     // check if all "nextNode" fields of each arm of every intersection are not null
     let validIntersections = info.every(intersection =>
@@ -404,49 +406,61 @@ function outputIntersections(info) {
     document.body.removeChild(element);
 }
 
-function scratch() {
-    let numFiles = 0;
-    let intersectionInfo;
-    while(numFiles < 1) {
-        // get random path
-        getRandomPath();
-
-        // set num points to 50.
-        gSpherePath = redistributePoints(gSpherePath, 50 / gSpherePath.length);
-        gSpherePath = smoothPath(gSpherePath);
-        gPlanarPath = toPlanarPath(gSpherePath);
-
-        // run do Plane step for 1000 iterations
-        for(let i=0; i<1000; i++) {
-            doPlaneStep();
-        }
-
-        // increase points to quite a bit (with smoothing and all that)
-        gSpherePath = redistributePoints(gSpherePath, 200 / gSpherePath.length);
-        for(let i=0; i<6; i++) { gSpherePath = smoothPath(gSpherePath); } 
-        gSpherePath = redistributePoints(gSpherePath, 2000 / gSpherePath.length);
-        gSpherePath = smoothPath(gSpherePath);
-        gPlanarPath = toPlanarPath(gSpherePath);
-
-        // output intersections
-        try {
-            intersectionInfo = calculateIntersectionInfo();
-        } catch (e) {
-            console.error("Error calculating intersection info: " + e);
-            continue;
-        }
-        if(isIntersectionInfoGood(intersectionInfo)) {
-            outputIntersections(intersectionInfo);
-            numFiles++;
-        } else {
-            console.error("Intersection info not good, not outputting.");
-        }
+function findNicePath() {
+    // get random path
+    getRandomPath();
+    
+    // set num points to 50.
+    gSpherePath = redistributePoints(gSpherePath, 40 / gSpherePath.length);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath);
+    // run do Plane step for 1000 iterations
+    for(let i=0; i<1000; i++) {
+        doPlaneStep();
     }
 
-    // show our work!
-    outputPath();
-    drawIntersectionsOnSphere({nodes: intersectionInfo});
+    // increase points to quite a bit (with smoothing and all that)
+    gSpherePath = redistributePoints(gSpherePath, 200 / gSpherePath.length);
+    for(let i=0; i<6; i++) { gSpherePath = smoothPath(gSpherePath); } 
+    gSpherePath = redistributePoints(gSpherePath, 2000 / gSpherePath.length);
+    gSpherePath = smoothPath(gSpherePath);
+    gPlanarPath = toPlanarPath(gSpherePath);
 
+    intersectionInfo = calculateIntersectionInfo();
+    return isIntersectionInfoGood(intersectionInfo) ? intersectionInfo : null;
+}
+
+
+gPhase = 0;
+function scratch() {
+    // getHilbertPath();
+    // getRandomPath();
+    // findNicePath();
+    // worm_outputPath();
+
+    for(let i=0; i<1000; i++) {
+        let info;
+        try {
+            info = null;
+            while(info == null) {
+                info = findNicePath();
+            }
+    
+            gIntersectionList = loadIntersectionsFromJSON(info);
+            buildPathFromIntersectionNodes(gIntersectionList);
+            for(let i=0; i<15; i++) {
+                doIntersectionPositions();
+            }
+        } catch(e) { continue; }
+
+        let score = intersectionScore(gPlanarPath);
+
+        console.log("found path with score = " + score + " gPlanePathScaleFactor = " + gPlanePathScaleFactor);
+        if(score < 0.2 && gPlanePathScaleFactor > 0.8) {
+            globe_outputPath();
+            saveIntersectionsToFile('wormsphere_scratch'); // to file
+        }
+    }
 }
 
 // strategy do plane only - covers sphere and plane: then try to tweak on sphere.
