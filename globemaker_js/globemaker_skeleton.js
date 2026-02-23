@@ -1,4 +1,5 @@
 var uniqueId = 0;
+let  gNumCloserSegmentsAllowed = 0;
 
 /*
  * SkeletonNode
@@ -173,8 +174,8 @@ function Skeleton(scale) {
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
-    this.moveInPlane = function(length) {
-        var newNode = new SkeletonNode('moveInPlane', length * Math.PI, 0);
+    this.moveOnPlane = function(length) {
+        var newNode = new SkeletonNode('moveOnPlane', length * Math.PI, 0);
         this.currentNode.addChild(newNode);
         this.currentNode = newNode;
     };
@@ -196,7 +197,7 @@ function Skeleton(scale) {
     this.init = function() {
         this.parentNode.calcGlobalState();
         this.segments = this.parentNode.segments();
-        this.lastCloserSegment = undefined;
+        this.lastCloserSegments = [];
     };
 
     // access list of drawing info as an array of {x1, y1, x2, y2, startdir, id}
@@ -217,16 +218,18 @@ function Skeleton(scale) {
 
     this.nearerSegmentOnSphereExists = function(pointOnSphere, criteria) {
         // shortcut - just check our last successful answer first.
-        if( this.lastCloserSegment !== undefined &&
-            Globemaker.RelativePosition.isNearerOnSphere( pointOnSphere, this.lastCloserSegment, criteria ) ) {
+        if(this.lastCloserSegments.list > gNumCloserSegmentsAllowed &&
+            this.lastCloserSegments.all((lcs) => 
+            Globemaker.RelativePosition.isNearerOnSphere( pointOnSphere, lcs, criteria ))) {
             return true;
         }
 
+        this.lastCloserSegments = [];
         for(let i = 0; i < this.segments.length; i++) {
             let seg = this.segments[i];
             if (Globemaker.RelativePosition.isNearerOnSphere(pointOnSphere, seg, criteria)) {
-                this.lastCloserSegment = seg;
-                return true;
+                this.lastCloserSegments.push(seg);
+                if(this.lastCloserSegments.length > gNumCloserSegmentsAllowed ) return true;
             }
         }
 

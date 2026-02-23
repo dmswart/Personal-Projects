@@ -143,7 +143,7 @@ namespace globemaker
                     current.pos += current.dir * fDistance;
                     current.rot *= new Rotation(Math.Cos(fDistance / 2.0), 0, Math.Sin(fDistance / 2.0), 0);
                 }
-                else if( command == "o" || command == "moveinplane" )
+                else if( command == "o" || command == "moveonplane" )
                 {
                     //move in plane *O*nly
                     current.pos += current.dir * fDistance;

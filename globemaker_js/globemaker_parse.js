@@ -53,7 +53,7 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         return false;
     };
 
-    var moveInPlane = function() {
+    var moveOnPlane = function() {
         if (terminal('o')) {return true;}
         return false;
     };
@@ -84,11 +84,11 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         return false;
     };
 
-    var moveInPlaneCmd = function() {
-        if (moveInPlane()) {
+    var moveOnPlaneCmd = function() {
+        if (moveOnPlane()) {
             var length;
             if (!value()) { /*TODO error*/ return false; }
-            skeletonObj.moveInPlane(__value);
+            skeletonObj.moveOnPlane(__value);
             return true;
         }
         return false;
@@ -173,7 +173,7 @@ let deserializeSkeleton = function(skeletonString, skeletonObj) {
         if (saveCmd()) { return true; }
         if (lineCmd()) { return true; }
         if (moveCmd()) { return true; }
-        if (moveInPlaneCmd()) { return true; }
+        if (moveOnPlaneCmd()) { return true; }
         if (rotateCmd()) { return true; }
         if (arcCmd()) { return true; }
         return false;

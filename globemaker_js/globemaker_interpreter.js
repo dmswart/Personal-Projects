@@ -11,7 +11,7 @@ function setupPreview() {
     svg = d3.select('#grid').append('svg')
         .attr('width', size)
         .attr('height',size)
-    svg.append('rect')
+    svg.append('rect').attr('id', 'planeBackground')
         .attr('width', '100%')
         .attr('height', '100%')
         .attr('stroke-width', 1)
@@ -20,12 +20,13 @@ function setupPreview() {
     svg.append('g').attr('id', 'grid')
         .attr('transform', transformString)
         .attr('stroke', 'none');
-    svg.append('rect')
+    svg.append('rect').attr('id', 'planeOverlay')
         .attr('width', '100%')
         .attr('height', '100%')
         .attr('stroke-width', 1)
         .attr('opacity', '0.4')
-        .attr('fill', 'silver');
+        .attr('fill', 'silver')
+        .on('click', onPlaneClicked);
     svg.append('g').attr('id', 'lines')
         .attr('transform', transformString)
         // .attr('stroke', 'blue')
@@ -95,7 +96,7 @@ function updateLines(skel) {
 function updateMoves(skel) {
     // moves on plane
     let selection = svg.select('#move_on_plane').selectAll('path')
-        .data(skel.list('move_on_plane'), d => d.id);
+        .data(skel.list('moveOnPlane'), d => d.id);
     selection.enter().append('path')
         .attr('d', d => pathString(d, skel.scale))
         .attr('stroke-dasharray', '3,3');
@@ -104,7 +105,7 @@ function updateMoves(skel) {
         .attr('d', d => pathString(d, skel.scale));
 
     selection = svg.select('#move_on_plane').selectAll('circle')
-        .data(skel.list('move_on_plane'), d => d.id);
+        .data(skel.list('moveOnPlane'), d => d.id);
     selection.enter().append('circle')
         .attr('r', 1)
         .attr('fill', 'gray')
@@ -453,12 +454,41 @@ function nextTheProgram() {
 }
 
 function scaleUp() {
-    gSkel.multiplyLengths(1.05);
-    updateGUI();
+    // gSkel.multiplyLengths(1.05);
+    // updateGUI();
+
+    // get skeleton definition as string
+    let skelString = serializeSkeleton(gSkel);
+    gSkel.scale *= 1.05;
+    newSkeleton(skelString);
 }
 
 function scaleDown() {
-    gSkel.multiplyLengths(1 / 1.05);
-    updateGUI();
+    // gSkel.multiplyLengths(1 / 1.05);
+    // updateGUI();
+
+    // get skeleton definition as string
+    let skelString = serializeSkeleton(gSkel);
+    gSkel.scale /= 1.05;
+    newSkeleton(skelString);
 }
 
+// when the #planeBackground is clicked on (x, y).  we want to parse the skeleton, strip off the "r theta\no R\nr -theta\n"
+// and then replace it with a command moving the turtle to a new theta and R (the polar coordinates of the clicked point) 
+function onPlaneClicked() {
+    const [x, y] = d3.mouse(this);
+    const pos = new DMSLib.Point2D(x - size/2, -y + size/2).div(gSkel.scale);
+    let newCommand = 'r ' + (pos.theta() / DMSLib.HALFTAU).toFixed(3) + '\n' +
+                     ' o ' + (pos.R() / DMSLib.HALFTAU).toFixed(2) + '\n' +
+                     ' r ' + (-pos.theta() / DMSLib.HALFTAU).toFixed(2) + '\n';
+
+    let skelString = serializeSkeleton(gSkel);
+    // check if skelString has a r, o, r pattern.  if so replace it, if not add it to the end
+    if (skelString.match(/r -?\d+(\.\d+)?\no \d+(\.\d+)?\nr -?\d+(\.\d+)?\n/)) {
+        skelString = skelString.replace(/r -?\d+(\.\d+)?\no \d+(\.\d+)?\nr -?\d+(\.\d+)?\n/, newCommand);
+    } else {
+        skelString = newCommand + skelString;
+    }
+
+    newSkeleton(skelString);
+}
