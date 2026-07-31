@@ -61,10 +61,14 @@ Globeweaver.IntersectionList.prototype = {
                 let abbc = interp(ab, bc, t);
                 let bccd = interp(bc, cd, t);
                 let pt = interp(abbc, bccd, t);
-                if(i<samplesPerSegment/3)
+                if(i<samplesPerSegment/3) {
                     pt.nodeIdx = currentNodeIdx;
-                if(i>2*samplesPerSegment/3)
-                    pt.nodeIdx = currentArm.nextNode;
+                    pt.armIdx = currentArm._dir;
+                }
+                //if(i>2*samplesPerSegment/3) {
+                    //pt.nodeIdx = currentArm.nextNode;
+                    //pt.armIdx = currentArm._dir;
+                //}
                 path.push(pt);
             }
 

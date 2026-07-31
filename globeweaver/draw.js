@@ -10,7 +10,7 @@ let gSphereRotation = new DMSLib.Rotation();
 
 let gPlaneScale = 75;
 
-let gDrawingIntersectionsOnSphere = true;
+let gDrawingIntersections = true;
 let gDrawingCrossingDiagram = false;
 
 let darkIndigo = '#323369';
@@ -87,8 +87,25 @@ drawArrowHeadOnSphere = function(pt3D, radius, color, className, titleText) {
     return obj;
 }
 
+drawArrowHeadOnPlane = function(pt2D, radius, color, className, titleText) {
+    return gPlaneSvg.append('circle')
+        .classed(className, true)
+        .attr('cx', pt2D.x)
+        .attr('cy', pt2D.y)
+        .attr('r', radius)
+        .attr('fill', color)
+        .attr('stroke', darkIndigo)
+        .attr('stroke-width', 1.5)
+        .append('title').text(titleText);
+}
+
 function onShowIntersectionPointsChange(checked) {
-    gDrawingIntersectionsOnSphere = checked;
+    gDrawingIntersections = checked;
+    outputPath();
+}
+
+function onShowIntersectionPointsChange(checked) {
+    gDrawingIntersections = checked;
     outputPath();
 }
 
@@ -163,14 +180,14 @@ function drawPathOnPlane(path) {
                 .attr('stroke', color);
         }
 
-        gPlaneSvg.append('circle')
-            .classed('planePath', true)
-            .attr('cx', x)
-            .attr('cy', y)
-            .attr('r', 3)
-            .attr('stroke-width', 1)
-            .attr('stroke', color)
-            .attr('fill', 'white');
+        //gPlaneSvg.append('circle')
+            //.classed('planePath', true)
+            //.attr('cx', x)
+            //.attr('cy', y)
+            //.attr('r', 3)
+            //.attr('stroke-width', 1)
+            //.attr('stroke', color)
+            //.attr('fill', 'white');
     }
 }
 
@@ -181,7 +198,7 @@ function drawPathOnSphere(path) {
     let pathString = '';
     for (let i=0; i<path.length; i++) {
         let [x, y, z] = imgXYZFrom3D(path[i]);
-        let color = colorRamp(i, path.length, gDrawingIntersectionsOnSphere);
+        let color = colorRamp(i, path.length, gDrawingIntersections);
 
         if(z < -0.01) continue; // skip points on back side of sphere
 
@@ -226,9 +243,48 @@ addOnClickHandler = function(d3Element, nodeIdx, armIdx) {
     });
 }
 
+drawIntersectionsOnPlane = function(planarIntersections) {
+    gPlaneSvg.selectAll('.intersectionPath').remove();
+    if(!gDrawingIntersections) return;
+    planarIntersections.forEach(intersection => {
+        let nodeIdx = intersection.nodeIdx;
+        let armIdx = intersection.armIdx;
+        let pt = intersection.planarPt.mul(gPlaneScale);
+        let dir = intersection.planarDir.mul(gPlaneScale * 12.0);
+
+        armColors = [darkIndigo, 'white']
+
+        //border
+        gPlaneSvg.append('line')
+            .classed('intersectionPath', true)
+            .attr('x1', pt.x - dir.x)
+            .attr('y1', pt.y - dir.y)
+            .attr('x2', pt.x + dir.x)
+            .attr('y2', pt.y + dir.y)
+            .attr('stroke-linecap', 'round')
+            .attr('stroke-width', 5)
+            .attr('stroke', darkIndigo)
+            .attr('fill', 'none');
+
+        // inner line
+        gPlaneSvg.append('line')
+            .classed('intersectionPath', true)
+            .attr('x1', pt.x - dir.x)
+            .attr('y1', pt.y - dir.y)
+            .attr('x2', pt.x + dir.x)
+            .attr('y2', pt.y + dir.y)
+            .attr('stroke-linecap', 'round')
+            .attr('stroke-width', 2.5)
+            .attr('stroke', armColors[armIdx])
+            .attr('fill', 'none');
+
+        let obj = drawArrowHeadOnPlane(pt.add(dir), 3, armColors[armIdx], 'intersectionPath', 'Node ' + nodeIdx + ' Arm ' + armIdx, true);
+        obj = addOnClickHandler(obj, nodeIdx, armIdx);
+    });
+}
 drawIntersectionsOnSphere = function(intersectionList) {
     gSphereSvg.selectAll('.intersectionPath').remove();
-    if(!gDrawingIntersectionsOnSphere) return;
+    if(!gDrawingIntersections) return;
     intersectionList.nodes.forEach((node, nodeIdx) => {
         armColors = [darkIndigo, 'white']
         node.arms.forEach((arm, armIdx) => {
@@ -357,6 +413,36 @@ function drawCrossingDiagram(intersectionList) {
         currentNodeIdx = currentArm.nextNode;
         currentArmIdx = currentArm.nextDir;
         if(currentNodeIdx == 0 && currentArmIdx == 0) break;
+    }
+}
+
+function drawCrossingDiagramOnPlane(planarIntersections) {
+    gPlaneSvg.selectAll('.crossingDiagram').remove();
+    if(!gDrawingCrossingDiagram) return;
+
+    for(let i=0; i<planarIntersections.length; i++) {
+        let intersection = planarIntersections[i];
+        let nodeIdx = intersection.nodeIdx;
+        let armIdx = intersection.armIdx;
+        let pt = intersection.planarPt.mul(gPlaneScale);
+
+        // first draw a white translucent dot behind the text to make it more visible
+        gPlaneSvg.append('circle')
+            .classed('crossingDiagram', true)
+            .attr('cx', pt.x)
+            .attr('cy', pt.y)
+            .attr('r', 10)
+            .attr('fill', i%2 == 0 ? 'white' : 'red');
+        gPlaneSvg.append('text')
+            .classed('crossingDiagram', true)
+            .attr('x', pt.x)
+            .attr('y', pt.y)
+            .attr('text-anchor', 'middle')
+            .attr('alignment-baseline', 'middle')
+            .attr('font-size', 16)
+            .attr('font-family', 'sans-serif')
+            .attr('fill', i%2 == 0 ? 'black' : 'white')
+            .text(nodeIdx);
     }
 }
 

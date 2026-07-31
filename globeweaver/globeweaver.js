@@ -1,14 +1,19 @@
 const PLANE2SPHERE_SCALE = Math.sqrt( (4 * Math.PI) / (PLANE_WIDTH * PLANE_HEIGHT) );
+const SAMPLES_PER_SEGMENT = 20;
+const ARM_LENGTH = 15 * DMSLib.TAU / 360; // 15 degrees
 
 // ---- globeweaver global variables ----
 let gIntersectionList = new Globeweaver.IntersectionList([]);
+let gPlanarIntersections = [];
 
 
 function globe_outputPath() {
     drawPathOnPlane(gPlanarPath);
     drawPathOnSphere(gSpherePath);
     drawIntersectionsOnSphere(gIntersectionList);
+    drawIntersectionsOnPlane(gPlanarIntersections);
     drawCrossingDiagram(gIntersectionList);
+    drawCrossingDiagramOnPlane(gPlanarIntersections);
     d3.select('#output #skel').property('value', turnPathToArcs(gSpherePath) );
     // d3.select('#output #skel').property('value', gIntersectionList.getPathString());
 
@@ -23,8 +28,8 @@ function loadIntersectionsFromJSON(json) {
     json.forEach(data => {
         let node = new Globeweaver.IntersectionNode(
             new DMSLib.Rotation(data.orientation._q0, data.orientation._qx, data.orientation._qy, data.orientation._qz),
-            new Arm(data.arms[0].length, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
-            new Arm(data.arms[1].length, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
+            new Arm(ARM_LENGTH /*data.arms[0].length*/, data.arms[0].dirIsPositive, data.arms[0].nextNode, data.arms[0].nextArm),
+            new Arm(ARM_LENGTH /*data.arms[1].length*/, data.arms[1].dirIsPositive, data.arms[1].nextNode, data.arms[1].nextArm)
         );
         newList.push(node);
     });
@@ -129,9 +134,33 @@ function initializeIntersections() {
     globe_outputPath();
 }
 
+// if planar path is constructed with nodeIdx and armIdx info, find the first and the 
+function getPlanarIntersections(planarPath) {
+    let result = [];
+
+    for(let planarIdx = 0; planarIdx < planarPath.length; planarIdx++) {
+        // if planarPath[planarIdx] has nodeIdx and armIdx, then add it to result
+        let planarPt = planarPath[planarIdx];
+        if(planarPt.nodeIdx !== undefined && planarPt.armIdx !== undefined) {
+            // check that this nodeIdx and armIdx is not already in result
+            let alreadyInResult = result.some(ptData => ptData.nodeIdx === planarPt.nodeIdx && ptData.armIdx === planarPt.armIdx);
+            if(alreadyInResult) continue;
+
+            // get direction by looking at the next point in the planarPath, check for array bound overrun
+            let nextPlanarPt = planarPath[planarIdx + 1];
+            if(nextPlanarPt) {
+                let planarDir = nextPlanarPt.sub(planarPt).normalized();
+                result.push({ nodeIdx: planarPt.nodeIdx, armIdx: planarPt.armIdx, planarPt: planarPt, planarDir: planarDir });
+            }
+        }
+    }
+    return result;
+}
+
 function buildPathFromIntersectionNodes() {
-    gSpherePath = gIntersectionList.getSpherePath(20);
+    gSpherePath = gIntersectionList.getSpherePath(SAMPLES_PER_SEGMENT);
     gSpherePath = cleanPath(gSpherePath);
+    gPlanarIntersections = getPlanarIntersections(toPlanarPath(gSpherePath));
     gSpherePath = redistributePoints(gSpherePath, gIntersectionList.nodes.length / gSpherePath.length * 20);
     gPlanarPath = toPlanarPath(gSpherePath);
 }
@@ -339,10 +368,10 @@ function doIntersectionAngles() {
         node.setOrientation(newOrientation);
 
         // and fix lengths too
-        node.arms[0].inLength = 15 * DMSLib.TAU / 360; // two degrees
-        node.arms[0].outLength = 15 * DMSLib.TAU / 360; // two degrees
-        node.arms[1].inLength = 15 * DMSLib.TAU / 360; // two degrees
-        node.arms[1].outLength = 15 * DMSLib.TAU / 360; // two degrees
+        node.arms[0].inLength = ARM_LENGTH;
+        node.arms[0].outLength = ARM_LENGTH;
+        node.arms[1].inLength = ARM_LENGTH;
+        node.arms[1].outLength = ARM_LENGTH;
     });
 }
 

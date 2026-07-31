@@ -36,11 +36,15 @@ function toPlanarPath(spherePath, dirRange, nominalDir) {
         if(dir > DMSLib.HALFTAU) dir -= DMSLib.HALFTAU;
 
         for (let i=0; i<spherePath.length; i++) {
-            planePath.push(pos); 
-
             let p = i>0 ? spherePath[i-1] : null;
             let q = spherePath[i]
             let r = i < spherePath.length-1 ? spherePath[i+1] : null;
+
+            if(q.nodeIdx !== undefined && q.armIdx !== undefined) {
+                pos.nodeIdx = q.nodeIdx;
+                pos.armIdx = q.armIdx;
+            }
+            planePath.push(pos); 
 
             let deflectionAngle = (p && q && r) ? -DMSLib.Point3D.sphereDeflection(p, q, r) : 0;
             dir += deflectionAngle;
@@ -64,7 +68,14 @@ function toPlanarPath(spherePath, dirRange, nominalDir) {
         if(scale > result.scale) {
             result.scale = scale;
             let offset = new DMSLib.Point2D(boundary.x - minX*result.scale, boundary.y - minY*result.scale);
-            result.path = planePath.map(p => p.mul(result.scale).add(offset));
+
+            // result.path is the planePath points multiply p by scale and add offset but keep the nodeIdx and armIdx properties if present
+            result.path = planePath.map(p => {
+                let newP = p.mul(result.scale).add(offset);
+                if(p.nodeIdx !== undefined) newP.nodeIdx = p.nodeIdx;
+                if(p.armIdx !== undefined) newP.armIdx = p.armIdx;
+                return newP;
+            });
         }
     }
 
