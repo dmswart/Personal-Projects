@@ -5,7 +5,7 @@ Personal Projects
 [Globemaker](https://dmswart.github.io/Personal-Projects/globemaker_js/globemaker_interpreter.html)
  is the software I use to unwrap spherical imagery onto the plane.
 * Details and results can be seen in these papers:
-  * [Using Turtles and Skeletons to Display the Viewable Sphere (2009)](https://archive.bridgesmathart.org/2009/bridges2009-39.html#gsc.tab=0)
+  * [Using Turtles and Skeletons to Display the Viewable Sphere (2009)](https://archive.bridgesmathart.org/2009/bridges2009-39.html)
   * [Orange Peel Optimization (2021)](https://archive.bridgesmathart.org/2021/bridges2021-241.pdf)
   * [Arcs on Spheres and Snakes on Planes (2024)](https://archive.bridgesmathart.org/2024/bridges2024-353.html)
 * The original C# code is in the ../globemaker directory.
@@ -58,3 +58,6 @@ a directory of my experiments using javascript and heavily relying on D3.
    * If you want to save it, look for a screenscraping program.  
      * On linux I use 'SimpleScreenRecorder'.  
      * On windows I use Icecream's Screen-Recorder
+
+## warpnicely_js
+[Warping pictures nicely](https://dmswart.github.io/Personal-Projects/warpnicely_js) is a tool that implements the algorithm in the [paper](https://archive.bridgesmathart.org/2011/bridges2011-303.html) with the same name.
