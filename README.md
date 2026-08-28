@@ -60,4 +60,4 @@ a directory of my experiments using javascript and heavily relying on D3.
      * On windows I use Icecream's Screen-Recorder
 
 ## warpnicely_js
-[Warping pictures nicely](https://dmswart.github.io/Personal-Projects/warpnicely_js) is a tool that implements the algorithm in the [paper](https://archive.bridgesmathart.org/2011/bridges2011-303.html) with the same name.
+[Warping pictures nicely](https://github.com/dmswart/Personal-Projects/tree/main/warpnicely_js) is a tool that implements the algorithm in the [paper](https://archive.bridgesmathart.org/2011/bridges2011-303.html) with the same name.
