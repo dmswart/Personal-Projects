@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warping Pictures Nicely</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>Warping Pictures Nicely</h1>
+  <p class="subtitle">An implementation of David Swart's 
+  <a href="https://archive.bridgesmathart.org/2011/bridges2011-303.pdf" target="_blank">pseudo-conformal warping algorithm</a>
+    (Bridges 2011).</p>
+</header>
+
+<div class="controls">
+  <section>
+    <h2>1. Source Shape</h2>
+    <label>Shape
+      <select id="sourceShapeType">
+        <option value="rect">Rectangular grid</option>
+        <option value="silhouette">Black &amp; white silhouette</option>
+      </select>
+    </label>
+    <div id="silhouetteControls" hidden>
+      <label>Silhouette image <input type="file" id="silhouetteFile" accept="image/*"></label>
+      <label><input type="checkbox" id="silhouetteInvert"> Invert (white = inside shape)</label>
+    </div>
+    <label>Rows <input type="number" id="gridRows" value="50" min="2" max="120"></label>
+    <label>Columns <input type="number" id="gridCols" value="50" min="2" max="120"></label>
+  </section>
+
+  <section>
+    <h2>2. Destination Shape</h2>
+    <label>Shape
+      <select id="destShapeType">
+        <option value="circle">Circle</option>
+        <option value="polygon">Regular polygon</option>
+      </select>
+    </label>
+    <div id="polygonControls" hidden>
+      <label>Sides <input type="number" id="polygonSides" value="6" min="3" max="20"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Build &amp; Run</h2>
+    <button id="buildBtn">Build Mesh</button>
+    <label>Convergence threshold <input type="number" id="convThreshold" value="1.0" step="0.1" min="0.01"></label>
+    <label>Max iterations <input type="number" id="maxIterations" value="2000000" step="10000"></label>
+    <div class="button-row">
+      <button id="goBtn" disabled>Go</button>
+      <button id="cancelBtn" disabled>Cancel</button>
+    </div>
+    <div id="status" class="status">Build a mesh to begin.</div>
+  </section>
+
+  <section>
+    <h2>4. Map Imagery</h2>
+    <label>Source image <input type="file" id="mapImageFile" accept="image/*"></label>
+    <label><input type="checkbox" id="mapReverse"> Reverse (map destination-shaped image back onto source)</label>
+    <button id="mapBtn" disabled>Map Image to Destination</button>
+    <a id="downloadLink" class="download-link" download="warped.png" hidden>Download result</a>
+  </section>
+</div>
+
+<div class="panels">
+  <div class="panel">
+    <h3>Source</h3>
+    <svg id="sourceSvg"></svg>
+  </div>
+  <div class="panel">
+    <h3>Destination</h3>
+    <svg id="destSvg"></svg>
+  </div>
+  <div class="panel">
+    <h3>Mapped Result</h3>
+    <canvas id="resultCanvas" width="460" height="460"></canvas>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="js/geometry.js"></script>
+<script src="js/mesh.js"></script>
+<script src="js/algorithm.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/imageMap.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
