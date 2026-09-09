@@ -71,6 +71,24 @@
     if (el.destShapeType.value === 'circle') {
       return { type: 'circle', cx: DEST_CENTER.x, cy: DEST_CENTER.y, radius: DEST_RADIUS };
     }
+    if (el.destShapeType.value === 'oval') {
+      return { type: 'oval', cx: DEST_CENTER.x, cy: DEST_CENTER.y, width: DEST_RADIUS };
+    }
+    if (el.destShapeType.value === 'reuleaux') {
+      // circumradius (vertex distance) = side length / sqrt(3)
+      return { type: 'reuleaux', cx: DEST_CENTER.x, cy: DEST_CENTER.y, width: DEST_RADIUS * Math.sqrt(3) };
+    }
+    if (el.destShapeType.value === 'lens') {
+      return { type: 'lens', cx: DEST_CENTER.x, cy: DEST_CENTER.y, radius: DEST_RADIUS };
+    }
+    if (el.destShapeType.value === 'parallelogram') {
+      // farthest template vertex is at distance sqrt(1^2 + 0.5^2) from center
+      return { type: 'parallelogram', cx: DEST_CENTER.x, cy: DEST_CENTER.y, scale: DEST_RADIUS / Math.sqrt(1.25) };
+    }
+    if (el.destShapeType.value === 'heart') {
+      // template's horizontal half-width is 2 (unscaled)
+      return { type: 'heart', cx: DEST_CENTER.x, cy: DEST_CENTER.y, scale: DEST_RADIUS / 2 };
+    }
     var sides = Math.max(3, parseInt(el.polygonSides.value, 10) || 6);
     return {
       type: 'polygon', cx: DEST_CENTER.x, cy: DEST_CENTER.y,

@@ -27,8 +27,8 @@
       <label>Silhouette image <input type="file" id="silhouetteFile" accept="image/*"></label>
       <label><input type="checkbox" id="silhouetteInvert"> Invert (white = inside shape)</label>
     </div>
-    <label>Rows <input type="number" id="gridRows" value="50" min="2" max="120"></label>
-    <label>Columns <input type="number" id="gridCols" value="50" min="2" max="120"></label>
+    <label>Rows <input type="number" id="gridRows" value="30" min="2" max="120"></label>
+    <label>Columns <input type="number" id="gridCols" value="30" min="2" max="120"></label>
   </section>
 
   <section>
@@ -37,6 +37,11 @@
       <select id="destShapeType">
         <option value="circle">Circle</option>
         <option value="polygon">Regular polygon</option>
+        <option value="oval">Oval (stadium)</option>
+        <option value="reuleaux">Reuleaux triangle</option>
+        <option value="lens">Lens</option>
+        <option value="parallelogram">Parallelogram</option>
+        <option value="heart">Heart</option>
       </select>
     </label>
     <div id="polygonControls" hidden>

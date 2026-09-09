@@ -17,6 +17,13 @@
     return d3.hsl(t * 360, 0.85, 0.5).toString();
   }
 
+  // Sweep-flag for the minor (<=180 deg) arc from `from` to `to` around
+  // `center`, so hand-built arc paths don't need manual clockwise reasoning.
+  function arcSweepFlag(center, from, to) {
+    var cross = (from.x - center.x) * (to.y - center.y) - (from.y - center.y) * (to.x - center.x);
+    return cross > 0 ? 1 : 0;
+  }
+
   function boundaryShapePathData(shape) {
     if (shape instanceof WPN.Geometry.Circle) {
       var r = shape.radius;
@@ -24,7 +31,48 @@
         ' a ' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0' +
         ' a ' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0 Z';
     }
-    // regular polygon
+    if (shape instanceof WPN.Geometry.ReuleauxTriangle) {
+      var v = shape.vertices, w = shape.width;
+      return 'M ' + v[0].x + ' ' + v[0].y +
+        ' A ' + w + ' ' + w + ' 0 0 ' + arcSweepFlag(v[2], v[0], v[1]) + ' ' + v[1].x + ' ' + v[1].y +
+        ' A ' + w + ' ' + w + ' 0 0 ' + arcSweepFlag(v[0], v[1], v[2]) + ' ' + v[2].x + ' ' + v[2].y +
+        ' A ' + w + ' ' + w + ' 0 0 ' + arcSweepFlag(v[1], v[2], v[0]) + ' ' + v[0].x + ' ' + v[0].y +
+        ' Z';
+    }
+    if (shape instanceof WPN.Geometry.Lens) {
+      var lr = shape.r, lc = shape.leftCusp, rc = shape.rightCusp;
+      return 'M ' + rc.x + ' ' + rc.y +
+        ' A ' + lr + ' ' + lr + ' 0 0 ' + arcSweepFlag(shape.top, rc, lc) + ' ' + lc.x + ' ' + lc.y +
+        ' A ' + lr + ' ' + lr + ' 0 0 ' + arcSweepFlag(shape.bottom, lc, rc) + ' ' + rc.x + ' ' + rc.y +
+        ' Z';
+    }
+    if (shape instanceof WPN.Geometry.Oval) {
+      var r2 = shape.r, c1 = shape.c1, c2 = shape.c2;
+      var tl = { x: c1.x, y: c1.y - r2 }, tr = { x: c2.x, y: c2.y - r2 };
+      var br = { x: c2.x, y: c2.y + r2 }, bl = { x: c1.x, y: c1.y + r2 };
+      return 'M ' + tl.x + ' ' + tl.y +
+        ' L ' + tr.x + ' ' + tr.y +
+        ' A ' + r2 + ' ' + r2 + ' 0 0 1 ' + br.x + ' ' + br.y +
+        ' L ' + bl.x + ' ' + bl.y +
+        ' A ' + r2 + ' ' + r2 + ' 0 0 1 ' + tl.x + ' ' + tl.y +
+        ' Z';
+    }
+    if (shape instanceof WPN.Geometry.Heart) {
+      var A = shape.A, C = shape.C, E = shape.E, F = shape.F, G = shape.G, H = shape.H;
+      var bigR = 2 * shape.scale, smallR = shape.scale;
+      // The two semicircle sweep flags are hardcoded (not via arcSweepFlag):
+      // A-B-C and C-D-E are each colinear, so the cross-product turn test is
+      // degenerate (always 0) and can't tell which 180-degree half to draw.
+      return 'M ' + H.x + ' ' + H.y +
+        ' L ' + F.x + ' ' + F.y +
+        ' A ' + bigR + ' ' + bigR + ' 0 0 ' + arcSweepFlag(C, F, A) + ' ' + A.x + ' ' + A.y +
+        ' A ' + smallR + ' ' + smallR + ' 0 0 1 ' + C.x + ' ' + C.y +
+        ' A ' + smallR + ' ' + smallR + ' 0 0 1 ' + E.x + ' ' + E.y +
+        ' A ' + bigR + ' ' + bigR + ' 0 0 ' + arcSweepFlag(C, E, G) + ' ' + G.x + ' ' + G.y +
+        ' L ' + H.x + ' ' + H.y +
+        ' Z';
+    }
+    // any other straight-edged shape (regular polygon, parallelogram)
     var pts = shape.vertices.map(function (p) { return p.x + ',' + p.y; }).join(' L ');
     return 'M ' + pts + ' Z';
   }
