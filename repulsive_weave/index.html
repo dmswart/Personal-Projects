@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Repulsive Weave</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    #panel { position: absolute; top: 8px; left: 8px; padding: 8px; background: #fffd; border-radius: 4px; }
+    #panel > * { margin-right: 6px; }
+    #info { margin-top: 6px; font-size: 12px; }
+    #file { display: none; }
+  </style>
+</head>
+<body>
+  <div id="panel">
+    <select id="shape">
+      <option value="sphere">Sphere</option>
+      <option value="cube">Cube</option>
+      <option value="obj" disabled>.obj file</option>
+    </select>
+    <button id="loadObj">Load .obj...</button>
+    <input id="file" type="file" accept=".obj">
+    <button id="newLoop">New loop</button>
+    <button id="fewer" title="Resample with 1/1.26 as many points">&minus; points</button>
+    <button id="more" title="Resample with 1.26x as many points">+ points</button>
+    <button id="resample" title="Respace the current points evenly, same point count">Resample</button>
+    <div style="margin-top:6px">
+      <select id="mode"></select>
+      <button id="run">Run</button>
+    </div>
+    <details style="margin-top:6px">
+      <summary>Options</summary>
+      <label title="step scale. small = stable but slower">Stability
+        <input id="stepFrac" type="number" step="0.05" min="0" style="width:4em"></label>
+      <label>Max iterations <input id="maxIters" type="number" style="width:6em"></label>
+      <label><input id="smooth" type="checkbox"> Smooth</label>
+      <label title="Passes averaging each point's step with its neighbours (0 = off)">Step averaging
+        <input id="stepAvg" type="number" min="0" style="width:4em"></label>
+    </details>
+    <div id="info"></div>
+    <div id="status" style="font-size:12px"></div>
+  </div>
+  <script src="lib/three.min.js"></script>
+  <script src="lib/OrbitControls.js"></script>
+  <script src="lib/OBJLoader.js"></script>
+  <script src="lib/BufferGeometryUtils.js"></script>
+  <script src="surface_curve.js"></script>
+  <script src="surface_path.js"></script>
+  <script src="energies.js"></script>
+  <script src="modes.js"></script>
+  <script src="optimizer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

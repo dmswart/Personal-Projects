@@ -111,7 +111,7 @@ function calcStep(edges, ptData) {
 
     let localScale = 1/ptData.a.sub(ptData.b).R();
 
-    // k(p, q, Tp) = |Tp x (p-q)| ^ alpha) / |p-q|^beta
+    // k(p, q, Tp) = |Tp x (p-q)| ^ alpha / |p-q|^beta
     const alpha = 2; // common alpha, beta values are (2, 4.5) and (3, 6)
     const beta = 4.5;
     function k(p, q, Tp, Tq) {
